@@ -13,8 +13,18 @@ const Calendar = () => {
   const [monthlySchedules, setMonthlySchedules] = useState({ specific: {} });
   const [loading, setLoading] = useState(true);
   const [selectedDaySchedule, setSelectedDaySchedule] = useState(null);
+  const [isCalendarAdmin, setIsCalendarAdmin] = useState(false);
+  const [showAdminModal, setShowAdminModal] = useState(false);
+  const [adminPassword, setAdminPassword] = useState('');
+  const [editingDate, setEditingDate] = useState(null);
 
   const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+  useEffect(() => {
+    // Check if user has calendar admin access
+    const calAdminStatus = localStorage.getItem('calendarAdmin') === 'true';
+    setIsCalendarAdmin(calAdminStatus);
+  }, []);
 
   useEffect(() => {
     if (unifiedTechnicianData && unifiedTechnicianData.length > 0) {
@@ -53,13 +63,82 @@ const Calendar = () => {
     setCurrentView(view);
   };
 
+  const handleAdminLogin = () => {
+    if (adminPassword === 'Safety1') {
+      setIsCalendarAdmin(true);
+      localStorage.setItem('calendarAdmin', 'true');
+      setShowAdminModal(false);
+      setAdminPassword('');
+      alert('Calendar admin access granted!');
+    } else {
+      alert('Incorrect password');
+    }
+  };
+
+  const handleAdminLogout = () => {
+    setIsCalendarAdmin(false);
+    localStorage.removeItem('calendarAdmin');
+    alert('Logged out from calendar admin');
+  };
+
+  const handleSyncWithRippling = async () => {
+    if (!isCalendarAdmin) {
+      alert('Admin access required');
+      return;
+    }
+    alert('Sync with Rippling functionality will sync schedule data from Rippling API. Coming soon!');
+  };
+
+  const handleManageRecurring = () => {
+    if (!isCalendarAdmin) {
+      alert('Admin access required');
+      return;
+    }
+    alert('Manage recurring schedules (weekly patterns, regular days off, etc.). Coming soon!');
+  };
+
+  const handleWeekendReport = () => {
+    alert('Weekend Report: Generate a report of all weekend work assignments. Coming soon!');
+  };
+
+  const handlePrint = () => {
+    window.print();
+  };
+
   const handleDayClick = (dateObject) => {
     const schedule = getCalculatedScheduleForDay(dateObject, monthlySchedules, unifiedTechnicianData);
-    setSelectedDaySchedule({ date: dateObject, schedule });
+
+    if (isCalendarAdmin) {
+      setEditingDate(dateObject);
+      setSelectedDaySchedule({ date: dateObject, schedule });
+    } else {
+      setSelectedDaySchedule({ date: dateObject, schedule });
+    }
+  };
+
+  const handleSaveSchedule = async () => {
+    if (!editingDate) return;
+
+    try {
+      const scheduleData = {
+        date: editingDate,
+        staff: selectedDaySchedule.schedule.staff,
+        notes: selectedDaySchedule.schedule.notes
+      };
+
+      await firebaseService.saveSchedule(scheduleData);
+      alert('Schedule saved successfully!');
+      loadMonthSchedules();
+      closeModal();
+    } catch (error) {
+      console.error('Error saving schedule:', error);
+      alert('Error saving schedule. Please try again.');
+    }
   };
 
   const closeModal = () => {
     setSelectedDaySchedule(null);
+    setEditingDate(null);
   };
 
   const renderMonthView = () => {
@@ -191,38 +270,78 @@ const Calendar = () => {
 
     return (
       <div className="modal-overlay" onClick={closeModal} style={{ display: 'flex' }}>
-        <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '600px', maxHeight: '80vh', overflow: 'auto' }}>
           <span className="close" onClick={closeModal}>&times;</span>
           <h2>{dateString}</h2>
-          <div className="view-content">
-            <h3>Notes:</h3>
-            <div className="view-notes">{schedule.notes || 'No notes for this day.'}</div>
 
-            <h3>{primaryHeaderText}</h3>
+          {isCalendarAdmin && (
+            <div style={{ marginBottom: '16px', padding: '12px', backgroundColor: '#dbeafe', borderRadius: '8px' }}>
+              <p style={{ margin: 0, fontSize: '14px' }}>
+                <i className="fas fa-edit"></i> Admin Mode: Click on staff members to edit their status, or modify notes below.
+              </p>
+            </div>
+          )}
+
+          <div className="view-content">
+            <h3><i className="fas fa-sticky-note"></i> Notes:</h3>
+            <div className="view-notes" style={{
+              padding: '12px',
+              backgroundColor: '#f3f4f6',
+              borderRadius: '8px',
+              marginBottom: '20px',
+              minHeight: '60px'
+            }}>
+              {schedule.notes || 'No notes for this day.'}
+            </div>
+
+            <h3><i className="fas fa-users"></i> {primaryHeaderText}</h3>
             <div className="view-staff-list">
               {primaryList.length > 0 ? (
                 primaryList.map((s, idx) => (
-                  <div key={idx} className={`view-staff-item status-${s.status}`}>
-                    {s.name}: {formatStatus(s)}
+                  <div key={idx} className={`view-staff-item status-${s.status}`} style={{
+                    padding: '8px 12px',
+                    marginBottom: '8px',
+                    borderRadius: '6px',
+                    backgroundColor: '#f9fafb',
+                    borderLeft: '4px solid #3b82f6'
+                  }}>
+                    <strong>{s.name}:</strong> {formatStatus(s)}
                   </div>
                 ))
               ) : (
-                <p>None</p>
+                <p style={{ color: '#6b7280', fontStyle: 'italic' }}>None</p>
               )}
             </div>
 
-            <h3>{secondaryHeaderText}</h3>
+            <h3 style={{ marginTop: '24px' }}><i className="fas fa-user-check"></i> {secondaryHeaderText}</h3>
             <div className="view-staff-list">
               {secondaryList.length > 0 ? (
                 secondaryList.map((s, idx) => (
-                  <div key={idx} className={`view-staff-item status-${s.status}`}>
-                    {s.name}: {formatStatus(s)}
+                  <div key={idx} className={`view-staff-item status-${s.status}`} style={{
+                    padding: '8px 12px',
+                    marginBottom: '8px',
+                    borderRadius: '6px',
+                    backgroundColor: '#f9fafb',
+                    borderLeft: '4px solid #10b981'
+                  }}>
+                    <strong>{s.name}:</strong> {formatStatus(s)}
                   </div>
                 ))
               ) : (
-                <p>None</p>
+                <p style={{ color: '#6b7280', fontStyle: 'italic' }}>None</p>
               )}
             </div>
+
+            {isCalendarAdmin && editingDate && (
+              <div style={{ marginTop: '24px', display: 'flex', gap: '12px' }}>
+                <button className="btn btn-primary" onClick={handleSaveSchedule}>
+                  <i className="fas fa-save"></i> Save Changes
+                </button>
+                <button className="btn btn-secondary" onClick={closeModal}>
+                  Cancel
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -233,7 +352,10 @@ const Calendar = () => {
     return (
       <Layout>
         <div className="tab-content active">
-          <p>Loading calendar...</p>
+          <div style={{ padding: '40px', textAlign: 'center' }}>
+            <i className="fas fa-spinner fa-spin" style={{ fontSize: '48px', color: '#3b82f6', marginBottom: '16px' }}></i>
+            <p>Loading calendar...</p>
+          </div>
         </div>
       </Layout>
     );
@@ -242,6 +364,60 @@ const Calendar = () => {
   return (
     <Layout>
       <div className="tab-content active">
+        {/* Top Action Buttons */}
+        <div className="tab-header" style={{ marginBottom: '16px' }}>
+          <div className="tab-controls">
+            <div className="calendar-actions" style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+              <button
+                className="btn btn-success"
+                onClick={handleSyncWithRippling}
+                disabled={!isCalendarAdmin}
+                title={!isCalendarAdmin ? 'Admin access required' : 'Sync schedule with Rippling'}
+              >
+                <i className="fas fa-sync"></i> Sync with Rippling
+              </button>
+              <button
+                className="btn btn-secondary"
+                onClick={handleManageRecurring}
+                disabled={!isCalendarAdmin}
+                title={!isCalendarAdmin ? 'Admin access required' : 'Manage recurring schedules'}
+              >
+                <i className="fas fa-sync-alt"></i> Manage Recurring
+              </button>
+              <button
+                className="btn btn-secondary"
+                onClick={handleWeekendReport}
+              >
+                <i className="fas fa-file-alt"></i> Weekend Report
+              </button>
+              <button
+                className="btn btn-primary"
+                onClick={handlePrint}
+              >
+                <i className="fas fa-print"></i> Print
+              </button>
+            </div>
+            <div className="calendar-auth-container" style={{ display: 'flex', gap: '12px' }}>
+              {!isCalendarAdmin ? (
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => setShowAdminModal(true)}
+                >
+                  <i className="fas fa-lock"></i> Admin Login
+                </button>
+              ) : (
+                <button
+                  className="btn btn-secondary"
+                  onClick={handleAdminLogout}
+                >
+                  <i className="fas fa-sign-out-alt"></i> Logout
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Calendar Controls */}
         <div className="tab-header">
           <div className="calendar-controls">
             <button className="btn btn-secondary" onClick={() => navigate(-1)}>
@@ -258,19 +434,19 @@ const Calendar = () => {
           </div>
           <div className="calendar-view-switcher">
             <button
-              className={`btn ${currentView === 'day' ? 'btn-primary' : 'btn-secondary'}`}
+              className={`btn btn-small ${currentView === 'day' ? 'btn-primary' : 'btn-secondary'}`}
               onClick={() => switchView('day')}
             >
               Day
             </button>
             <button
-              className={`btn ${currentView === 'week' ? 'btn-primary' : 'btn-secondary'}`}
+              className={`btn btn-small ${currentView === 'week' ? 'btn-primary' : 'btn-secondary'}`}
               onClick={() => switchView('week')}
             >
               Week
             </button>
             <button
-              className={`btn ${currentView === 'month' ? 'btn-primary' : 'btn-secondary'}`}
+              className={`btn btn-small ${currentView === 'month' ? 'btn-primary active' : 'btn-secondary'}`}
               onClick={() => switchView('month')}
             >
               Month
@@ -278,13 +454,82 @@ const Calendar = () => {
           </div>
         </div>
 
-        <div id="calendarContainer">
+        {/* Admin Status Indicator */}
+        {isCalendarAdmin && (
+          <div style={{
+            padding: '12px 16px',
+            backgroundColor: '#dcfce7',
+            borderLeft: '4px solid #10b981',
+            marginBottom: '16px',
+            borderRadius: '8px'
+          }}>
+            <i className="fas fa-user-shield" style={{ color: '#10b981', marginRight: '8px' }}></i>
+            <strong>Calendar Admin Mode Active</strong> - Click on any day to edit schedules
+          </div>
+        )}
+
+        {/* Calendar Display */}
+        <div id="calendarContainer" className="calendar-container">
           {currentView === 'month' && renderMonthView()}
-          {currentView === 'week' && <div style={{ padding: '40px', textAlign: 'center' }}>Week view coming soon</div>}
-          {currentView === 'day' && <div style={{ padding: '40px', textAlign: 'center' }}>Day view coming soon</div>}
+          {currentView === 'week' && (
+            <div className="card">
+              <div className="card-header">
+                <h3><i className="fas fa-calendar-week"></i> Week View</h3>
+              </div>
+              <div style={{ padding: '40px', textAlign: 'center', color: '#6b7280' }}>
+                <i className="fas fa-calendar-week" style={{ fontSize: '64px', marginBottom: '16px', opacity: 0.3 }}></i>
+                <p>Week view coming soon - will show detailed daily schedules for the selected week.</p>
+              </div>
+            </div>
+          )}
+          {currentView === 'day' && (
+            <div className="card">
+              <div className="card-header">
+                <h3><i className="fas fa-calendar-day"></i> Day View</h3>
+              </div>
+              <div style={{ padding: '40px', textAlign: 'center', color: '#6b7280' }}>
+                <i className="fas fa-calendar-day" style={{ fontSize: '64px', marginBottom: '16px', opacity: 0.3 }}></i>
+                <p>Day view coming soon - will show hourly breakdown and detailed staff assignments.</p>
+              </div>
+            </div>
+          )}
         </div>
 
+        {/* Schedule Modal */}
         {renderScheduleModal()}
+
+        {/* Admin Login Modal */}
+        {showAdminModal && (
+          <div className="modal-overlay" onClick={() => setShowAdminModal(false)} style={{ display: 'flex' }}>
+            <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '400px' }}>
+              <span className="close" onClick={() => setShowAdminModal(false)}>&times;</span>
+              <h2><i className="fas fa-lock"></i> Calendar Admin Login</h2>
+              <div className="form-group" style={{ marginTop: '20px' }}>
+                <label htmlFor="calPassword" style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
+                  Password:
+                </label>
+                <input
+                  type="password"
+                  id="calPassword"
+                  className="form-input"
+                  value={adminPassword}
+                  onChange={(e) => setAdminPassword(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && handleAdminLogin()}
+                  style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #d1d5db' }}
+                  placeholder="Enter admin password"
+                />
+              </div>
+              <div style={{ marginTop: '20px', display: 'flex', gap: '12px' }}>
+                <button className="btn btn-primary" onClick={handleAdminLogin}>
+                  <i className="fas fa-sign-in-alt"></i> Login
+                </button>
+                <button className="btn btn-secondary" onClick={() => setShowAdminModal(false)}>
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </Layout>
   );
