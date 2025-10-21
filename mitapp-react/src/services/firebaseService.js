@@ -367,6 +367,18 @@ class FirebaseService {
     }
   }
 
+  // Tools management
+  async getTools() {
+    try {
+      const toolsRef = collection(db, 'hou_tools');
+      const snapshot = await getDocs(toolsRef);
+      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    } catch (error) {
+      console.error('Error loading tools:', error);
+      return [];
+    }
+  }
+
   // Generic get collection
   async getCollection(collectionName) {
     try {
