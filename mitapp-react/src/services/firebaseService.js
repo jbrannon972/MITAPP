@@ -147,7 +147,72 @@ class FirebaseService {
     }
   }
 
+  // Schedule management
+  async getScheduleDataForMonth(year, month) {
+    try {
+      // Fetch all schedule documents for the month
+      const schedulesRef = collection(db, 'hou_schedules');
+
+      // Build date range for the month
+      const startDate = new Date(year, month, 1);
+      const endDate = new Date(year, month + 1, 0);
+
+      const snapshot = await getDocs(schedulesRef);
+
+      const specificSchedules = {};
+
+      snapshot.docs.forEach(doc => {
+        const data = doc.data();
+        const dateString = doc.id; // Format: YYYY-MM-DD
+
+        // Check if this date is in the current month
+        if (dateString.startsWith(`${year}-${String(month + 1).padStart(2, '0')}`)) {
+          const day = parseInt(dateString.split('-')[2], 10);
+          specificSchedules[day] = {
+            staff: data.staff || [],
+            notes: data.notes || ''
+          };
+        }
+      });
+
+      return {
+        specific: specificSchedules
+      };
+    } catch (error) {
+      console.error('Error getting schedule data for month:', error);
+      return { specific: {} };
+    }
+  }
+
+  async saveSchedule(scheduleData) {
+    try {
+      const date = scheduleData.date.toDate ? scheduleData.date.toDate() : new Date(scheduleData.date);
+      const dateString = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+
+      const docRef = doc(db, 'hou_schedules', dateString);
+      await setDoc(docRef, {
+        date: scheduleData.date,
+        staff: scheduleData.staff,
+        notes: scheduleData.notes
+      });
+    } catch (error) {
+      console.error('Error saving schedule:', error);
+      throw error;
+    }
+  }
+
   // Fleet management
+  async loadFleetData() {
+    try {
+      const fleetRef = collection(db, this.collections.fleet);
+      const snapshot = await getDocs(fleetRef);
+      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    } catch (error) {
+      console.error('Error loading fleet data:', error);
+      return [];
+    }
+  }
+
   async getFleetVehicles() {
     try {
       const fleetRef = collection(db, this.collections.fleet);
