@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HOU Mitigation - My Slack Mentions</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/slack_mentions.css">
+</head>
+<body>
+    <div class="app-container">
+        <header class="header" id="nav-placeholder"></header>
+        <main class="main-content">
+            <div class="container">
+                <div id="slack-mentions-tab" class="tab-content active">
+                    <div class="tab-header">
+                        <div class="sub-nav">
+                            <button class="sub-nav-btn active" data-view="pending">My Pending</button>
+                            <button class="sub-nav-btn" data-view="completed">My Completed</button>
+                            <button class="sub-nav-btn manager-only" data-view="supervisors" style="display: none;">Supervisor Mentions</button>
+                            <button class="sub-nav-btn manager-only" data-view="reports" style="display: none;">Reports</button>
+                        </div>
+                        <div class="tab-controls">
+                            <button class="btn btn-primary" id="sync-mentions-btn"><i class="fas fa-sync"></i> Sync Mentions</button>
+                        </div>
+                    </div>
+
+                    <div id="pending-view" class="slack-mentions-view active">
+                        <div class="card">
+                            <div class="card-header">
+                                <h3>My Pending Mentions</h3>
+                                <button id="sort-mentions-btn" class="btn btn-secondary btn-small" title="Toggle Sort Order">
+                                    <i class="fas fa-sort-amount-down"></i> Sort: Newest First
+                                </button>
+                            </div>
+                            <div id="pending-mentions-container"><p>Loading your mentions...</p></div>
+                        </div>
+                    </div>
+
+                    <div id="completed-view" class="slack-mentions-view">
+                        <div class="card">
+                            <div class="card-header"><h3>My Completed Mentions</h3></div>
+                            <div id="completed-mentions-container"><p>Loading completed mentions...</p></div>
+                        </div>
+                    </div>
+                    
+                    <div id="supervisors-view" class="slack-mentions-view">
+                        <div class="card">
+                            <div class="card-header">
+                                <h3>Supervisor Mentions</h3>
+                                <div class="filter-controls">
+                                    <label for="supervisor-filter">Filter by Supervisor:</label>
+                                    <select id="supervisor-filter" class="form-input"></select>
+                                    <div class="sub-nav" id="supervisor-status-filter">
+                                        <button class="sub-nav-btn active" data-status="pending">Pending</button>
+                                        <button class="sub-nav-btn" data-status="completed">Completed</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div id="supervisor-mentions-container"><p>Loading supervisor mentions...</p></div>
+                        </div>
+                    </div>
+
+                    <div id="reports-view" class="slack-mentions-view">
+                        <div class="card">
+                            <div class="card-header"><h3>Supervisor Average Response Time</h3></div>
+                            <div id="supervisor-reports-container"><p>Calculating response times...</p></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="modalOverlay" class="modal-overlay"></div>
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyBEKOGT7S8rn3NKBNysT352GFGPt9GYf8E",
+            authDomain: "mit-foreasting.firebaseapp.com",
+            projectId: "mit-foreasting",
+            storageBucket: "mit-foreasting.appspot.com",
+            messagingSenderId: "1069061948061",
+            appId: "1:1069061948061:web:c657b4dfb344cb7b924a74",
+            measurementId: "G-Z9ZE012Y2C"
+        };
+        firebase.initializeApp(firebaseConfig);
+    </script>
+    <script src="JS/loader.js"></script>
+</body>
+</html>

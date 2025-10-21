@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HOU Mitigation - Team Management</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script src='https://api.mapbox.com/mapbox-gl-js/v2.9.1/mapbox-gl.js'></script>
+    <link href='https://api.mapbox.com/mapbox-gl-js/v2.9.1/mapbox-gl.css' rel='stylesheet' />
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/leaderboard-styles.css">
+    <link rel="stylesheet" href="css/evaluation-styles.css"> 
+    <link rel="stylesheet" href="css/calendar-styles.css">
+</head>
+<body>
+    <div class="app-container">
+        <header class="header" id="nav-placeholder"></header>
+
+        <main class="main-content">
+            <div class="container">
+                <div id="team-tab" class="tab-content active">
+                    <div class="tab-header">
+                        <div class="tab-controls">
+                            <div class="sub-nav">
+                                <button class="sub-nav-btn active" data-view="team-view">
+                                    <i class="fas fa-users"></i> Team View
+                                </button>
+                                <button class="sub-nav-btn" data-view="leaderboard">
+                                    <i class="fas fa-trophy"></i> Driver Leaderboard
+                                </button>
+                                <button class="sub-nav-btn" data-view="evaluation" id="evaluation-button">
+                                    <i class="fas fa-clipboard-check"></i> 20/70/10
+                                </button>
+                            </div>
+                            <div class="leaderboard-auth-container">
+                                <button id="leaderboardLoginBtn" class="btn btn-secondary"><i class="fas fa-lock"></i> Admin Login</button>
+                                <button id="leaderboardLogoutBtn" class="btn btn-secondary" style="display: none;"><i class="fas fa-sign-out-alt"></i> Logout</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="team-view-view" class="team-view active">
+                        <div id="teamManagementContainer"></div>
+                    </div>
+
+                    <div id="leaderboard-view" class="team-view" style="display:none;"></div>
+
+                    <div id="evaluation-view" class="team-view" style="display:none;"></div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="modalOverlay" class="modal-overlay"></div>
+    
+    <div id="leaderboardAdminModal" class="leaderboard-modal" style="display: none;">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Leaderboard Admin Login</h2>
+            <div class="form-group">
+                <label for="leaderboardPassword">Password:</label>
+                <input type="password" id="leaderboardPassword" class="form-input">
+            </div>
+            <button id="leaderboardSubmitLogin" class="btn btn-primary" style="width: 100%;">Login</button>
+        </div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyBEKOGT7S8rn3NKBNysT352GFGPt9GYf8E",
+            authDomain: "mit-foreasting.firebaseapp.com",
+            projectId: "mit-foreasting",
+            storageBucket: "mit-foreasting.firebasestorage.app",
+            messagingSenderId: "1069061948061",
+            appId: "1:1069061948061:web:c657b4dfb344cb7b924a74",
+            measurementId: "G-Z9ZE012Y2C"
+        };
+        firebase.initializeApp(firebaseConfig);
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <script src="JS/loader.js"></script>
+</body>
+</html>

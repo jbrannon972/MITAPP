@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HOU Mitigation - Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <div class="app-container">
+        <header class="header" id="nav-placeholder"></header>
+
+        <main class="main-content">
+            <div class="container">
+                 <div id="dashboard-tab" class="tab-content active">
+                    <div class="tab-header">
+                        <div class="sub-nav">
+                            <button class="sub-nav-btn active" data-view="supervisor-dashboard"><i class="fas fa-user-shield"></i> Supervisor</button>
+                            <button class="sub-nav-btn" data-view="warehouse-dashboard"><i class="fas fa-warehouse"></i> Warehouse</button>
+                        </div>
+                        <div class="tab-controls">
+                            <div class="date-picker-container">
+                                <label for="dashboardDate">Select Date:</label>
+                                <input type="date" id="dashboardDate" class="date-input">
+                            </div>
+                            <select id="yearSelector" class="year-selector" style="display: none;"></select>
+                        </div>
+                    </div>
+
+                    <div id="supervisor-dashboard-view" class="dashboard-view active">
+                        <div class="dashboard-main-grid">
+                            <div class="dashboard-main-content">
+                                <div class="dashboard-top-grid">
+                                    <div class="card" id="todays-stats-card">
+                                        <div class="card-header"><h3><i class="fas fa-calendar-day"></i> Job Stats</h3></div>
+                                        <div id="todays-stats-content">
+                                            <p>Loading stats...</p>
+                                        </div>
+                                    </div>
+                                    <div class="card" id="staffing-info-card">
+                                        <div class="card-header"><h3><i class="fas fa-info-circle"></i> Staffing Info & Notes</h3></div>
+                                        <div id="daily-notes-container"></div>
+                                        <div id="staffing-info-list" class="staffing-info-list">
+                                            <p>Loading schedule...</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div id="second-shift-summary-container">
+                                     </div>
+                            </div>
+                            <div class="dashboard-sidebar">
+                                 <div class="card" id="at-a-glance-card">
+                                    <div class="card-header"><h3><i class="fas fa-clipboard-check"></i> At a Glance</h3></div>
+                                    <div class="glance-grid-two-col">
+                                        <div class="glance-item">
+                                            <span class="glance-value" id="techsOnRoute">0</span>
+                                            <span class="glance-label">Technicians On Route</span>
+                                        </div>
+                                        <div class="glance-item">
+                                            <span class="glance-value" id="subTeams">0</span>
+                                            <span class="glance-label">Sub Teams</span>
+                                        </div>
+                                        <div class="glance-item">
+                                            <span class="glance-value" id="newJobsCapacity">0</span>
+                                            <span class="glance-label">Install Windows Predicted</span>
+                                        </div>
+                                        <div class="glance-item">
+                                            <span class="glance-value" id="inefficientDemoHours">0</span>
+                                            <span class="glance-label">Inefficient Demo Hours</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="card" id="daily-hours-card">
+                                    <div class="card-header"><h3><i class="fas fa-chart-bar"></i> Daily Hours</h3></div>
+                                    <div class="chart-container"><canvas id="dailyHoursChart"></canvas></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="warehouse-dashboard-view" class="dashboard-view" style="display: none;">
+                        <div class="dashboard-main-grid" style="grid-template-columns: 1fr; gap: 24px;">
+                            <div class="dashboard-top-grid" style="grid-template-columns: repeat(3, 1fr); gap: 24px;">
+                                <div class="card list-card">
+                                    <div class="card-header"><h3><i class="fas fa-tools"></i> Vehicles in Repair</h3></div>
+                                    <div id="vehicles-in-repair-list" class="vehicle-list"></div>
+                                </div>
+                                <div class="card list-card">
+                                    <div class="card-header"><h3><i class="fas fa-user-slash"></i> Unassigned Vehicles</h3></div>
+                                    <div id="unassigned-vehicles-list" class="vehicle-list"></div>
+                                </div>
+                                <div class="card list-card">
+                                    <div class="card-header"><h3><i class="fas fa-calendar-times"></i> Available (Tech Off Today)</h3></div>
+                                    <div id="available-tech-off-list" class="vehicle-list"></div>
+                                </div>
+                            </div>
+                             <div class="dashboard-main-grid" style="grid-template-columns: 2fr 1fr; gap: 24px;">
+                                <div id="warehouse-daily-report-summary">
+                                </div>
+                                 <div class="card full-width-card">
+                                    <div class="card-header"><h3><i class="fas fa-clipboard-check"></i> At a Glance</h3></div>
+                                    <div class="glance-grid">
+                                        <div class="glance-item">
+                                            <span id="warehouse-pending-fleet-wos" class="glance-value">0</span>
+                                            <span class="glance-label">Pending Fleet WOs</span>
+                                        </div>
+                                        <div class="glance-item">
+                                            <span id="warehouse-recent-fleet-wos" class="glance-value">0</span>
+                                            <span class="glance-label">Fleet WOs (Last 24h)</span>
+                                        </div>
+                                        <div class="glance-item">
+                                            <span id="warehouse-pending-equipment-wos" class="glance-value">0</span>
+                                            <span class="glance-label">Pending Equipment WOs</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="modalOverlay" class="modal-overlay"></div>
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyBEKOGT7S8rn3NKBNysT352GFGPt9GYf8E",
+            authDomain: "mit-foreasting.firebaseapp.com",
+            projectId: "mit-foreasting",
+            storageBucket: "mit-foreasting.firebasestorage.app",
+            messagingSenderId: "1069061948061",
+            appId: "1:1069061948061:web:c657b4dfb344cb7b924a74",
+            measurementId: "G-Z9ZE012Y2C"
+        };
+        firebase.initializeApp(firebaseConfig);
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script src="JS/loader.js"></script>
+</body>
+</html>

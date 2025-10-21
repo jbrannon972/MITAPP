@@ -1,0 +1,66 @@
+/* Tool Management Specific Styles */
+
+.tool-view {
+    display: none;
+}
+
+.tool-view.active {
+    display: block;
+}
+
+.summary-bar {
+    padding: 16px;
+    background-color: #f8fafc;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    margin-bottom: 24px;
+    text-align: center;
+}
+
+.summary-bar p {
+    margin: 0;
+    font-size: 1.1em;
+    font-weight: 600;
+}
+
+.summary-bar .cost {
+    color: var(--primary-color);
+}
+
+/* New Styles for Inventory Table */
+.inventory-quantity-input {
+    width: 80px;
+    padding: 8px;
+    text-align: center;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-color);
+}
+
+.inventory-quantity-input:focus {
+    outline: 2px solid var(--primary-color);
+}
+
+/* --- NEW: Styles for Guided Inventory Workflow --- */
+.inventory-workflow-container {
+    padding: 16px;
+    background-color: #f8fafc;
+    border-radius: var(--radius-lg);
+}
+
+.inventory-workflow-header {
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.inventory-workflow-header h4 {
+    font-family: 'Oswald', sans-serif;
+    margin: 0;
+}
+
+.inventory-workflow-actions {
+    margin-top: 24px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+}

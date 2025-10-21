@@ -1,0 +1,150 @@
+.report-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+}
+
+.report-section {
+    background: var(--surface-color);
+    border-radius: var(--radius-xl);
+    padding: 24px;
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+}
+
+.report-section h3 {
+    font-family: 'Oswald', sans-serif;
+    font-size: 1.2rem;
+    margin-bottom: 8px;
+    border-bottom: 2px solid var(--primary-color);
+    padding-bottom: 8px;
+}
+
+.report-section p {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    flex-grow: 1;
+    margin-bottom: 16px;
+}
+
+.report-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: auto; /* Pushes buttons to the bottom */
+}
+
+.report-actions .btn {
+    flex-grow: 1; /* Makes buttons fill the space */
+}
+
+.btn-info {
+    background-color: #3b82f6;
+    color: white;
+}
+.btn-info:hover {
+    background-color: #2563eb;
+}
+
+/* Inspection Modal Styles */
+.inspection-form-container { display: flex; flex-direction: column; gap: 12px; }
+.inspection-row { display: grid; grid-template-columns: 1.5fr 2fr; gap: 16px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--border-color); }
+.inspection-row:last-child { border-bottom: none; }
+.inspection-label { font-weight: 500; }
+.inspection-controls { display: flex; gap: 16px; justify-content: center; }
+.inspection-details { grid-column: 2 / 3; } /* Make details span the second column */
+.details-input { font-size: 14px; padding: 6px 10px; width: 100%; }
+.form-grid-info { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+
+.inspection-toggle-group {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+}
+
+.inspection-choice-btn {
+    flex: 1;
+    text-align: center;
+    padding: 8px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+    background-color: #f8fafc;
+}
+
+.inspection-choice-btn input[type="radio"] {
+    display: none; /* Hide the actual radio button */
+}
+
+.inspection-choice-btn span {
+    font-weight: 500;
+}
+
+/* Highlight style for the selected button */
+.inspection-choice-btn input[type="radio"]:checked + span {
+    font-weight: 700;
+}
+
+.inspection-toggle-group input[value="good"]:checked ~ label,
+.inspection-toggle-group input[value="no"]:checked ~ label {
+    background-color: #dcfce7; /* Light Green */
+    border-color: #10b981;
+    color: #065f46;
+}
+
+.inspection-toggle-group input[value="bad"]:checked ~ label,
+.inspection-toggle-group input[value="yes"]:checked ~ label {
+    background-color: #fee2e2; /* Light Red */
+    border-color: #ef4444;
+    color: #991b1b;
+}
+
+/* Specific styling for the labels when their corresponding radio is checked */
+input[value="good"]:checked + span,
+input[value="no"]:checked + span {
+    color: #065f46;
+}
+
+input[value="bad"]:checked + span,
+input[value="yes"]:checked + span {
+    color: #991b1b;
+}
+
+label.inspection-choice-btn:has(input[value="good"]:checked),
+label.inspection-choice-btn:has(input[value="no"]:checked) {
+     background-color: #dcfce7;
+     border-color: #10b981;
+}
+
+label.inspection-choice-btn:has(input[value="bad"]:checked),
+label.inspection-choice-btn:has(input[value="yes"]:checked) {
+     background-color: #fee2e2;
+     border-color: #ef4444;
+}
+
+
+@media (max-width: 768px) {
+    .report-grid {
+        grid-template-columns: 1fr;
+    }
+    .inspection-row {
+        grid-template-columns: 1fr;
+        gap: 12px;
+        padding-bottom: 12px;
+    }
+    .inspection-controls {
+        order: 2;
+    }
+    .inspection-details {
+        order: 3;
+        grid-column: 1 / -1; /* Make details span full width on mobile */
+    }
+    .inspection-label {
+        order: 1;
+        text-align: center;
+        font-weight: 600;
+    }
+}

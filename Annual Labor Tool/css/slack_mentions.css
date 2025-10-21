@@ -1,0 +1,175 @@
+.slack-mentions-view {
+    display: none;
+}
+
+.slack-mentions-view.active {
+    display: block;
+}
+
+#pending-mentions-container,
+#completed-mentions-container {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.todo-item {
+    background-color: var(--surface-color);
+    border: 1px solid var(--border-color);
+    border-left: 5px solid var(--primary-color);
+    border-radius: var(--radius-md);
+    padding: 12px;
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    transition: all 0.2s ease-in-out;
+}
+
+.todo-item.overdue {
+    border-left-color: var(--danger-color);
+    background-color: #fef2f2;
+}
+
+.todo-item.completed {
+    border-left-color: var(--success-color);
+    background-color: #f8fafc;
+    opacity: 0.7;
+}
+
+.todo-content {
+    flex-grow: 1;
+}
+
+.todo-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+}
+
+.job-number {
+    font-family: 'Oswald', sans-serif;
+    font-weight: 600;
+    font-size: 1em;
+    color: var(--text-primary);
+}
+
+.from-user {
+    font-size: 0.75em;
+    font-weight: 500;
+    color: var(--text-secondary);
+    background-color: #f1f5f9;
+    padding: 2px 8px;
+    border-radius: var(--radius-sm);
+}
+
+.todo-text {
+    font-size: 0.9em;
+    color: var(--text-secondary);
+    line-height: 1.5;
+    margin: 0 0 10px 0;
+}
+
+.todo-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.75em;
+    color: var(--text-muted);
+}
+
+/* NEW: Styles for the action buttons container */
+.todo-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.todo-link {
+    font-weight: 600;
+    color: var(--primary-color);
+    text-decoration: none;
+    font-size: 1.1em; /* Make link slightly larger */
+}
+
+.todo-link:hover {
+    text-decoration: underline;
+}
+
+/* Custom Checkbox Styles */
+.todo-checkbox-container {
+    display: block;
+    position: relative;
+    cursor: pointer;
+    font-size: 22px;
+    user-select: none;
+    flex-shrink: 0;
+    margin-top: 2px;
+    width: 24px;
+    height: 24px;
+}
+
+.todo-checkbox-container input {
+    position: absolute;
+    opacity: 0;
+    cursor: pointer;
+    height: 0;
+    width: 0;
+}
+
+.checkmark {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 24px;
+    width: 24px;
+    background-color: #eee;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-color);
+    transition: all 0.2s;
+}
+
+.todo-checkbox-container:hover input~.checkmark {
+    background-color: #ccc;
+}
+
+.todo-checkbox-container input:checked~.checkmark {
+    background-color: var(--success-color);
+    border-color: var(--success-color);
+}
+
+.checkmark:after {
+    content: "";
+    position: absolute;
+    display: none;
+}
+
+.todo-checkbox-container input:checked~.checkmark:after {
+    display: block;
+}
+
+.todo-checkbox-container .checkmark:after {
+    left: 8px;
+    top: 4px;
+    width: 5px;
+    height: 10px;
+    border: solid white;
+    border-width: 0 3px 3px 0;
+    transform: rotate(45deg);
+}
+
+.completed .todo-text {
+    text-decoration: line-through;
+}
+
+/* ... (all previous styles remain the same) ... */
+
+/* NEW: Style for the pending count in the manager view */
+.pending-count {
+    font-size: 0.9em;
+    font-weight: 600;
+    color: var(--danger-color);
+    background-color: #fef2f2;
+    padding: 4px 10px;
+    border-radius: var(--radius-lg);
+}

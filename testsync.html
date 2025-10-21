@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rippling Calendar Sync Test</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #f87b4d;
+            --border-color: #d6d8d7;
+            --background-color: #f8fafc;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--background-color);
+            margin: 0;
+            padding: 2rem;
+            display: flex;
+            justify-content: center;
+        }
+        .container {
+            width: 100%;
+            max-width: 800px;
+            background-color: #fff;
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: var(--primary-color);
+            border-bottom: 2px solid var(--primary-color);
+            padding-bottom: 0.5rem;
+            margin-top: 0;
+        }
+        p {
+            line-height: 1.6;
+            color: #333;
+        }
+        button {
+            font-family: inherit;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 1rem;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        button:hover:not(:disabled) {
+            background-color: #e06a3c;
+        }
+        button:disabled {
+            background-color: #a4a4a5;
+            cursor: not-allowed;
+        }
+        #auth-container {
+            padding: 1rem;
+            background-color: #f1f5f9;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        #auth-status {
+            font-weight: 500;
+        }
+        #results-container {
+            margin-top: 2rem;
+            padding: 1.5rem;
+            background-color: #f8fafc;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            display: none;
+        }
+        #log-output {
+            background-color: #2d3748;
+            color: #f7fafc;
+            padding: 1rem;
+            border-radius: 8px;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.9em;
+            white-space: pre-wrap;
+        }
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            border-left-color: #fff;
+            animation: spin 1s ease infinite;
+            display: inline-block;
+            vertical-align: middle;
+            margin-right: 8px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Rippling Calendar Sync Test Tool</h1>
+        
+        <div id="auth-container">
+            <span id="auth-status">Please sign in to continue.</span>
+            <button id="auth-button">Sign In with Google</button>
+        </div>
+
+        <p>
+            This tool allows you to manually trigger the `manualSyncRipplingCalendar` Firebase Function. It will fetch the latest time-off data from your Rippling iCal feed and update your Firestore database.
+        </p>
+        <p>
+            You must be logged in with a Google account that is listed as a "Manager" in the application's team data.
+        </p>
+        <button id="sync-button" disabled>
+            <span id="button-text">Start Manual Sync</span>
+        </button>
+
+        <div id="results-container">
+            <h2 id="status-message"></h2>
+            <h4>Server Logs:</h4>
+            <div id="log-output"></div>
+        </div>
+    </div>
+
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-functions.js"></script>
+    <script>
+        // Use the same Firebase config as your main application
+        const firebaseConfig = {
+            apiKey: "AIzaSyBEKOGT7S8rn3NKBNysT352GFGPt9GYf8E",
+            authDomain: "mit-foreasting.firebaseapp.com",
+            projectId: "mit-foreasting",
+            storageBucket: "mit-foreasting.appspot.com",
+            messagingSenderId: "1069061948061",
+            appId: "1:1069061948061:web:c657b4dfb344cb7b924a74",
+            measurementId: "G-Z9ZE012Y2C"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const functions = firebase.functions();
+        const auth = firebase.auth();
+        const provider = new firebase.auth.GoogleAuthProvider();
+
+        const syncButton = document.getElementById('sync-button');
+        const buttonText = document.getElementById('button-text');
+        const resultsContainer = document.getElementById('results-container');
+        const statusMessage = document.getElementById('status-message');
+        const logOutput = document.getElementById('log-output');
+        const authButton = document.getElementById('auth-button');
+        const authStatus = document.getElementById('auth-status');
+
+        // Handle Auth State
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                authStatus.textContent = `Signed in as: ${user.email}`;
+                authButton.textContent = 'Sign Out';
+                syncButton.disabled = false;
+            } else {
+                authStatus.textContent = 'Please sign in to continue.';
+                authButton.textContent = 'Sign In with Google';
+                syncButton.disabled = true;
+            }
+        });
+
+        // Auth Button Logic
+        authButton.addEventListener('click', () => {
+            if (auth.currentUser) {
+                auth.signOut();
+            } else {
+                auth.signInWithPopup(provider).catch(error => {
+                    console.error("Sign-in error", error);
+                    alert("Could not sign in. " + error.message);
+                });
+            }
+        });
+
+        // Sync Button Logic
+        syncButton.addEventListener('click', async () => {
+            syncButton.disabled = true;
+            buttonText.innerHTML = '<div class="spinner"></div> Syncing...';
+            resultsContainer.style.display = 'none';
+            logOutput.textContent = '';
+            statusMessage.textContent = '';
+
+            try {
+                const manualSync = functions.httpsCallable('manualSyncRipplingCalendar');
+                const result = await manualSync();
+
+                resultsContainer.style.display = 'block';
+                statusMessage.style.color = 'green';
+                statusMessage.textContent = '✅ ' + result.data.message;
+                logOutput.textContent = result.data.logs.join('\n');
+
+            } catch (error) {
+                resultsContainer.style.display = 'block';
+                statusMessage.style.color = 'red';
+                statusMessage.textContent = `❌ Error: ${error.message}`;
+                logOutput.textContent = `An error occurred while calling the function. Check the Firebase Functions logs in the console for more details.\n\n${error.details || ''}`;
+            } finally {
+                syncButton.disabled = false;
+                buttonText.innerHTML = 'Start Manual Sync';
+            }
+        });
+    </script>
+</body>
+</html>
+

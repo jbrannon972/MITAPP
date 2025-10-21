@@ -1,0 +1,224 @@
+/* reports-styles.css */
+
+.reports-container {
+    display: flex;
+    gap: 24px;
+    height: calc(100vh - 200px); /* Adjust based on your header/footer height */
+}
+
+.reports-sidebar {
+    width: 280px;
+    flex-shrink: 0;
+    background-color: #f8fafc;
+    border-right: 1px solid var(--border-color);
+    padding: 20px;
+    overflow-y: auto;
+    border-radius: var(--radius-lg);
+}
+
+.reports-sidebar h4 {
+    font-family: 'Oswald', sans-serif;
+    font-size: 1.1rem;
+    color: var(--text-primary);
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid var(--primary-color);
+}
+
+#report-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+#report-list li {
+    padding: 12px 15px;
+    margin-bottom: 8px;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    font-weight: 500;
+    color: var(--text-secondary);
+    transition: all 0.2s ease-in-out;
+    border: 1px solid transparent;
+}
+
+#report-list li:hover {
+    background-color: #eef2f7;
+    color: var(--primary-color);
+}
+
+#report-list li.active {
+    background-color: var(--surface-color);
+    color: var(--primary-color);
+    font-weight: 600;
+    border-color: var(--border-color);
+    box-shadow: var(--shadow-sm);
+}
+
+.report-content {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    overflow-y: auto;
+}
+
+.report-filters-container {
+    background: var(--surface-color);
+    padding: 20px;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--border-color);
+}
+
+.report-filters-container .filter-controls {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+#report-output {
+    flex-grow: 1;
+    background: var(--surface-color);
+    padding: 24px;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--border-color);
+    display: flex; /* Allow content to fill height */
+    flex-direction: column;
+}
+
+.report-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: var(--text-muted);
+    text-align: center;
+}
+
+.report-placeholder i {
+    font-size: 4rem;
+    margin-bottom: 16px;
+}
+
+.report-placeholder p {
+    font-size: 1.2rem;
+    font-weight: 500;
+}
+
+.report-title {
+    font-family: 'Oswald', sans-serif;
+    font-size: 1.5rem;
+    margin-bottom: 24px;
+    color: var(--text-primary);
+    flex-shrink: 0;
+}
+
+.hotspot-container {
+    display: grid;
+    grid-template-columns: 2.5fr 1fr;
+    gap: 24px;
+    align-items: stretch;
+    flex-grow: 1; /* This makes it fill the parent */
+    min-height: 400px; /* Ensure it has a minimum height */
+}
+
+#hotspot-map-container {
+    width: 100%;
+    height: 100%; 
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-color);
+}
+
+.mapboxgl-popup {
+    max-width: 200px;
+}
+
+.mapboxgl-popup-content {
+    text-align: center;
+    font-family: 'Inter', sans-serif;
+    padding: 10px;
+}
+
+.hotspot-list {
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    background-color: #fff;
+    padding: 1rem;
+}
+
+.hotspot-list h4 {
+    margin-top: 0;
+    font-family: 'Oswald', sans-serif;
+    flex-shrink: 0;
+}
+
+.hotspot-list .table-container {
+    border: none;
+    box-shadow: none;
+    flex-grow: 1;
+    overflow-y: auto;
+}
+
+.hotspot-list .data-table {
+    background: transparent;
+}
+
+
+/* Responsive adjustments */
+@media (max-width: 992px) {
+    .reports-container {
+        flex-direction: column;
+        height: auto;
+    }
+
+    .reports-sidebar {
+        width: 100%;
+        border-right: none;
+        border-bottom: 1px solid var(--border-color);
+        max-height: 250px; /* Make sidebar scrollable if too long */
+    }
+    
+    .hotspot-container {
+        grid-template-columns: 1fr;
+        height: auto;
+    }
+
+    #hotspot-map-container {
+        height: 400px; /* Set height for mobile */
+    }
+}
+@media print {
+    body * {
+        visibility: hidden;
+    }
+    #printable-report, #printable-report * {
+        visibility: visible;
+    }
+    #printable-report {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        padding: 20px;
+    }
+    .report-container {
+        page-break-inside: avoid;
+    }
+    .print-content {
+        display: flex;
+        flex-direction: row;
+        gap: 20px;
+    }
+    .map-container {
+        flex: 2;
+    }
+    .data-container {
+        flex: 1;
+    }
+}

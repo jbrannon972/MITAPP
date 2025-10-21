@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Create Admin User</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; display: flex; justify-content: center; align-items: center; text-align: center; height: 100vh; margin: 0; background-color: #f0f2f5;}
+        #status { padding: 30px; border-radius: 8px; font-size: 1.2em; max-width: 600px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .info { background-color: #cce5ff; color: #004085; border: 1px solid #b8daff; }
+    </style>
+</head>
+<body>
+
+    <div id="status">Creating user...</div>
+
+    <script>
+        function createAdminUser() {
+            const statusDiv = document.getElementById('status');
+            
+            const newUser = {
+                username: 'jason.brannon@entrusted.com',
+                password: 'Entrusted1',
+                role: 'Manager'
+            };
+
+            // Get the existing user list from localStorage, or start a new one
+            let users = JSON.parse(localStorage.getItem('appUsers')) || [];
+
+            // Check if the user already exists
+            const userExists = users.some(user => user.username === newUser.username);
+
+            if (userExists) {
+                statusDiv.textContent = 'User "jason.brannon@entrusted.com" already exists. No action was taken.';
+                statusDiv.className = 'info';
+            } else {
+                // Add the new user and save back to localStorage
+                users.push(newUser);
+                localStorage.setItem('appUsers', JSON.stringify(users));
+                
+                statusDiv.textContent = '✅ Success! Manager account for "jason.brannon@entrusted.com" has been created. You can now close this page.';
+                statusDiv.className = 'success';
+            }
+        }
+
+        // Run the script
+        createAdminUser();
+    </script>
+</body>
+</html>

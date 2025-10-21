@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>One-Time Rippling Source Backfill</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; display: flex; justify-content: center; align-items: center; text-align: center; height: 100vh; margin: 0; background-color: #f0f2f5; color: #333; }
+        #container { padding: 30px; border-radius: 8px; font-size: 1.2em; max-width: 800px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); background-color: #fff;}
+        #status { padding: 20px; border-radius: 8px; margin-bottom: 15px; font-weight: 500; }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .loading { background-color: #e2e3e5; color: #383d41; }
+        #log { font-size: 0.8em; text-align: left; max-height: 400px; overflow-y: auto; background: #f8f9fa; border: 1px solid #dee2e6; padding: 10px; border-radius: 4px; margin-top: 15px;}
+        #log div { padding: 4px; border-bottom: 1px solid #eee; }
+        .log-info { color: #004085; }
+        .log-success { color: #155724; font-weight: bold; }
+        .log-update { color: #856404; }
+    </style>
+</head>
+<body>
+
+    <div id="container">
+        <h1>Rippling Source Backfill Utility</h1>
+        <p>This script will find all past "Vacation" entries in the calendar and tag them with "Rippling" as their source.</p>
+        <div id="status" class="loading">Ready to start.</div>
+        <button id="startBtn" style="padding: 10px 20px; font-size: 1em;">Start Backfill</button>
+        <div id="log"></div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyBEKOGT7S8rn3NKBNysT352GFGPt9GYf8E",
+            authDomain: "mit-foreasting.firebaseapp.com",
+            projectId: "mit-foreasting",
+            storageBucket: "mit-foreasting.firebasestorage.app",
+            messagingSenderId: "1069061948061",
+            appId: "1:1069061948061:web:c657b4dfb344cb7b924a74",
+            measurementId: "G-Z9ZE012Y2C"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        const statusDiv = document.getElementById('status');
+        const logDiv = document.getElementById('log');
+        const startBtn = document.getElementById('startBtn');
+
+        function log(message, className = '') {
+            const entry = document.createElement('div');
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            if (className) entry.className = className;
+            logDiv.appendChild(entry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        async function runBackfill() {
+            startBtn.disabled = true;
+            statusDiv.className = 'loading';
+            log('Backfill process started.', 'log-info');
+
+            try {
+                statusDiv.textContent = 'Fetching all schedule documents...';
+                const schedulesSnap = await db.collection('hou_schedules').get();
+                log(`Found ${schedulesSnap.size} schedule documents to check.`, 'log-info');
+
+                const batch = db.batch();
+                let updatesNeeded = 0;
+
+                schedulesSnap.forEach(doc => {
+                    const schedule = doc.data();
+                    let needsUpdate = false;
+                    
+                    if (schedule.staff && Array.isArray(schedule.staff)) {
+                        const updatedStaff = schedule.staff.map(entry => {
+                            if (entry.status === 'vacation' && !entry.source) {
+                                needsUpdate = true;
+                                log(`Flagged update for ${doc.id}: Staff ID ${entry.id}`, 'log-update');
+                                return { ...entry, source: 'Rippling' };
+                            }
+                            return entry;
+                        });
+
+                        if (needsUpdate) {
+                            updatesNeeded++;
+                            batch.update(doc.ref, { staff: updatedStaff });
+                        }
+                    }
+                });
+
+                if (updatesNeeded > 0) {
+                    statusDiv.textContent = `Found ${updatesNeeded} documents to update. Committing changes...`;
+                    await batch.commit();
+                    log(`Successfully committed updates for ${updatesNeeded} documents.`, 'log-success');
+                } else {
+                    log('No documents required updates.', 'log-info');
+                }
+
+                statusDiv.textContent = `✅ Backfill Complete! Updated ${updatesNeeded} documents.`;
+                statusDiv.className = 'success';
+                log('You can now safely close this page.', 'log-success');
+
+            } catch (error) {
+                statusDiv.textContent = `Error: ${error.message}`;
+                statusDiv.className = 'error';
+                console.error(error);
+                log(`ERROR: ${error.message}`, 'error');
+            } finally {
+                startBtn.disabled = false;
+            }
+        }
+
+        startBtn.addEventListener('click', runBackfill);
+    </script>
+</body>
+</html>

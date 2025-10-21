@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Login - HOU Mitigation Tech App</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: var(--background-color);
+        }
+        .login-container {
+            padding: 40px;
+            background: var(--surface-color);
+            border-radius: var(--radius-xl);
+            box-shadow: var(--shadow-lg);
+            width: 100%;
+            max-width: 420px;
+            text-align: center;
+        }
+        .login-container h1 {
+            font-family: 'Oswald', sans-serif;
+            color: var(--primary-color);
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+        .form-input {
+            width: 100%;
+        }
+        /* MODIFICATION: Added success message style */
+        #error-message, #success-message {
+            padding: 12px;
+            border-radius: var(--radius-md);
+            margin-bottom: 20px;
+            display: none;
+        }
+        #error-message {
+            color: var(--danger-color);
+            background-color: #fef2f2;
+            border: 1px solid var(--danger-color);
+        }
+        #success-message {
+            color: var(--success-color);
+            background-color: #f0fdf4;
+            border: 1px solid var(--success-color);
+        }
+        /* MODIFICATION: Added forgot password link style */
+        .forgot-password {
+            display: block;
+            margin-top: 15px;
+            font-size: 14px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            text-decoration: none;
+        }
+        .forgot-password:hover {
+            color: var(--primary-color);
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <h1><i class="fas fa-tools"></i> Tech App Login</h1>
+        <div id="error-message"></div>
+        <!-- MODIFICATION: Added success message div -->
+        <div id="success-message"></div>
+        <div class="form-group">
+            <label for="username">Email</label>
+            <input type="text" id="username" class="form-input" placeholder="Enter your email">
+        </div>
+        <div class="form-group">
+            <label for="password">Password</label>
+            <input type="password" id="password" class="form-input" placeholder="Enter your password">
+        </div>
+        <button class="btn btn-primary" style="width: 100%;" onclick="authManager.login()">Login</button>
+        <a href="#" class="forgot-password" onclick="authManager.forgotPassword()">Forgot Password?</a>
+    </div>
+
+    <!-- MODIFICATION: Use older Firebase SDK version 8 for compatibility -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    
+    <!-- MODIFICATION: Initialize Firebase and load the new auth script -->
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyBEKOGT7S8rn3NKBNysT352GFGPt9GYf8E",
+            authDomain: "mit-foreasting.firebaseapp.com",
+            projectId: "mit-foreasting",
+            storageBucket: "mit-foreasting.firebasestorage.app",
+            messagingSenderId: "1069061948061",
+            appId: "1:1069061948061:web:c657b4dfb344cb7b924a74",
+            measurementId: "G-Z9ZE012Y2C"
+        };
+        firebase.initializeApp(firebaseConfig);
+    </script>
+    <script src="JS/firebase-service.js"></script>
+    <script src="JS/firebase-auth.js"></script>
+    <script>
+        document.getElementById('password').addEventListener('keypress', function(event) {
+            if (event.key === 'Enter') {
+                authManager.login();
+            }
+        });
+        document.getElementById('username').addEventListener('keypress', function(event) {
+            if (event.key === 'Enter') {
+                authManager.login();
+            }
+        });
+    </script>
+</body>
+</html>

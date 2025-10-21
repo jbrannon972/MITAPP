@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Connect Tech Login</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: var(--background-color);
+        }
+        .container {
+            padding: 40px;
+            background: var(--surface-color);
+            border-radius: var(--radius-xl);
+            box-shadow: var(--shadow-lg);
+            width: 100%;
+            max-width: 420px;
+            text-align: center;
+        }
+        h1 {
+            font-family: 'Oswald', sans-serif;
+            color: var(--primary-color);
+            margin-bottom: 24px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+        #message {
+            padding: 12px;
+            border-radius: var(--radius-md);
+            margin-bottom: 20px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Connect Tech Login</h1>
+        <div id="message"></div>
+        <div class="form-group">
+            <label for="techName">Technician's Full Name (must match Team Management)</label>
+            <input type="text" id="techName" class="form-input" placeholder="e.g., John Doe">
+        </div>
+        <div class="form-group">
+            <label for="newEmail">New Email for Login</label>
+            <input type="email" id="newEmail" class="form-input" placeholder="john.doe@entrusted.com">
+        </div>
+        <div class="form-group">
+            <label for="newPassword">Temporary Password</label>
+            <input type="password" id="newPassword" class="form-input">
+        </div>
+        <button class="btn btn-primary" style="width: 100%;" onclick="connectLogin()">Create and Link Login</button>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyBEKOGT7S8rn3NKBNysT352GFGPt9GYf8E",
+            authDomain: "mit-foreasting.firebaseapp.com",
+            projectId: "mit-foreasting",
+            storageBucket: "mit-foreasting.firebasestorage.app",
+            messagingSenderId: "1069061948061",
+            appId: "1:1069061948061:web:c657b4dfb344cb7b924a74",
+            measurementId: "G-Z9ZE012Y2C"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        async function connectLogin() {
+            const name = document.getElementById('techName').value.trim();
+            const email = document.getElementById('newEmail').value.trim().toLowerCase();
+            const password = document.getElementById('newPassword').value;
+            const messageDiv = document.getElementById('message');
+            messageDiv.style.display = 'none';
+
+            if (!name || !email || !password) {
+                messageDiv.textContent = 'Please fill out all fields.';
+                messageDiv.style.backgroundColor = 'lightcoral';
+                messageDiv.style.display = 'block';
+                return;
+            }
+
+            try {
+                // 1. Create the user in Firebase Authentication
+                await auth.createUserWithEmailAndPassword(email, password);
+
+                // 2. Load the staffing data
+                const staffingDocRef = db.collection('hou_settings').doc('staffing_data');
+                const staffingDoc = await staffingDocRef.get();
+                if (!staffingDoc.exists) {
+                    throw new Error("Could not find staffing data document.");
+                }
+                const staffingData = staffingDoc.data();
+
+                // 3. Find the technician by name and add their email
+                let userFound = false;
+                for (const zone of staffingData.zones) {
+                    const member = zone.members.find(m => m.name.toLowerCase() === name.toLowerCase());
+                    if (member) {
+                        member.email = email;
+                        userFound = true;
+                        break;
+                    }
+                    if (zone.lead && zone.lead.name.toLowerCase() === name.toLowerCase()) {
+                        zone.lead.email = email;
+                        userFound = true;
+                        break;
+                    }
+                }
+
+                if (!userFound) {
+                    // If the user wasn't found, we should inform the admin.
+                    // The auth user was still created, so they might need to be deleted manually from Firebase console if the name was wrong.
+                    throw new Error(`Technician '${name}' not found in Team Management. An authentication account was created for ${email}, but could not be linked. Please verify the spelling or delete the auth user from the Firebase Console and try again.`);
+                }
+
+                // 4. Save the updated staffing data
+                await staffingDocRef.set(staffingData);
+
+                messageDiv.textContent = 'Successfully created login and linked to technician!';
+                messageDiv.style.backgroundColor = 'lightgreen';
+                messageDiv.style.display = 'block';
+
+            } catch (error) {
+                messageDiv.textContent = `Error: ${error.message}`;
+                messageDiv.style.backgroundColor = 'lightcoral';
+                messageDiv.style.display = 'block';
+            }
+        }
+    </script>
+</body>
+</html>

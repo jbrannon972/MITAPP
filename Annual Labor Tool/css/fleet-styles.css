@@ -1,0 +1,187 @@
+/* Fleet Management Specific Styles */
+
+/* --- Compact Stat Buttons for Fleet --- */
+#fleet-tab .dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+#fleet-tab .metric-card.single-line {
+    padding: 16px !important;
+    min-height: auto;
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+}
+
+#fleet-tab .metric-card.single-line .metric-header {
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+}
+
+#fleet-tab .metric-card.single-line h3 {
+    font-size: 0.9em;
+    font-weight: 500;
+    line-height: 1.2;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-secondary);
+}
+
+#fleet-tab .metric-card.single-line .stat-value {
+    font-size: 2.2em;
+    font-weight: 700;
+    color: var(--primary-color);
+    line-height: 1;
+}
+
+/* NEW RULE TO MANAGE VIEW VISIBILITY */
+.fleet-view {
+    display: none;
+}
+.fleet-view.active {
+    display: block;
+}
+
+/*
+==============================================
+MOBILE & RESPONSIVE STYLES
+==============================================
+*/
+@media (max-width: 768px) {
+    /* Show the toggle button on mobile */
+    #toggle-fleet-stats-btn {
+        display: inline-flex !important;
+    }
+
+    /* Hide the stats container by default on mobile */
+    #fleet-stats-container {
+        display: none;
+    }
+
+    /* Style for when the stats are expanded */
+    #fleet-stats-container.expanded {
+        display: block;
+        margin-top: 16px;
+    }
+
+    #fleet-tab .dashboard-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+    }
+
+    #fleet-tab .metric-card.single-line {
+        padding: 12px !important;
+        flex-direction: column;
+        align-items: stretch;
+        min-height: 100px;
+    }
+    
+    #fleet-tab .metric-card.single-line .stat-value {
+       align-self: flex-end;
+    }
+}
+
+/* Work Order Accordion Styles */
+.wo-accordion-container {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.wo-item {
+    background-color: var(--surface-color);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-sm);
+    transition: all 0.2s ease-in-out;
+}
+
+.wo-item:hover {
+    box-shadow: var(--shadow-md);
+    transform: translateY(-2px);
+}
+
+.wo-header {
+    padding: 16px 20px;
+    cursor: pointer;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: 16px;
+}
+
+.wo-header h5 {
+    font-family: 'Oswald', sans-serif;
+    font-size: 1.1rem;
+    margin: 0;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.wo-header .wo-date {
+    text-align: right;
+    font-style: italic;
+    font-size: 0.85rem;
+}
+
+.wo-body {
+    padding: 20px;
+    border-top: 1px solid var(--border-color);
+    background-color: #f8fafc;
+    display: none; /* Initially hidden */
+}
+
+.wo-body .wo-description-full {
+    display: block;
+    font-size: 1rem;
+    color: var(--text-primary);
+    margin-bottom: 16px;
+    white-space: normal;
+    background-color: #fff;
+    padding: 12px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-color);
+}
+
+.wo-card {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.wo-notes-list {
+    max-height: 150px;
+    overflow-y: auto;
+    background: #f1f5f9;
+    padding: 10px;
+    border-radius: var(--radius-md);
+    font-size: 0.9rem;
+}
+
+.wo-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 16px;
+}
+
+@media (max-width: 768px) {
+    .wo-header {
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+
+    .wo-header .wo-date {
+        text-align: left;
+    }
+}

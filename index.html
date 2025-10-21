@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Login - MIT App Portal</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="Annual Labor Tool/css/styles.css">
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: var(--background-color);
+        }
+        .login-container {
+            padding: 40px;
+            background: var(--surface-color);
+            border-radius: var(--radius-xl);
+            box-shadow: var(--shadow-lg);
+            width: 100%;
+            max-width: 420px;
+            text-align: center;
+        }
+        .login-container h1 {
+            font-family: 'Oswald', sans-serif;
+            color: var(--primary-color);
+            margin-bottom: 24px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+        #error-message, #success-message {
+            padding: 12px;
+            border-radius: var(--radius-md);
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        /* Fullscreen on mobile */
+        @media (max-width: 768px) {
+            body {
+                align-items: stretch;
+            }
+            .login-container {
+                max-width: none;
+                height: 100%;
+                border-radius: 0;
+                box-shadow: none;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                padding: 24px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <h1><i class="fas fa-lock"></i> MIT App Portal Login</h1>
+        <div id="error-message" class="status-error"></div>
+        <div id="success-message" class="status-success"></div>
+        <div class="form-group">
+            <label for="username">Email</label>
+            <input type="text" id="username" class="form-input" placeholder="Enter your email">
+        </div>
+        <div class="form-group">
+            <label for="password">Password</label>
+            <input type="password" id="password" class="form-input" placeholder="Enter your password">
+        </div>
+        <div class="form-group" style="flex-direction: row; align-items: center;">
+            <input type="checkbox" id="rememberMe" style="width: auto; margin-right: 10px;">
+            <label for="rememberMe" style="margin-bottom: 0;">Remember Me</label>
+        </div>
+        <button class="btn btn-primary" style="width: 100%;" id="login-btn">Login</button>
+        <a href="#" class="forgot-password" style="display: block; margin-top: 15px;">Forgot Password?</a>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyBEKOGT7S8rn3NKBNysT352GFGPt9GYf8E",
+            authDomain: "mit-foreasting.firebaseapp.com",
+            projectId: "mit-foreasting",
+            storageBucket: "mit-foreasting.firebasestorage.app",
+            messagingSenderId: "1069061948061",
+            appId: "1:1069061948061:web:c657b4dfb344cb7b924a74",
+            measurementId: "G-Z9ZE012Y2C"
+        };
+        firebase.initializeApp(firebaseConfig);
+    </script>
+    <script src="auth.js"></script>
+</body>
+</html>

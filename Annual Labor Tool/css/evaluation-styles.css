@@ -1,0 +1,101 @@
+/* Styles for the 20/70/10 Evaluation View */
+
+.controls-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.controls-left, .controls-right {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.filter-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.filter-label {
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+.cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 16px;
+}
+
+.technician-card {
+    background: var(--surface-color);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+}
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.card-title {
+    font-family: 'Oswald', sans-serif;
+    font-size: 18px;
+    font-weight: 600;
+    margin: 0;
+}
+
+.card-zone {
+    font-size: 14px;
+    color: var(--text-secondary);
+    background-color: #f1f5f9;
+    padding: 4px 8px;
+    border-radius: var(--radius-sm);
+}
+
+.card-category {
+    font-size: 24px;
+    font-weight: 700;
+    text-align: center;
+    margin: 16px 0;
+    padding: 12px;
+    border-radius: var(--radius-md);
+}
+
+.category-20 {
+    color: var(--success-color);
+    background-color: #f0fdf4;
+}
+.category-70 {
+    color: var(--warning-color);
+    background-color: #fffbeb;
+}
+.category-10 {
+    color: var(--danger-color);
+    background-color: #fef2f2;
+}
+.category-na {
+    color: var(--text-muted);
+    background-color: #f8fafc;
+}
+
+.card-actions {
+    margin-top: auto;
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+}

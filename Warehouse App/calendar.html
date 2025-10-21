@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HOU Mitigation - Schedule Calendar</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/calendar-styles.css">
+</head>
+<body>
+    <div id="loading-overlay">
+        <div class="loading-content">
+            <div class="spinner"></div>
+            <p>Loading Calendar...</p>
+            <div class="progress-bar-container">
+                <div id="loading-progress-bar" class="progress-bar"></div>
+            </div>
+            <p id="loading-percentage">0%</p>
+        </div>
+    </div>
+    <div class="app-container">
+        <header class="header" id="nav-placeholder"></header>
+        <main class="main-content">
+            <div class="container">
+                <div id="calendar-tab" class="tab-content active">
+                    <div class="tab-header">
+                        <div class="tab-controls">
+                            <div class="calendar-actions">
+                                <button id="calPrintBtn" class="btn btn-primary"><i class="fas fa-print"></i> Print</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="calendar-controls">
+                        <div class="calendar-nav">
+                            <button id="calPrevBtn" class="btn btn-secondary"><i class="fas fa-chevron-left"></i></button>
+                            <h2 id="calCurrentDate">Month Year</h2>
+                            <button id="calNextBtn" class="btn btn-secondary"><i class="fas fa-chevron-right"></i></button>
+                        </div>
+                        <div class="calendar-view-switcher">
+                            <button id="calDayViewBtn" class="btn btn-secondary btn-small">Day</button>
+                            <button id="calWeekViewBtn" class="btn btn-secondary btn-small">Week</button>
+                            <button id="calMonthViewBtn" class="btn btn-secondary btn-small active">Month</button>
+                        </div>
+                    </div>
+                    <div id="calendarContainer" class="calendar-container"></div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <div id="modalOverlay" class="modal-overlay"></div>
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyBEKOGT7S8rn3NKBNysT352GFGPt9GYf8E",
+            authDomain: "mit-foreasting.firebaseapp.com",
+            projectId: "mit-foreasting",
+            storageBucket: "mit-foreasting.firebasestorage.app",
+            messagingSenderId: "1069061948061",
+            appId: "1:1069061948061:web:c657b4dfb344cb7b924a74",
+            measurementId: "G-Z9ZE012Y2C"
+        };
+        firebase.initializeApp(firebaseConfig);
+    </script>
+    <script src="JS/loader.js"></script>
+</body>
+</html>

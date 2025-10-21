@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HOU Mitigation - Warehouse Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/fleet-styles.css">
+    <style>
+        /* Styles for the new dashboard layout */
+        .dashboard-main-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 24px;
+        }
+        .list-card .vehicle-list {
+            padding-top: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            max-height: 300px; /* Increased height for better viewing */
+            overflow-y: auto;
+        }
+        .vehicle-list-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            background-color: #f8fafc;
+            border-radius: var(--radius-md);
+            font-size: 0.9rem;
+        }
+        .vehicle-list-item .name {
+            font-weight: 600;
+        }
+        .vehicle-list-item .detail {
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+        .glance-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            padding-top: 16px;
+        }
+        .glance-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #f8fafc;
+            padding: 12px;
+            border-radius: var(--radius-lg);
+            border-left: 4px solid var(--primary-color);
+        }
+        .glance-value {
+            font-size: 2rem;
+            font-weight: 700;
+            font-family: 'Oswald', sans-serif;
+        }
+        .glance-label {
+            font-weight: 500;
+            text-align: right;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+        .no-entries {
+            text-align: center;
+            padding: 20px;
+            color: var(--text-muted);
+            font-style: italic;
+        }
+        /* Make the At a Glance card span full width */
+        .full-width-card {
+            grid-column: 1 / -1;
+        }
+    </style>
+</head>
+<body>
+    <div id="loading-overlay">
+        <div class="loading-content">
+            <div class="spinner"></div>
+            <p>Loading Dashboard...</p>
+            <div class="progress-bar-container">
+                <div id="loading-progress-bar" class="progress-bar"></div>
+            </div>
+            <p id="loading-percentage">0%</p>
+        </div>
+    </div>
+    <div class="app-container">
+        <header class="header" id="nav-placeholder"></header>
+        <main class="main-content">
+            <div class="container">
+                <div id="dashboard-tab" class="tab-content active">
+                    <div class="dashboard-header">
+                        <div class="welcome-message">
+                            <h2 id="welcome-user">Welcome, Warehouse Team!</h2>
+                            <p id="current-datetime">Loading date and time...</p>
+                        </div>
+                        <div class="tab-controls">
+                            <button class="btn btn-primary" id="eod-report-btn"><i class="fas fa-clipboard-list"></i> EOD Report</button>
+                        </div>
+                    </div>
+
+                    <div class="dashboard-main-grid">
+                        <div class="card list-card">
+                            <div class="card-header"><h3><i class="fas fa-tools"></i> Vehicles in Repair</h3></div>
+                            <div id="vehicles-in-repair-list" class="vehicle-list">
+                                </div>
+                        </div>
+                        <div class="card list-card">
+                            <div class="card-header"><h3><i class="fas fa-user-slash"></i> Unassigned Vehicles</h3></div>
+                            <div id="unassigned-vehicles-list" class="vehicle-list">
+                                </div>
+                        </div>
+                        <div class="card list-card">
+                            <div class="card-header"><h3><i class="fas fa-calendar-times"></i> Available (Tech Off Today)</h3></div>
+                            <div id="available-tech-off-list" class="vehicle-list">
+                                </div>
+                        </div>
+
+                        <div class="card full-width-card">
+                            <div class="card-header"><h3><i class="fas fa-clipboard-check"></i> At a Glance</h3></div>
+                            <div class="glance-grid">
+                                <div class="glance-item">
+                                    <span id="pending-fleet-wos" class="glance-value">0</span>
+                                    <span class="glance-label">Pending Fleet WOs</span>
+                                </div>
+                                <div class="glance-item" id="recent-fleet-wos-card" style="cursor: pointer;">
+                                    <span id="recent-fleet-wos" class="glance-value">0</span>
+                                    <span class="glance-label">Fleet WOs (Last 24h)</span>
+                                </div>
+                                <div class="glance-item">
+                                    <span id="pending-equipment-wos" class="glance-value">0</span>
+                                    <span class="glance-label">Pending Equipment WOs</span>
+                                </div>
+                                <div class="glance-item" id="recent-tool-requests-card" style="cursor: pointer;">
+                                    <span id="recent-tool-requests" class="glance-value">0</span>
+                                    <span class="glance-label">Tool Requests (Last 24h)</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    <div id="modalOverlay" class="modal-overlay"></div>
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyBEKOGT7S8rn3NKBNysT352GFGPt9GYf8E",
+            authDomain: "mit-foreasting.firebaseapp.com",
+            projectId: "mit-foreasting",
+            storageBucket: "mit-foreasting.firebasestorage.app",
+            messagingSenderId: "1069061948061",
+            appId: "1:1069061948061:web:c657b4dfb344cb7b924a74",
+            measurementId: "G-Z9ZE012Y2C"
+        };
+        firebase.initializeApp(firebaseConfig);
+    </script>
+    <script src="JS/loader.js"></script>
+</body>
+</html>

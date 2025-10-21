@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HOU Mitigation - Tool Management</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/tool-styles.css">
+</head>
+<body>
+    <div id="loading-overlay">
+        <div class="loading-content">
+            <div class="spinner"></div>
+            <p>Loading Tools...</p>
+        </div>
+    </div>
+    <div class="app-container">
+        <header class="header" id="nav-placeholder"></header>
+        <main class="main-content">
+            <div class="container">
+                <div id="tools-tab" class="tab-content active">
+                    <div class="tab-header">
+                        <div class="sub-nav">
+                            <button id="subtab-pending-btn" class="sub-nav-btn active" data-view="pending">Pending Requests</button>
+                            <button id="subtab-completed-btn" class="sub-nav-btn" data-view="completed">Completed</button>
+                            <button id="subtab-inventory-btn" class="sub-nav-btn" data-view="inventory">Inventory</button>
+                        </div>
+                        <div class="tab-controls">
+                            </div>
+                    </div>
+
+                    <div id="pending-view" class="tool-view active">
+                        <div class="card">
+                            <div class="card-header">
+                                <h3>Pending Tool Requests</h3>
+                            </div>
+                            <div class="table-container" id="pending-requests-container">
+                                <p>Loading requests...</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="completed-view" class="tool-view">
+                        <div class="card">
+                            <div class="card-header">
+                                <h3>Completed Tool Requests</h3>
+                                <div class="filter-controls">
+                                    <label for="tech-filter">Filter by Technician:</label>
+                                    <select id="tech-filter" class="form-input"></select>
+                                </div>
+                            </div>
+                            <div id="completed-requests-summary" class="summary-bar"></div>
+                            <div class="table-container" id="completed-requests-container">
+                                <p>Loading requests...</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="inventory-view" class="tool-view">
+                        <div class="card">
+                            <div class="card-header">
+                                <h3>Manage Tool Inventory</h3>
+                                <button class="btn btn-primary" id="add-tool-btn"><i class="fas fa-plus"></i> Add Tool</button>
+                            </div>
+                             <div class="table-container" id="tool-inventory-container">
+                                <p>Loading tool inventory...</p>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="modalOverlay" class="modal-overlay"></div>
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyBEKOGT7S8rn3NKBNysT352GFGPt9GYf8E",
+            authDomain: "mit-foreasting.firebaseapp.com",
+            projectId: "mit-foreasting",
+            storageBucket: "mit-foreasting.firebasestorage.app",
+            messagingSenderId: "1069061948061",
+            appId: "1:1069061948061:web:c657b4dfb344cb7b924a74",
+            measurementId: "G-Z9ZE012Y2C"
+        };
+        firebase.initializeApp(firebaseConfig);
+    </script>
+    <script src="JS/loader.js"></script>
+</body>
+</html>

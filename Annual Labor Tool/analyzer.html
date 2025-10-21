@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HOU Mitigation - Job Analyzer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script src='https://api.mapbox.com/mapbox-gl-js/v2.9.1/mapbox-gl.js'></script>
+    <link href='https://api.mapbox.com/mapbox-gl-js/v2.9.1/mapbox-gl.css' rel='stylesheet' />
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/analyzer-styles.css">
+    <link rel="stylesheet" href="css/reports-styles.css">
+</head>
+<body>
+    <div class="app-container">
+        <header class="header" id="nav-placeholder"></header>
+
+        <main class="main-content">
+            <div class="container">
+                <div id="analyzer-tab" class="tab-content active">
+                    <div class="tab-header">
+                        <div class="sub-nav">
+                            <button class="sub-nav-btn active" data-view="analyze"><i class="fas fa-chart-line"></i> Analyze Day</button>
+                            <button class="sub-nav-btn" data-view="dashboard"><i class="fas fa-tachometer-alt"></i> Global Dashboard</button>
+                            <button class="sub-nav-btn" data-view="history"><i class="fas fa-history"></i> Historical Data</button>
+                            <button class="sub-nav-btn" data-view="reports"><i class="fas fa-file-alt"></i> Reports</button>
+                        </div>
+                    </div>
+
+                    <div id="analyze-view" class="analyzer-view active">
+                        <div class="file-input-section">
+                            <h3>Upload CSV File for Analysis</h3>
+                            <p>Select the exported job schedule CSV file to analyze job distribution and requirements</p>
+                            <div class="file-controls">
+                                <label for="csvFile" class="file-input-label">
+                                    <i class="fas fa-upload"></i> Choose CSV File
+                                </label>
+                                <input type="file" id="csvFile" class="file-input" accept=".csv" style="display: none;">
+                                 <button class="duplicate-check-btn" id="duplicateBtn" disabled>
+                                    <i class="fas fa-search"></i> Check Duplicates
+                                 </button>
+                                <div id="saveControls" style="display: none;">
+                                    <label for="saveDate">Date:</label>
+                                    <input type="date" id="saveDate" class="date-input">
+                                    <button class="save-stats-btn" id="saveStatsBtn">
+                                        <i class="fas fa-save"></i> Save Daily Stats
+                                    </button>
+                                </div>
+                            </div>
+                            <div id="statusMessage"></div>
+                            <div id="duplicateResults"></div>
+                        </div>
+
+                        <div id="loadingMessage" class="loading" style="display: none;">
+                            <i class="fas fa-spinner fa-spin"></i> Analyzing job data...
+                        </div>
+
+                        <div id="singleRowResultsContainer" class="single-row-container" style="display: none;"></div>
+                        
+                        <div class="card" id="analyzer-daily-hours-card" style="display: none; margin-top: 24px;">
+                            <div class="card-header"><h3><i class="fas fa-chart-bar"></i> Daily Hours Analysis</h3></div>
+                            <div class="chart-container"><canvas id="analyzerDailyHoursChart"></canvas></div>
+                        </div>
+
+
+                        <div id="subContractorSection" class="sub-contractor-section" style="display: none;">
+                            <h3><i class="fas fa-hard-hat"></i> Sub-Contractor Management for <span id="analysisDateDisplay"></span></h3>
+                            <div class="sub-controls">
+                                 <button class="add-sub-job-btn" id="addSubJobBtn">
+                                    <i class="fas fa-plus"></i> Add Sub Job
+                                </button>
+                            </div>
+                            <div id="subContractorJobsList"></div>
+                        </div>
+
+                         <div id="demoJobsSection" class="sub-contractor-section" style="display: none;">
+                            <h3><i class="fas fa-clipboard-list"></i> Assignable Demo Jobs</h3>
+                            <div class="table-container">
+                                <table id="demoJobsTable" class="demo-jobs-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Customer / Job #</th>
+                                            <th>Address</th>
+                                            <th>City</th>
+                                            <th>Zip</th>
+                                            <th>Job Type</th>
+                                            <th>Duration</th>
+                                            <th>DT?</th>
+                                            <th>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="dashboard-view" class="analyzer-view" style="display: none;">
+                         <div class="dashboard-filters">
+                            <h4><i class="fas fa-filter"></i> Filter Dashboard</h4>
+                            <div class="filter-controls">
+                                <div class="filter-group">
+                                    <label for="startDate">Start Date:</label>
+                                    <input type="date" id="startDate" class="date-input">
+                                </div>
+                                <div class="filter-group">
+                                    <label for="endDate">End Date:</label>
+                                    <input type="date" id="endDate" class="date-input">
+                                </div>
+                                <div class="filter-group">
+                                    <label for="zoneFilter">Zone:</label>
+                                    <select id="zoneFilter" class="sub-input"></select>
+                                </div>
+                                <div class="filter-group day-type-filters">
+                                    <label><input type="checkbox" name="dayType" value="weekday" checked> Weekdays</label>
+                                    <label><input type="checkbox" name="dayType" value="saturday" checked> Saturdays</label>
+                                    <label><input type="checkbox" name="dayType" value="sunday" checked> Sundays</label>
+                                </div>
+                                <button class="load-date-btn" id="loadDashboardBtn">Apply Filters</button>
+                            </div>
+                        </div>
+                         <div id="dashboardLoading" class="loading" style="display: none;">
+                            <i class="fas fa-spinner fa-spin"></i> Calculating global statistics...
+                        </div>
+                        <div id="dashboardContainer" class="dashboard-grid"></div>
+                    </div>
+
+                    <div id="history-view" class="analyzer-view" style="display: none;">
+                        <div class="historical-section">
+                            <h3><i class="fas fa-calendar-alt"></i> View Historical Stats</h3>
+                            <div class="date-picker-section">
+                                <label for="historicalDate">Select Date:</label>
+                                <input type="date" id="historicalDate" class="date-input">
+                                <button class="load-date-btn" id="loadHistoricalStatsBtn">
+                                    <i class="fas fa-search"></i> Load Stats
+                                </button>
+                                <button class="load-date-btn" id="showAllHistoricalStatsBtn" style="background: #6c757d;">
+                                    <i class="fas fa-list"></i> Show All Dates
+                                </button>
+                            </div>
+
+                            <div id="historicalLoading" class="loading" style="display: none;">
+                                <i class="fas fa-spinner fa-spin"></i> Loading historical data...
+                            </div>
+
+                            <div id="historicalResults" class="single-row-container"></div>
+                        </div>
+                    </div>
+
+                    <div id="reports-view" class="analyzer-view" style="display: none;">
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="modalOverlay" class="modal-overlay"></div>
+
+    <div id="tfModal" class="modal" style="display:none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-clock"></i> Other Time Frame Details</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body" id="tfModalBody"></div>
+        </div>
+    </div>
+
+    <div id="deleteModal" class="modal" style="display:none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-trash"></i> Delete Daily Stats</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete the stats for <strong id="deleteDate"></strong>?</p>
+                <p class="delete-warning">This action cannot be undone.</p>
+                <div class="modal-actions">
+                    <button class="delete-btn-confirm" id="confirmDeleteBtn">
+                        <i class="fas fa-trash"></i> Delete
+                    </button>
+                    <button class="cancel-btn" id="cancelDeleteBtn">
+                        <i class="fas fa-times"></i> Cancel
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyBEKOGT7S8rn3NKBNysT352GFGPt9GYf8E",
+            authDomain: "mit-foreasting.firebaseapp.com",
+            projectId: "mit-foreasting",
+            storageBucket: "mit-foreasting.firebasestorage.app",
+            messagingSenderId: "1069061948061",
+            appId: "1:1069061948061:web:c657b4dfb344cb7b924a74",
+            measurementId: "G-Z9ZE012Y2C"
+        };
+        firebase.initializeApp(firebaseConfig);
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <script src="JS/loader.js"></script>
+</body>
+</html>

@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Complete Schedule Data Repair</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; display: flex; justify-content: center; align-items: center; text-align: center; height: 100vh; margin: 0; background-color: #f0f2f5; color: #333; }
+        #container { padding: 30px; border-radius: 8px; font-size: 1.2em; max-width: 800px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); background-color: #fff;}
+        #status { padding: 20px; border-radius: 8px; margin-bottom: 15px; font-weight: 500; }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .loading { background-color: #e2e3e5; color: #383d41; }
+        #log { font-size: 0.8em; text-align: left; max-height: 400px; overflow-y: auto; background: #f8f9fa; border: 1px solid #dee2e6; padding: 10px; border-radius: 4px; margin-top: 15px;}
+        #log div { padding: 4px; border-bottom: 1px solid #eee; }
+        .log-info { color: #004085; }
+        .log-success { color: #155724; font-weight: bold; }
+        .log-warn { color: #856404; }
+        .log-removed { color: #721c24; }
+    </style>
+</head>
+<body>
+
+    <div id="container">
+        <h1>Complete Schedule Data Sanitizer</h1>
+        <p>This script cleans both daily and recurring schedules to remove entries for deleted technicians.</p>
+        <div id="status" class="loading">Ready to start.</div>
+        <button id="startBtn" style="padding: 10px 20px; font-size: 1em;">Start Repair</button>
+        <div id="log"></div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyBEKOGT7S8rn3NKBNysT352GFGPt9GYf8E",
+            authDomain: "mit-foreasting.firebaseapp.com",
+            projectId: "mit-foreasting",
+            storageBucket: "mit-foreasting.firebasestorage.app",
+            messagingSenderId: "1069061948061",
+            appId: "1:1069061948061:web:c657b4dfb344cb7b924a74",
+            measurementId: "G-Z9ZE012Y2C"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        const statusDiv = document.getElementById('status');
+        const logDiv = document.getElementById('log');
+        const startBtn = document.getElementById('startBtn');
+
+        function log(message, className = '') {
+            const entry = document.createElement('div');
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            if (className) entry.className = className;
+            logDiv.appendChild(entry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        async function runRepair() {
+            startBtn.disabled = true;
+            statusDiv.className = 'loading';
+            log('Repair process started.', 'log-info');
+
+            try {
+                // Step 1: Get all active staff IDs
+                statusDiv.textContent = 'Step 1: Fetching active staff list...';
+                const staffingDoc = await db.collection('hou_settings').doc('staffing_data').get();
+                if (!staffingDoc.exists) throw new Error('Staffing data document not found!');
+                
+                const staffingData = staffingDoc.data();
+                const activeStaffIds = new Set();
+                staffingData.zones.forEach(zone => {
+                    if (zone.lead && zone.lead.id) activeStaffIds.add(zone.lead.id);
+                    zone.members.forEach(member => {
+                        if (member && member.id) activeStaffIds.add(member.id);
+                    });
+                });
+                log(`Found ${activeStaffIds.size} active staff members.`, 'log-info');
+
+                // Step 2 & 3: Process both collections
+                let totalOrphansRemoved = 0;
+                let totalDocsUpdated = 0;
+                
+                // --- Process Daily Schedules ---
+                statusDiv.textContent = 'Step 2: Cleaning daily schedules...';
+                const dailySchedulesSnap = await db.collection('hou_schedules').get();
+                log(`Found ${dailySchedulesSnap.size} daily schedule documents.`, 'log-info');
+                const dailyBatch = db.batch();
+                let dailyUpdates = 0;
+                dailySchedulesSnap.forEach(doc => {
+                    const schedule = doc.data();
+                    if (schedule.staff && Array.isArray(schedule.staff)) {
+                        const originalCount = schedule.staff.length;
+                        const cleanedStaff = schedule.staff.filter(entry => activeStaffIds.has(entry.id));
+                        if (cleanedStaff.length < originalCount) {
+                            log(`[Daily/${doc.id}] REMOVED ${originalCount - cleanedStaff.length} orphan(s).`, 'log-removed');
+                            totalOrphansRemoved += (originalCount - cleanedStaff.length);
+                            dailyUpdates++;
+                            dailyBatch.update(doc.ref, { staff: cleanedStaff });
+                        }
+                    }
+                });
+                if (dailyUpdates > 0) {
+                    await dailyBatch.commit();
+                    totalDocsUpdated += dailyUpdates;
+                    log(`Committed ${dailyUpdates} updates to daily schedules.`, 'log-success');
+                }
+
+                // --- Process Recurring Schedules ---
+                statusDiv.textContent = 'Step 3: Cleaning recurring schedules...';
+                const recurringSchedulesSnap = await db.collection('hou_recurring_schedules').get();
+                log(`Found ${recurringSchedulesSnap.size} recurring schedule documents.`, 'log-info');
+                const recurringBatch = db.batch();
+                let recurringUpdates = 0;
+                recurringSchedulesSnap.forEach(doc => {
+                    const schedule = doc.data();
+                    if (schedule.staff && Array.isArray(schedule.staff)) {
+                        const originalCount = schedule.staff.length;
+                        const cleanedStaff = schedule.staff.filter(entry => activeStaffIds.has(entry.id));
+                        if (cleanedStaff.length < originalCount) {
+                            log(`[Recurring/${doc.id}] REMOVED ${originalCount - cleanedStaff.length} orphan(s).`, 'log-removed');
+                            totalOrphansRemoved += (originalCount - cleanedStaff.length);
+                            recurringUpdates++;
+                            recurringBatch.update(doc.ref, { staff: cleanedStaff });
+                        }
+                    }
+                });
+                if (recurringUpdates > 0) {
+                    await recurringBatch.commit();
+                    totalDocsUpdated += recurringUpdates;
+                    log(`Committed ${recurringUpdates} updates to recurring schedules.`, 'log-success');
+                }
+
+
+                statusDiv.textContent = `✅ Repair Complete! Removed ${totalOrphansRemoved} orphaned entries from ${totalDocsUpdated} documents.`;
+                statusDiv.className = 'success';
+                log('You can now safely close this page.', 'log-success');
+
+            } catch (error) {
+                statusDiv.textContent = `Error: ${error.message}`;
+                statusDiv.className = 'error';
+                console.error(error);
+                log(`ERROR: ${error.message}`, 'log-error');
+            } finally {
+                startBtn.disabled = false;
+            }
+        }
+
+        startBtn.addEventListener('click', runRepair);
+    </script>
+</body>
+</html>

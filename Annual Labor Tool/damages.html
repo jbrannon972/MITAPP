@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HOU Mitigation - Damage Reports</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/damages-styles.css">
+</head>
+<body>
+    <div class="app-container">
+        <header class="header" id="nav-placeholder"></header>
+        <main class="main-content">
+            <div class="container">
+                <div id="damages-tab" class="tab-content active">
+                    <div class="tab-header">
+                         <div class="sub-nav">
+                             <button class="sub-nav-btn active" data-view="damages-list-view">Damages</button>
+                             <button class="sub-nav-btn" data-view="damages-stats-view">Stats</button>
+                        </div>
+                    </div>
+
+                    <div id="damages-list-view" class="damages-view active">
+                        <div class="damages-main-content">
+                            <div class="damages-filters card">
+                                <div class="filter-controls">
+                                    <input type="text" id="damage-search" class="form-input" placeholder="Search by Job #...">
+                                    <select id="damage-zone-filter" class="form-input"></select>
+                                    <select id="damage-tech-filter" class="form-input"></select>
+                                    <input type="date" id="damage-start-date" class="form-input">
+                                    <input type="date" id="damage-end-date" class="form-input">
+                                    <select id="damage-status-filter" class="form-input">
+                                        <option value="active" selected>New / In Progress</option>
+                                        <option value="resolved">Resolved</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div id="damages-container" class="damages-container">
+                                <p>Loading damage reports...</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="damages-stats-view" class="damages-view" style="display: none;">
+                        <div class="damages-filters card">
+                            <div class="filter-controls">
+                                <label for="stats-start-date">Start Date:</label>
+                                <input type="date" id="stats-start-date" class="form-input">
+                                <label for="stats-end-date">End Date:</label>
+                                <input type="date" id="stats-end-date" class="form-input">
+                            </div>
+                        </div>
+                        <div class="damages-dashboard">
+                            <div class="metric-card">
+                                <div class="metric-header"><h3>Incidents</h3></div>
+                                <span class="stat-value" id="total-incidents-month">0</span>
+                            </div>
+                            <div class="metric-card">
+                                <div class="metric-header"><h3>Total Cost</h3></div>
+                                <span class="stat-value" id="total-cost-month">$0.00</span>
+                            </div>
+                            <div class="metric-card">
+                                <div class="metric-header"><h3>Avg. Cost / Incident</h3></div>
+                                <span class="stat-value" id="avg-cost-incident">$0.00</span>
+                            </div>
+                            <div class="metric-card">
+                                <div class="metric-header"><h3>Avg. Time to Resolution</h3></div>
+                                <span class="stat-value" id="avg-resolution-time">N/A</span>
+                            </div>
+                        </div>
+
+                        <div class="damages-charts">
+                            <div class="card">
+                                <div class="card-header"><h3>Damages Over Time</h3></div>
+                                <div class="chart-container"><canvas id="damages-over-time-chart"></canvas></div>
+                            </div>
+                            <div class="card">
+                                <div class="card-header"><h3>Damages by Cause</h3></div>
+                                <div class="chart-container"><canvas id="damages-by-cause-chart"></canvas></div>
+                            </div>
+                        </div>
+                        
+                        <div class="card" style="margin-top: 24px;">
+                            <div class="card-header"><h3><i class="fas fa-exclamation-triangle"></i> Pattern Recognition Alerts</h3></div>
+                            <div id="pattern-recognition-alerts"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="modalOverlay" class="modal-overlay"></div>
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyBEKOGT7S8rn3NKBNysT352GFGPt9GYf8E",
+            authDomain: "mit-foreasting.firebaseapp.com",
+            projectId: "mit-foreasting",
+            storageBucket: "mit-foreasting.appspot.com",
+            messagingSenderId: "1069061948061",
+            appId: "1:1069061948061:web:c657b4dfb344cb7b924a74",
+            measurementId: "G-Z9ZE012Y2C"
+        };
+        firebase.initializeApp(firebaseConfig);
+    </script>
+    <script src="JS/loader.js"></script>
+</body>
+</html>

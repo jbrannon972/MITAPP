@@ -1,0 +1,127 @@
+.damages-dashboard {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.damages-charts {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 24px;
+    margin-bottom: 24px;
+}
+
+.damages-view {
+    display: none;
+}
+.damages-view.active {
+    display: block;
+}
+
+.damages-main-content {
+    margin-top: 24px;
+}
+
+.damages-filters {
+    margin-bottom: 16px;
+    padding: 16px;
+}
+
+.damages-filters .filter-controls {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.damages-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1rem;
+    margin-top: 16px;
+}
+
+.damage-report-card {
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 1rem;
+    background-color: #fff;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.damage-report-card.unreviewed {
+    border-left: 5px solid red;
+}
+
+.damage-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.damage-card-body p {
+    margin: 0.5rem 0;
+}
+
+.damage-card-footer {
+    margin-top: 1rem;
+    text-align: right;
+}
+
+.damage-modal-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+}
+
+.damage-photo {
+    width: 100%;
+    height: auto;
+    border-radius: 8px;
+    margin-top: 1rem;
+}
+
+.status-badge {
+    padding: 4px 10px;
+    border-radius: var(--radius-md);
+    font-size: 0.8em;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: white;
+}
+.status-new { background-color: #3b82f6; }
+.status-under-review { background-color: #f59e0b; }
+.status-action-plan-approved { background-color: #8b5cf6; }
+.status-repairs-in-progress { background-color: #06b6d4; }
+.status-resolved { background-color: var(--success-color); }
+
+.activity-log {
+    max-height: 150px;
+    overflow-y: auto;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 8px;
+    background: #f8fafc;
+    font-size: 0.9em;
+}
+
+.activity-log-item {
+    padding-bottom: 4px;
+    margin-bottom: 4px;
+    border-bottom: 1px dotted #e2e8f0;
+}
+.activity-log-item:last-child {
+    border-bottom: none;
+}
+
+@media (max-width: 992px) {
+    .damages-charts {
+        grid-template-columns: 1fr;
+    }
+    .damage-modal-grid {
+        grid-template-columns: 1fr;
+    }
+}

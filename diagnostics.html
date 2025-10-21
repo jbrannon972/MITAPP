@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Tech App Calendar Diagnostics & Migration</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; }
+        pre { background-color: #f4f4f4; padding: 10px; border: 1px solid #ccc; white-space: pre-wrap; }
+        button { padding: 10px 20px; font-size: 1em; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>Tech App Calendar Diagnostics & Migration</h1>
+    <p>This tool will check your database for the old recurring schedule format and migrate it to the new, more reliable system.</p>
+    <button id="startBtn">Start Migration</button>
+    <div id="output"></div>
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyBEKOGT7S8rn3NKBNysT352GFGPt9GYf8E",
+            authDomain: "mit-foreasting.firebaseapp.com",
+            projectId: "mit-foreasting",
+            storageBucket: "mit-foreasting.firebasestorage.app",
+            messagingSenderId: "1069061948061",
+            appId: "1:1069061948061:web:c657b4dfb344cb7b924a74",
+            measurementId: "G-Z9ZE012Y2C"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        async function runMigration() {
+            const output = document.getElementById('output');
+            const startBtn = document.getElementById('startBtn');
+            startBtn.disabled = true;
+            output.innerHTML = '<h2>Running Migration...</h2>';
+            console.log('--- STARTING MIGRATION ---');
+
+            try {
+                // 1. Fetch staffing_data
+                console.log('Fetching staffing_data from Firestore...');
+                const staffingDocRef = db.collection('hou_settings').doc('staffing_data');
+                const doc = await staffingDocRef.get();
+                if (!doc.exists) {
+                    throw new Error('staffing_data document does not exist!');
+                }
+                const staffingData = doc.data();
+                console.log('Successfully fetched staffing_data:', staffingData);
+                output.innerHTML += '<p>✅ Successfully fetched staffing_data.</p>';
+
+                // 2. Find and migrate old schedules
+                console.log('Checking for old recurringSchedule properties to migrate...');
+                output.innerHTML += '<h3>Migration Log:</h3>';
+                
+                const allStaff = [
+                    ...(staffingData.management || []),
+                    ...((staffingData.zones || []).flatMap(z => [z.lead, ...z.members])),
+                    ...(staffingData.warehouseStaff || [])
+                ].filter(Boolean);
+
+                const pre = document.createElement('pre');
+                let logText = '';
+                let rulesMigrated = 0;
+                const batch = db.batch();
+
+                allStaff.forEach(person => {
+                    if (person && person.recurringSchedule && person.recurringSchedule.length > 0) {
+                        const logMessage = `Found ${person.recurringSchedule.length} rule(s) for ${person.name}. Migrating...`;
+                        console.log(logMessage);
+                        logText += logMessage + '\\n';
+                        
+                        person.recurringSchedule.forEach(rule => {
+                            const newRuleRef = db.collection('hou_recurring_rules').doc();
+                            const newRuleData = { ...rule, technicianId: person.id, technicianName: person.name };
+                            batch.set(newRuleRef, newRuleData);
+                            rulesMigrated++;
+                        });
+
+                        // Important: Remove the old data from the person object
+                        delete person.recurringSchedule;
+                    }
+                });
+                
+                if (rulesMigrated > 0) {
+                    output.innerHTML += `<p>✅ Found and migrated ${rulesMigrated} rules.</p>`;
+                    logText += `\\nSUCCESS: Migrated ${rulesMigrated} rules to the new 'hou_recurring_rules' collection.\\n`;
+
+                    // Save the cleaned staffing data back
+                    batch.set(staffingDocRef, staffingData);
+                    await batch.commit();
+                    logText += `SUCCESS: Cleaned old schedule data from 'staffing_data' document.\\n`;
+
+                } else {
+                    output.innerHTML += '<p>✅ No old recurring schedules found to migrate.</p>';
+                    logText += 'No old data found. Migration was not needed.\\n';
+                }
+
+                pre.textContent = logText;
+                output.appendChild(pre);
+                
+                console.log('--- MIGRATION COMPLETE ---');
+                output.innerHTML += '<h2>Migration Complete. You can now use the updated applications.</h2>';
+
+            } catch (error) {
+                console.error('MIGRATION ERROR:', error);
+                output.innerHTML += `<p style="color: red;"><strong>ERROR:</strong> ${error.message}</p>`;
+            } finally {
+                startBtn.disabled = false;
+            }
+        }
+
+        document.getElementById('startBtn').addEventListener('click', runMigration);
+    </script>
+</body>
+</html>

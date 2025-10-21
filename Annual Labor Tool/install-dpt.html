@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HOU Mitigation - Install DPT</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/analyzer-styles.css">
+</head>
+<body>
+    <div class="app-container">
+        <header class="header" id="nav-placeholder"></header>
+
+        <main class="main-content">
+            <div class="container">
+                <div id="install-dpt-tab" class="tab-content active">
+                    <div class="tab-header">
+                    </div>
+
+                    <div id="install-dpt-view" class="analyzer-view active">
+                        <div class="file-input-section">
+                            <div class="file-controls">
+                                 <button class="btn btn-info" id="second-shift-report-btn">
+                                    <i class="fas fa-moon"></i> Second Shift Report
+                                 </button>
+                                 <button class="btn btn-secondary" id="install-window-report-btn">
+                                    <i class="fas fa-calendar-alt"></i> Install Window Report
+                                 </button>
+                            </div>
+                        </div>
+                        <div id="install-dpt-results">
+                             <div class="loading"><i class="fas fa-spinner fa-spin"></i> Searching database for jobs missing install records...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="modalOverlay" class="modal-overlay"></div>
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyBEKOGT7S8rn3NKBNysT352GFGPt9GYf8E",
+            authDomain: "mit-foreasting.firebaseapp.com",
+            projectId: "mit-foreasting",
+            storageBucket: "mit-foreasting.firebasestorage.app",
+            messagingSenderId: "1069061948061",
+            appId: "1:1069061948061:web:c657b4dfb344cb7b924a74",
+            measurementId: "G-Z9ZE012Y2C"
+        };
+        firebase.initializeApp(firebaseConfig);
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script src="JS/loader.js"></script>
+</body>
+</html>

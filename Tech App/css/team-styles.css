@@ -1,0 +1,9 @@
+.zones-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px; }
+.zone-card { background: var(--surface-color); border-radius: var(--radius-xl); padding: 24px; border: 1px solid var(--border-color); }
+.zone-header { text-align: center; margin-bottom: 20px; }
+.zone-header h3 { font-family: 'Oswald', sans-serif; font-size: 18px; font-weight: 600; margin: 0 0 8px 0; }
+.zone-lead { background: var(--text-primary); color: white; padding: 8px 16px; border-radius: var(--radius-md); font-weight: 600; font-size: 14px; }
+.member-card { display: flex; align-items: center; gap: 12px; padding: 12px; background: #f8fafc; border-radius: var(--radius-md); margin-bottom: 8px; }
+.member-details { flex-grow: 1; display: flex; justify-content: space-between; align-items: center; }
+.member-name { font-weight: 500; }
+.member-role { font-size: 12px; color: var(--text-secondary); background: #e2e8f0; padding: 4px 8px; border-radius: var(--radius-sm); }
