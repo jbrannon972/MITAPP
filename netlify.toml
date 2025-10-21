@@ -1,8 +1,8 @@
 # Netlify Configuration for MITAPP React App
 
 [build]
-  # Build command
-  command = "cd mitapp-react && npm run build"
+  # Build command - install dependencies first, then build
+  command = "cd mitapp-react && npm install && npm run build"
 
   # Directory to publish
   publish = "mitapp-react/dist"
