@@ -270,62 +270,60 @@ const Calendar = () => {
     };
 
     return (
-      <div className="modal-overlay" onClick={closeModal} style={{ display: 'flex' }}>
-        <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-          <span className="close" onClick={closeModal}>&times;</span>
-          <h2>{dateString}</h2>
+      <div className="modal-overlay active" onClick={closeModal}>
+        <div className="modal modal-lg" onClick={(e) => e.stopPropagation()}>
+          <div className="modal-header">
+            <h3>{dateString}</h3>
+            <button className="modal-close" onClick={closeModal}>
+              <i className="fas fa-times"></i>
+            </button>
+          </div>
 
-          {isCalendarAdmin && (
-            <div className="card" style={{ marginBottom: '16px', backgroundColor: '#dbeafe' }}>
-              <div style={{ padding: '12px' }}>
-                <i className="fas fa-edit"></i> Admin Mode: Click on staff members to edit their status, or modify notes below.
+          <div className="modal-body">
+            <div className="view-content">
+              <h3>Notes:</h3>
+              <div className="view-notes">
+                {schedule.notes || 'No notes for this day.'}
               </div>
+
+              <h3>{primaryHeaderText}</h3>
+              <div className="view-staff-list">
+                {primaryList.length > 0 ? (
+                  primaryList.map((s, idx) => (
+                    <div key={idx} className={`view-staff-item status-${s.status}`}>
+                      <strong>{s.name}:</strong> {formatStatus(s)}
+                    </div>
+                  ))
+                ) : (
+                  <p className="no-entries">None</p>
+                )}
+              </div>
+
+              <h3>{secondaryHeaderText}</h3>
+              <div className="view-staff-list">
+                {secondaryList.length > 0 ? (
+                  secondaryList.map((s, idx) => (
+                    <div key={idx} className={`view-staff-item status-${s.status}`}>
+                      <strong>{s.name}:</strong> {formatStatus(s)}
+                    </div>
+                  ))
+                ) : (
+                  <p className="no-entries">None</p>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {isCalendarAdmin && editingDate && (
+            <div className="modal-footer">
+              <button className="btn btn-secondary" onClick={closeModal}>
+                Cancel
+              </button>
+              <button className="btn btn-primary" onClick={handleSaveSchedule}>
+                <i className="fas fa-save"></i> Save Changes
+              </button>
             </div>
           )}
-
-          <div className="view-content">
-            <h3>Notes:</h3>
-            <div className="view-notes">
-              {schedule.notes || 'No notes for this day.'}
-            </div>
-
-            <h3>{primaryHeaderText}</h3>
-            <div className="view-staff-list">
-              {primaryList.length > 0 ? (
-                primaryList.map((s, idx) => (
-                  <div key={idx} className={`view-staff-item status-${s.status}`}>
-                    <strong>{s.name}:</strong> {formatStatus(s)}
-                  </div>
-                ))
-              ) : (
-                <p className="no-entries">None</p>
-              )}
-            </div>
-
-            <h3>{secondaryHeaderText}</h3>
-            <div className="view-staff-list">
-              {secondaryList.length > 0 ? (
-                secondaryList.map((s, idx) => (
-                  <div key={idx} className={`view-staff-item status-${s.status}`}>
-                    <strong>{s.name}:</strong> {formatStatus(s)}
-                  </div>
-                ))
-              ) : (
-                <p className="no-entries">None</p>
-              )}
-            </div>
-
-            {isCalendarAdmin && editingDate && (
-              <div style={{ marginTop: '24px', display: 'flex', gap: '12px' }}>
-                <button className="btn btn-primary" onClick={handleSaveSchedule}>
-                  <i className="fas fa-save"></i> Save Changes
-                </button>
-                <button className="btn btn-secondary" onClick={closeModal}>
-                  Cancel
-                </button>
-              </div>
-            )}
-          </div>
         </div>
       </div>
     );
@@ -466,25 +464,36 @@ const Calendar = () => {
 
         {/* Admin Login Modal */}
         {showAdminModal && (
-          <div className="cal-modal" style={{ display: 'flex' }}>
-            <div className="modal-content">
-              <span className="close" onClick={() => setShowAdminModal(false)}>&times;</span>
-              <h2>Calendar Admin Login</h2>
-              <div className="form-group">
-                <label htmlFor="calPassword">Password:</label>
-                <input
-                  type="password"
-                  id="calPassword"
-                  className="form-control"
-                  value={adminPassword}
-                  onChange={(e) => setAdminPassword(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && handleAdminLogin()}
-                  placeholder="Enter admin password"
-                />
+          <div className="modal-overlay active" onClick={() => setShowAdminModal(false)}>
+            <div className="modal" onClick={(e) => e.stopPropagation()}>
+              <div className="modal-header">
+                <h3>Calendar Admin Login</h3>
+                <button className="modal-close" onClick={() => setShowAdminModal(false)}>
+                  <i className="fas fa-times"></i>
+                </button>
               </div>
-              <button className="btn btn-primary" onClick={handleAdminLogin}>
-                <i className="fas fa-sign-in-alt"></i> Login
-              </button>
+              <div className="modal-body">
+                <div className="form-group">
+                  <label htmlFor="calPassword">Password:</label>
+                  <input
+                    type="password"
+                    id="calPassword"
+                    className="form-control"
+                    value={adminPassword}
+                    onChange={(e) => setAdminPassword(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && handleAdminLogin()}
+                    placeholder="Enter admin password"
+                  />
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button className="btn btn-secondary" onClick={() => setShowAdminModal(false)}>
+                  Cancel
+                </button>
+                <button className="btn btn-primary" onClick={handleAdminLogin}>
+                  <i className="fas fa-sign-in-alt"></i> Login
+                </button>
+              </div>
             </div>
           </div>
         )}
