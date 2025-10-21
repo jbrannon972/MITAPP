@@ -8,7 +8,8 @@ const ZoneCard = ({
   currentUserRole,
   onMovePersonToZone,
   onRemoveMember,
-  onAddMember
+  onAddMember,
+  onEditMember
 }) => {
   const [dragOver, setDragOver] = useState(false);
 
@@ -39,15 +40,8 @@ const ZoneCard = ({
 
   const handleAddMember = () => {
     if (!canManage) return;
-
-    const memberName = prompt('Enter member name:');
-    if (!memberName) return;
-
-    const memberRole = prompt('Enter role (MIT Tech or Demo Tech):');
-    if (!memberRole) return;
-
     if (onAddMember) {
-      onAddMember(zoneIndex, { name: memberName, role: memberRole });
+      onAddMember(zoneIndex);
     }
   };
 
@@ -103,6 +97,7 @@ const ZoneCard = ({
             canManage={canManage}
             canClickProfile={canClickProfile(member)}
             onRemove={() => onRemoveMember(zoneIndex, memberIndex)}
+            onEdit={() => onEditMember(zoneIndex, memberIndex, member)}
           />
         ))}
 

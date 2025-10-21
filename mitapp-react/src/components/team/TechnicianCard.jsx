@@ -4,7 +4,8 @@ const TechnicianCard = ({
   zoneIndex,
   canManage,
   canClickProfile,
-  onRemove
+  onRemove,
+  onEdit
 }) => {
   const formatName = (fullName) => {
     if (!fullName || typeof fullName !== 'string') return '';
@@ -44,16 +45,29 @@ const TechnicianCard = ({
       onDragEnd={handleDragEnd}
     >
       {canManage && zoneIndex !== 'management' && (
-        <button
-          className="btn btn-remove"
-          onClick={(e) => {
-            e.stopPropagation();
-            onRemove();
-          }}
-          title="Remove Member"
-        >
-          <i className="fas fa-times"></i>
-        </button>
+        <>
+          <button
+            className="btn btn-edit"
+            onClick={(e) => {
+              e.stopPropagation();
+              onEdit();
+            }}
+            title="Edit Member"
+            style={{ position: 'absolute', top: '4px', right: '28px', padding: '2px 6px', fontSize: '10px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '3px', cursor: 'pointer' }}
+          >
+            <i className="fas fa-edit"></i>
+          </button>
+          <button
+            className="btn btn-remove"
+            onClick={(e) => {
+              e.stopPropagation();
+              onRemove();
+            }}
+            title="Remove Member"
+          >
+            <i className="fas fa-times"></i>
+          </button>
+        </>
       )}
       <div className={`member-details ${!canManage ? 'no-controls' : ''}`}>
         <span className="member-name">{formatName(member.name)}</span>

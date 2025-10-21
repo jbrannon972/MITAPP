@@ -12,6 +12,9 @@ const Team = () => {
   const [showZoneModal, setShowZoneModal] = useState(false);
   const [editingZone, setEditingZone] = useState(null);
   const [zoneFormData, setZoneFormData] = useState({ name: '', leadName: '' });
+  const [showMemberModal, setShowMemberModal] = useState(false);
+  const [editingMember, setEditingMember] = useState(null);
+  const [memberFormData, setMemberFormData] = useState({ name: '', role: 'MIT Tech' });
 
   const canManage = currentUser && ['Manager', 'Supervisor', 'MIT Lead'].includes(currentUser.role);
 
@@ -170,17 +173,50 @@ const Team = () => {
     await saveStaffingData(updatedData);
   };
 
-  const handleAddMember = async (zoneIndex, memberData) => {
-    if (!canManage) return;
+  const openAddMemberModal = (zoneIndex) => {
+    setEditingMember({ zoneIndex, memberIndex: null });
+    setMemberFormData({ name: '', role: 'MIT Tech' });
+    setShowMemberModal(true);
+  };
 
-    const newMember = {
-      id: 'person_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
-      name: memberData.name,
-      role: memberData.role
-    };
+  const openEditMemberModal = (zoneIndex, memberIndex, member) => {
+    setEditingMember({ zoneIndex, memberIndex });
+    setMemberFormData({ name: member.name, role: member.role });
+    setShowMemberModal(true);
+  };
+
+  const closeMemberModal = () => {
+    setShowMemberModal(false);
+    setEditingMember(null);
+  };
+
+  const handleMemberFormChange = (e) => {
+    const { name, value } = e.target;
+    setMemberFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleSaveMember = async () => {
+    if (!canManage || !memberFormData.name.trim()) {
+      alert('Member name is required');
+      return;
+    }
 
     const updatedZones = [...staffingData.zones];
-    updatedZones[zoneIndex].members.push(newMember);
+
+    if (editingMember.memberIndex !== null) {
+      // Edit existing member
+      const member = updatedZones[editingMember.zoneIndex].members[editingMember.memberIndex];
+      member.name = memberFormData.name;
+      member.role = memberFormData.role;
+    } else {
+      // Add new member
+      const newMember = {
+        id: 'person_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+        name: memberFormData.name,
+        role: memberFormData.role
+      };
+      updatedZones[editingMember.zoneIndex].members.push(newMember);
+    }
 
     const updatedData = {
       ...staffingData,
@@ -188,6 +224,12 @@ const Team = () => {
     };
 
     await saveStaffingData(updatedData);
+    closeMemberModal();
+  };
+
+  const handleAddMember = async (zoneIndex, memberData) => {
+    // This is now handled by the modal
+    openAddMemberModal(zoneIndex);
   };
 
   if (loading || !staffingData) {
@@ -281,6 +323,7 @@ const Team = () => {
                       onMovePersonToZone={handleMovePersonToZone}
                       onRemoveMember={handleRemoveMember}
                       onAddMember={handleAddMember}
+                      onEditMember={openEditMemberModal}
                     />
                     {canManage && (
                       <div className="zone-actions" style={{ marginTop: '12px', display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
@@ -477,6 +520,58 @@ const Team = () => {
                 </button>
                 <button className="btn btn-primary" onClick={handleSaveZone}>
                   <i className="fas fa-save"></i> {editingZone ? 'Update' : 'Create'} Zone
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {showMemberModal && (
+          <div className="modal-overlay active" onClick={closeMemberModal}>
+            <div className="modal" onClick={(e) => e.stopPropagation()}>
+              <div className="modal-header">
+                <h3>
+                  <i className="fas fa-user"></i> {editingMember?.memberIndex !== null ? 'Edit Member' : 'Add Member'}
+                </h3>
+                <button className="modal-close" onClick={closeMemberModal}>
+                  <i className="fas fa-times"></i>
+                </button>
+              </div>
+              <div className="modal-body">
+                <div className="form-group">
+                  <label htmlFor="memberName">Name <span style={{ color: 'red' }}>*</span></label>
+                  <input
+                    type="text"
+                    id="memberName"
+                    name="name"
+                    className="form-control"
+                    value={memberFormData.name}
+                    onChange={handleMemberFormChange}
+                    placeholder="e.g., John Smith"
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="memberRole">Role <span style={{ color: 'red' }}>*</span></label>
+                  <select
+                    id="memberRole"
+                    name="role"
+                    className="form-control"
+                    value={memberFormData.role}
+                    onChange={handleMemberFormChange}
+                  >
+                    <option value="MIT Tech">MIT Tech</option>
+                    <option value="Demo Tech">Demo Tech</option>
+                    <option value="MIT Lead">MIT Lead</option>
+                  </select>
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button className="btn btn-secondary" onClick={closeMemberModal}>
+                  Cancel
+                </button>
+                <button className="btn btn-primary" onClick={handleSaveMember}>
+                  <i className="fas fa-save"></i> {editingMember?.memberIndex !== null ? 'Update' : 'Add'} Member
                 </button>
               </div>
             </div>
