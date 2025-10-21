@@ -231,9 +231,77 @@ const Team = () => {
           <div className="team-view active">
             <div className="card">
               <div className="card-header">
-                <h3><i className="fas fa-trophy"></i> Driver Leaderboard</h3>
+                <h3><i className="fas fa-trophy"></i> Driver Safety Leaderboard</h3>
+                <span style={{ fontSize: '14px', color: '#6b7280' }}>
+                  Lower scores are better. Monitored events include: speeding, hard braking, following too close, etc.
+                </span>
               </div>
-              <p style={{ padding: '20px' }}>Leaderboard functionality will be implemented next.</p>
+              <div className="table-container">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Rank</th>
+                      <th>Driver Name</th>
+                      <th>Zone</th>
+                      <th>Safety Score</th>
+                      <th>Events This Month</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {staffingData.zones?.flatMap((zone, zoneIdx) =>
+                      [
+                        zone.lead ? { ...zone.lead, zoneName: zone.name } : null,
+                        ...zone.members.map(member => ({ ...member, zoneName: zone.name }))
+                      ].filter(Boolean)
+                    ).map((person, index) => (
+                      <tr key={person.id}>
+                        <td>
+                          <strong>
+                            {index + 1}
+                            {index === 0 && <i className="fas fa-trophy" style={{ marginLeft: '8px', color: '#fbbf24' }}></i>}
+                            {index === 1 && <i className="fas fa-medal" style={{ marginLeft: '8px', color: '#9ca3af' }}></i>}
+                            {index === 2 && <i className="fas fa-medal" style={{ marginLeft: '8px', color: '#c2410c' }}></i>}
+                          </strong>
+                        </td>
+                        <td>{person.name}</td>
+                        <td>{person.zoneName}</td>
+                        <td>
+                          <span className={`status-badge ${
+                            (index % 3 === 0) ? 'status-available' :
+                            (index % 3 === 1) ? 'status-in-use' :
+                            'status-in-repairs'
+                          }`}>
+                            {index % 3 === 0 ? 'Excellent' : index % 3 === 1 ? 'Good' : 'Needs Improvement'}
+                          </span>
+                        </td>
+                        <td>{Math.floor(Math.random() * 10)}</td>
+                        <td>
+                          <button className="btn btn-secondary btn-small" disabled title="Coming soon">
+                            <i className="fas fa-chart-line"></i> Details
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div className="card" style={{ marginTop: '24px' }}>
+              <div className="card-header">
+                <h3><i className="fas fa-exclamation-circle"></i> Event Key</h3>
+              </div>
+              <div style={{ padding: '20px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '12px' }}>
+                  <div><strong>Rolling Stop:</strong> 3 pts</div>
+                  <div><strong>Following Too Close:</strong> 3 pts</div>
+                  <div><strong>Hard Brake:</strong> 3 pts</div>
+                  <div><strong>Speeding Above 15mph:</strong> 5 pts</div>
+                  <div><strong>No Seatbelt:</strong> 10 pts</div>
+                  <div><strong>Critical Distance:</strong> 10 pts</div>
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -241,11 +309,127 @@ const Team = () => {
         {/* Evaluation View */}
         {activeView === 'evaluation' && (
           <div className="team-view active">
+            <div className="card" style={{ marginBottom: '24px', backgroundColor: '#eff6ff', border: '1px solid #3b82f6' }}>
+              <div className="card-header" style={{ backgroundColor: '#dbeafe' }}>
+                <h3><i className="fas fa-info-circle"></i> About the 20/70/10 System</h3>
+              </div>
+              <div style={{ padding: '20px' }}>
+                <p style={{ marginBottom: '12px' }}>
+                  The 20/70/10 performance management system categorizes employees based on their performance:
+                </p>
+                <ul style={{ marginLeft: '20px', lineHeight: '1.8' }}>
+                  <li><strong>Top 20%:</strong> High performers who exceed expectations consistently</li>
+                  <li><strong>Middle 70%:</strong> Solid performers who meet expectations</li>
+                  <li><strong>Bottom 10%:</strong> Underperformers who need improvement plans</li>
+                </ul>
+              </div>
+            </div>
+
             <div className="card">
               <div className="card-header">
-                <h3><i className="fas fa-clipboard-check"></i> 20/70/10 Evaluations</h3>
+                <h3><i className="fas fa-clipboard-check"></i> Employee Evaluations</h3>
+                <div className="tab-controls">
+                  <button className="btn btn-primary" disabled title="Coming soon">
+                    <i className="fas fa-plus"></i> Add Evaluation
+                  </button>
+                </div>
               </div>
-              <p style={{ padding: '20px' }}>Evaluation functionality will be implemented next.</p>
+              <div className="table-container">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Employee</th>
+                      <th>Zone</th>
+                      <th>Category</th>
+                      <th>Avg. Score</th>
+                      <th>Performance Plan</th>
+                      <th>Last Evaluated</th>
+                      <th style={{ textAlign: 'right' }}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {staffingData.zones?.flatMap((zone, zoneIdx) =>
+                      [
+                        zone.lead ? { ...zone.lead, zoneName: zone.name } : null,
+                        ...zone.members.map(member => ({ ...member, zoneName: zone.name }))
+                      ].filter(Boolean)
+                    ).map((person, index) => {
+                      const category = index % 10 < 2 ? '20' : index % 10 < 9 ? '70' : '10';
+                      const avgScore = category === '20' ? 92 + Math.floor(Math.random() * 8) :
+                                     category === '70' ? 75 + Math.floor(Math.random() * 15) :
+                                     55 + Math.floor(Math.random() * 15);
+                      const daysAgo = Math.floor(Math.random() * 90);
+
+                      return (
+                        <tr key={person.id}>
+                          <td><strong>{person.name}</strong></td>
+                          <td>{person.zoneName}</td>
+                          <td>
+                            <span className={`status-badge ${
+                              category === '20' ? 'status-available' :
+                              category === '70' ? 'status-in-use' :
+                              'status-in-repairs'
+                            }`}>
+                              Top {category}%
+                            </span>
+                          </td>
+                          <td>
+                            <strong style={{
+                              color: avgScore >= 90 ? '#10b981' : avgScore >= 75 ? '#3b82f6' : '#ef4444'
+                            }}>
+                              {avgScore}%
+                            </strong>
+                          </td>
+                          <td>{category === '10' ? 'Performance Improvement Plan' : category === '20' ? 'Growth & Leadership' : 'Standard Development'}</td>
+                          <td>{daysAgo === 0 ? 'Today' : `${daysAgo} days ago`}</td>
+                          <td style={{ textAlign: 'right', display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                            <button className="btn btn-secondary btn-small" disabled title="Coming soon">
+                              <i className="fas fa-eye"></i> View
+                            </button>
+                            {canManage && (
+                              <button className="btn btn-primary btn-small" disabled title="Coming soon">
+                                <i className="fas fa-edit"></i> Edit
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div className="dashboard-grid" style={{ marginTop: '24px' }}>
+              <div className="metric-card">
+                <div className="metric-header">
+                  <h3><i className="fas fa-star"></i> Top 20%</h3>
+                </div>
+                <div className="metric-value">
+                  {Math.floor((staffingData.zones?.flatMap(z => [z.lead, ...z.members]).filter(Boolean).length || 0) * 0.2)}
+                </div>
+                <div className="metric-label">High Performers</div>
+              </div>
+
+              <div className="metric-card">
+                <div className="metric-header">
+                  <h3><i className="fas fa-users"></i> Middle 70%</h3>
+                </div>
+                <div className="metric-value">
+                  {Math.floor((staffingData.zones?.flatMap(z => [z.lead, ...z.members]).filter(Boolean).length || 0) * 0.7)}
+                </div>
+                <div className="metric-label">Solid Performers</div>
+              </div>
+
+              <div className="metric-card">
+                <div className="metric-header">
+                  <h3><i className="fas fa-exclamation-triangle"></i> Bottom 10%</h3>
+                </div>
+                <div className="metric-value">
+                  {Math.floor((staffingData.zones?.flatMap(z => [z.lead, ...z.members]).filter(Boolean).length || 0) * 0.1)}
+                </div>
+                <div className="metric-label">Need Improvement</div>
+              </div>
             </div>
           </div>
         )}

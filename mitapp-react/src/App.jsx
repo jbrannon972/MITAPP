@@ -15,6 +15,7 @@ import Damages from './pages/Damages';
 import InstallDpt from './pages/InstallDpt';
 import SlackMentions from './pages/SlackMentions';
 import Admin from './pages/Admin';
+import Reports from './pages/Reports';
 import './styles/styles.css';
 
 function App() {
@@ -94,6 +95,12 @@ function App() {
           <Route path="/admin" element={
             <ProtectedRoute requiredRoles={['Manager']}>
               <Admin />
+            </ProtectedRoute>
+          } />
+
+          <Route path="/reports" element={
+            <ProtectedRoute requiredRoles={['Manager', 'Auditor']}>
+              <Reports />
             </ProtectedRoute>
           } />
 

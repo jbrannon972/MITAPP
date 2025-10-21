@@ -75,6 +75,11 @@ const Navigation = () => {
       navItems.push({ path: '/slack', label: 'Slack', icon: 'fa-slack' });
     }
 
+    // Reports - only Manager and Auditor
+    if (role === 'Manager' || role === 'Auditor') {
+      navItems.push({ path: '/reports', label: 'Reports', icon: 'fa-file-alt' });
+    }
+
     return navItems;
   };
 
