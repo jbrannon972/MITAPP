@@ -12,6 +12,17 @@ const Fleet = () => {
     unassigned: 0,
     inRepairs: 0
   });
+  const [showModal, setShowModal] = useState(false);
+  const [editingVehicle, setEditingVehicle] = useState(null);
+  const [formData, setFormData] = useState({
+    truckNumber: '',
+    type: '',
+    assignedTo: '',
+    status: 'Available',
+    make: '',
+    model: '',
+    year: ''
+  });
 
   useEffect(() => {
     loadFleetData();
@@ -33,6 +44,78 @@ const Fleet = () => {
       console.error('Error loading fleet data:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const openAddModal = () => {
+    setEditingVehicle(null);
+    setFormData({
+      truckNumber: '',
+      type: '',
+      assignedTo: '',
+      status: 'Available',
+      make: '',
+      model: '',
+      year: ''
+    });
+    setShowModal(true);
+  };
+
+  const openEditModal = (vehicle) => {
+    setEditingVehicle(vehicle);
+    setFormData({
+      truckNumber: vehicle.truckNumber || '',
+      type: vehicle.type || '',
+      assignedTo: vehicle.assignedTo || '',
+      status: vehicle.status || 'Available',
+      make: vehicle.make || '',
+      model: vehicle.model || '',
+      year: vehicle.year || ''
+    });
+    setShowModal(true);
+  };
+
+  const closeModal = () => {
+    setShowModal(false);
+    setEditingVehicle(null);
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleSaveVehicle = async () => {
+    try {
+      if (!formData.truckNumber.trim()) {
+        alert('Truck number is required');
+        return;
+      }
+
+      const vehicleId = editingVehicle?.id || `truck_${Date.now()}`;
+      await firebaseService.saveFleetVehicle(vehicleId, formData);
+
+      alert(editingVehicle ? 'Vehicle updated successfully!' : 'Vehicle added successfully!');
+      closeModal();
+      loadFleetData();
+    } catch (error) {
+      console.error('Error saving vehicle:', error);
+      alert('Error saving vehicle. Please try again.');
+    }
+  };
+
+  const handleDeleteVehicle = async (vehicle) => {
+    if (!window.confirm(`Are you sure you want to delete truck ${vehicle.truckNumber}?`)) {
+      return;
+    }
+
+    try {
+      await firebaseService.deleteDocument('hou_fleet', vehicle.id);
+      alert('Vehicle deleted successfully!');
+      loadFleetData();
+    } catch (error) {
+      console.error('Error deleting vehicle:', error);
+      alert('Error deleting vehicle. Please try again.');
     }
   };
 
@@ -73,6 +156,9 @@ const Fleet = () => {
         <div className="card">
           <div className="card-header">
             <h3><i className="fas fa-truck"></i> Fleet Vehicles</h3>
+            <button className="btn btn-primary" onClick={openAddModal}>
+              <i className="fas fa-plus"></i> Add Vehicle
+            </button>
           </div>
           <div className="table-container">
             {fleetData.length > 0 ? (
@@ -85,6 +171,7 @@ const Fleet = () => {
                     <th>Status</th>
                     <th>Make/Model</th>
                     <th>Year</th>
+                    <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -100,6 +187,21 @@ const Fleet = () => {
                       </td>
                       <td>{vehicle.make && vehicle.model ? `${vehicle.make} ${vehicle.model}` : 'N/A'}</td>
                       <td>{vehicle.year || 'N/A'}</td>
+                      <td>
+                        <button
+                          className="btn btn-secondary btn-small"
+                          onClick={() => openEditModal(vehicle)}
+                          style={{ marginRight: '8px' }}
+                        >
+                          <i className="fas fa-edit"></i> Edit
+                        </button>
+                        <button
+                          className="btn btn-danger btn-small"
+                          onClick={() => handleDeleteVehicle(vehicle)}
+                        >
+                          <i className="fas fa-trash"></i> Delete
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -109,6 +211,123 @@ const Fleet = () => {
             )}
           </div>
         </div>
+
+        {/* Add/Edit Vehicle Modal */}
+        {showModal && (
+          <div className="modal-overlay active" onClick={closeModal}>
+            <div className="modal" onClick={(e) => e.stopPropagation()}>
+              <div className="modal-header">
+                <h3>
+                  <i className="fas fa-truck"></i> {editingVehicle ? 'Edit Vehicle' : 'Add Vehicle'}
+                </h3>
+                <button className="modal-close" onClick={closeModal}>
+                  <i className="fas fa-times"></i>
+                </button>
+              </div>
+              <div className="modal-body">
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                  <div className="form-group">
+                    <label htmlFor="truckNumber">Truck Number <span style={{ color: 'red' }}>*</span></label>
+                    <input
+                      type="text"
+                      id="truckNumber"
+                      name="truckNumber"
+                      className="form-control"
+                      value={formData.truckNumber}
+                      onChange={handleInputChange}
+                      required
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label htmlFor="type">Type</label>
+                    <select
+                      id="type"
+                      name="type"
+                      className="form-control"
+                      value={formData.type}
+                      onChange={handleInputChange}
+                    >
+                      <option value="">Select Type</option>
+                      <option value="Van">Van</option>
+                      <option value="Truck">Truck</option>
+                      <option value="Service Vehicle">Service Vehicle</option>
+                      <option value="Utility">Utility</option>
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label htmlFor="make">Make</label>
+                    <input
+                      type="text"
+                      id="make"
+                      name="make"
+                      className="form-control"
+                      value={formData.make}
+                      onChange={handleInputChange}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label htmlFor="model">Model</label>
+                    <input
+                      type="text"
+                      id="model"
+                      name="model"
+                      className="form-control"
+                      value={formData.model}
+                      onChange={handleInputChange}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label htmlFor="year">Year</label>
+                    <input
+                      type="text"
+                      id="year"
+                      name="year"
+                      className="form-control"
+                      value={formData.year}
+                      onChange={handleInputChange}
+                      placeholder="e.g., 2020"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label htmlFor="status">Status</label>
+                    <select
+                      id="status"
+                      name="status"
+                      className="form-control"
+                      value={formData.status}
+                      onChange={handleInputChange}
+                    >
+                      <option value="Available">Available</option>
+                      <option value="In Use">In Use</option>
+                      <option value="In Repairs">In Repairs</option>
+                      <option value="Out of Service">Out of Service</option>
+                    </select>
+                  </div>
+                  <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                    <label htmlFor="assignedTo">Assigned To</label>
+                    <input
+                      type="text"
+                      id="assignedTo"
+                      name="assignedTo"
+                      className="form-control"
+                      value={formData.assignedTo}
+                      onChange={handleInputChange}
+                      placeholder="Technician name"
+                    />
+                  </div>
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button className="btn btn-secondary" onClick={closeModal}>
+                  Cancel
+                </button>
+                <button className="btn btn-primary" onClick={handleSaveVehicle}>
+                  <i className="fas fa-save"></i> {editingVehicle ? 'Update' : 'Add'} Vehicle
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </Layout>
   );
