@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Layout from '../components/common/Layout';
 import { useAuth } from '../contexts/AuthContext';
 import { useData } from '../contexts/DataContext';
@@ -9,34 +9,108 @@ const Team = () => {
   const { currentUser } = useAuth();
   const { staffingData, saveStaffingData, loading } = useData();
   const [activeView, setActiveView] = useState('team-view');
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [showZoneModal, setShowZoneModal] = useState(false);
+  const [editingZone, setEditingZone] = useState(null);
+  const [zoneFormData, setZoneFormData] = useState({ name: '', leadName: '' });
 
   const canManage = currentUser && ['Manager', 'Supervisor', 'MIT Lead'].includes(currentUser.role);
 
-  const handleAddZone = () => {
-    if (!canManage) return;
+  const openAddZoneModal = () => {
+    setEditingZone(null);
+    setZoneFormData({ name: '', leadName: '' });
+    setShowZoneModal(true);
+  };
 
-    const zoneName = prompt('Enter zone name:');
-    if (!zoneName) return;
+  const openEditZoneModal = (zone, zoneIndex) => {
+    setEditingZone({ zone, zoneIndex });
+    setZoneFormData({
+      name: zone.name || '',
+      leadName: zone.lead?.name || ''
+    });
+    setShowZoneModal(true);
+  };
 
-    const newZone = {
-      name: zoneName,
-      lead: null,
-      members: []
-    };
+  const closeZoneModal = () => {
+    setShowZoneModal(false);
+    setEditingZone(null);
+  };
+
+  const handleZoneFormChange = (e) => {
+    const { name, value } = e.target;
+    setZoneFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleSaveZone = async () => {
+    if (!canManage || !zoneFormData.name.trim()) {
+      alert('Zone name is required');
+      return;
+    }
+
+    const updatedZones = [...(staffingData.zones || [])];
+
+    if (editingZone) {
+      const zone = updatedZones[editingZone.zoneIndex];
+      zone.name = zoneFormData.name;
+      if (zoneFormData.leadName && !zone.lead) {
+        zone.lead = {
+          id: 'lead_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+          name: zoneFormData.leadName,
+          role: 'MIT Lead'
+        };
+      } else if (zoneFormData.leadName && zone.lead) {
+        zone.lead.name = zoneFormData.leadName;
+      }
+    } else {
+      const newZone = {
+        name: zoneFormData.name,
+        lead: zoneFormData.leadName ? {
+          id: 'lead_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+          name: zoneFormData.leadName,
+          role: 'MIT Lead'
+        } : null,
+        members: []
+      };
+      updatedZones.push(newZone);
+    }
 
     const updatedData = {
       ...staffingData,
-      zones: [...(staffingData.zones || []), newZone]
+      zones: updatedZones
     };
 
-    saveStaffingData(updatedData);
+    await saveStaffingData(updatedData);
+    closeZoneModal();
+  };
+
+  const handleDeleteZone = async (zoneIndex) => {
+    if (!canManage) return;
+
+    const zone = staffingData.zones[zoneIndex];
+    const memberCount = zone.members.length + (zone.lead ? 1 : 0);
+
+    if (memberCount > 0) {
+      if (!window.confirm('Zone "' + zone.name + '" has ' + memberCount + ' member(s). Are you sure you want to delete it? Members will be removed.')) {
+        return;
+      }
+    } else {
+      if (!window.confirm('Delete zone "' + zone.name + '"?')) {
+        return;
+      }
+    }
+
+    const updatedZones = staffingData.zones.filter((_, idx) => idx !== zoneIndex);
+
+    const updatedData = {
+      ...staffingData,
+      zones: updatedZones
+    };
+
+    await saveStaffingData(updatedData);
   };
 
   const handleMovePersonToZone = async (personId, newZoneIndex) => {
     if (!canManage || !staffingData) return;
 
-    // Find person and original zone
     let person = null;
     let originalZoneIndex = -1;
     let originalMemberIndex = -1;
@@ -65,14 +139,11 @@ const Team = () => {
     const originalZone = updatedZones[originalZoneIndex];
     const newZone = updatedZones[newZoneIndex];
 
-    // Move logic
     if (person.role === 'MIT Lead') {
-      // Swap leads
       const targetLead = newZone.lead;
       newZone.lead = person;
       originalZone.lead = targetLead;
     } else {
-      // Move member
       originalZone.members.splice(originalMemberIndex, 1);
       newZone.members.push(person);
     }
@@ -103,7 +174,7 @@ const Team = () => {
     if (!canManage) return;
 
     const newMember = {
-      id: `person_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      id: 'person_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
       name: memberData.name,
       role: memberData.role
     };
@@ -136,28 +207,21 @@ const Team = () => {
           <div className="tab-controls">
             <div className="sub-nav">
               <button
-                className={`sub-nav-btn ${activeView === 'team-view' ? 'active' : ''}`}
+                className={'sub-nav-btn ' + (activeView === 'team-view' ? 'active' : '')}
                 onClick={() => setActiveView('team-view')}
               >
                 <i className="fas fa-users"></i> Team View
               </button>
               <button
-                className={`sub-nav-btn ${activeView === 'leaderboard' ? 'active' : ''}`}
-                onClick={() => setActiveView('leaderboard')}
+                className={'sub-nav-btn ' + (activeView === 'roster' ? 'active' : '')}
+                onClick={() => setActiveView('roster')}
               >
-                <i className="fas fa-trophy"></i> Driver Leaderboard
-              </button>
-              <button
-                className={`sub-nav-btn ${activeView === 'evaluation' ? 'active' : ''}`}
-                onClick={() => setActiveView('evaluation')}
-              >
-                <i className="fas fa-clipboard-check"></i> 20/70/10
+                <i className="fas fa-list"></i> Full Roster
               </button>
             </div>
           </div>
         </div>
 
-        {/* Team View */}
         {activeView === 'team-view' && (
           <div className="team-view active">
             <div className="team-overview">
@@ -175,21 +239,20 @@ const Team = () => {
                   <span className="stat-number">{getDemoTechCount(staffingData)}</span>
                 </div>
                 <div className="stat-card">
-                  <h3>MIT Leads</h3>
+                  <h3>Total Zones</h3>
                   <span className="stat-number">{staffingData.zones?.length || 0}</span>
                 </div>
               </div>
 
               {canManage && (
                 <div className="team-actions">
-                  <button className="btn btn-primary" onClick={handleAddZone}>
+                  <button className="btn btn-primary" onClick={openAddZoneModal}>
                     <i className="fas fa-plus"></i> Add New Zone
                   </button>
                 </div>
               )}
 
               <div className="zones-container">
-                {/* Management Zone */}
                 {staffingData.management && staffingData.management.length > 0 && (
                   <div className="zone-card">
                     <div className="zone-header">
@@ -208,193 +271,116 @@ const Team = () => {
                   </div>
                 )}
 
-                {/* Regular Zones */}
                 {staffingData.zones && staffingData.zones.map((zone, zoneIndex) => (
-                  <ZoneCard
-                    key={zoneIndex}
-                    zone={zone}
-                    zoneIndex={zoneIndex}
-                    canManage={canManage}
-                    currentUserRole={currentUser?.role}
-                    onMovePersonToZone={handleMovePersonToZone}
-                    onRemoveMember={handleRemoveMember}
-                    onAddMember={handleAddMember}
-                  />
+                  <div key={zoneIndex} className="zone-wrapper">
+                    <ZoneCard
+                      zone={zone}
+                      zoneIndex={zoneIndex}
+                      canManage={canManage}
+                      currentUserRole={currentUser?.role}
+                      onMovePersonToZone={handleMovePersonToZone}
+                      onRemoveMember={handleRemoveMember}
+                      onAddMember={handleAddMember}
+                    />
+                    {canManage && (
+                      <div className="zone-actions" style={{ marginTop: '12px', display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                        <button
+                          className="btn btn-secondary btn-small"
+                          onClick={() => openEditZoneModal(zone, zoneIndex)}
+                        >
+                          <i className="fas fa-edit"></i> Edit Zone
+                        </button>
+                        <button
+                          className="btn btn-danger btn-small"
+                          onClick={() => handleDeleteZone(zoneIndex)}
+                        >
+                          <i className="fas fa-trash"></i> Delete Zone
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 ))}
+
+                {(!staffingData.zones || staffingData.zones.length === 0) && (
+                  <div className="card" style={{ padding: '40px', textAlign: 'center' }}>
+                    <p style={{ color: '#6b7280', marginBottom: '16px' }}>No zones created yet.</p>
+                    {canManage && (
+                      <button className="btn btn-primary" onClick={openAddZoneModal}>
+                        <i className="fas fa-plus"></i> Create First Zone
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </div>
         )}
 
-        {/* Leaderboard View */}
-        {activeView === 'leaderboard' && (
+        {activeView === 'roster' && (
           <div className="team-view active">
             <div className="card">
               <div className="card-header">
-                <h3><i className="fas fa-trophy"></i> Driver Safety Leaderboard</h3>
-                <span style={{ fontSize: '14px', color: '#6b7280' }}>
-                  Lower scores are better. Monitored events include: speeding, hard braking, following too close, etc.
-                </span>
+                <h3><i className="fas fa-list"></i> Complete Team Roster</h3>
               </div>
               <div className="table-container">
                 <table className="data-table">
                   <thead>
                     <tr>
-                      <th>Rank</th>
-                      <th>Driver Name</th>
+                      <th>Name</th>
+                      <th>Role</th>
                       <th>Zone</th>
-                      <th>Safety Score</th>
-                      <th>Events This Month</th>
-                      <th>Status</th>
+                      <th>Position</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {staffingData.zones?.flatMap((zone, zoneIdx) =>
-                      [
-                        zone.lead ? { ...zone.lead, zoneName: zone.name } : null,
-                        ...zone.members.map(member => ({ ...member, zoneName: zone.name }))
-                      ].filter(Boolean)
-                    ).map((person, index) => (
-                      <tr key={person.id}>
+                    {staffingData.management && staffingData.management.map((member, idx) => (
+                      <tr key={'mgmt-' + idx}>
+                        <td><strong>{member.name}</strong></td>
+                        <td>{member.role}</td>
+                        <td>Management</td>
                         <td>
-                          <strong>
-                            {index + 1}
-                            {index === 0 && <i className="fas fa-trophy" style={{ marginLeft: '8px', color: '#fbbf24' }}></i>}
-                            {index === 1 && <i className="fas fa-medal" style={{ marginLeft: '8px', color: '#9ca3af' }}></i>}
-                            {index === 2 && <i className="fas fa-medal" style={{ marginLeft: '8px', color: '#c2410c' }}></i>}
-                          </strong>
-                        </td>
-                        <td>{person.name}</td>
-                        <td>{person.zoneName}</td>
-                        <td>
-                          <span className={`status-badge ${
-                            (index % 3 === 0) ? 'status-available' :
-                            (index % 3 === 1) ? 'status-in-use' :
-                            'status-in-repairs'
-                          }`}>
-                            {index % 3 === 0 ? 'Excellent' : index % 3 === 1 ? 'Good' : 'Needs Improvement'}
-                          </span>
-                        </td>
-                        <td>{Math.floor(Math.random() * 10)}</td>
-                        <td>
-                          <button className="btn btn-secondary btn-small" disabled title="Coming soon">
-                            <i className="fas fa-chart-line"></i> Details
-                          </button>
+                          <span className="status-badge status-available">Leadership</span>
                         </td>
                       </tr>
                     ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
 
-            <div className="card" style={{ marginTop: '24px' }}>
-              <div className="card-header">
-                <h3><i className="fas fa-exclamation-circle"></i> Event Key</h3>
-              </div>
-              <div style={{ padding: '20px' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '12px' }}>
-                  <div><strong>Rolling Stop:</strong> 3 pts</div>
-                  <div><strong>Following Too Close:</strong> 3 pts</div>
-                  <div><strong>Hard Brake:</strong> 3 pts</div>
-                  <div><strong>Speeding Above 15mph:</strong> 5 pts</div>
-                  <div><strong>No Seatbelt:</strong> 10 pts</div>
-                  <div><strong>Critical Distance:</strong> 10 pts</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+                    {staffingData.zones && staffingData.zones.flatMap((zone, zoneIdx) => {
+                      const rows = [];
 
-        {/* Evaluation View */}
-        {activeView === 'evaluation' && (
-          <div className="team-view active">
-            <div className="card" style={{ marginBottom: '24px', backgroundColor: '#eff6ff', border: '1px solid #3b82f6' }}>
-              <div className="card-header" style={{ backgroundColor: '#dbeafe' }}>
-                <h3><i className="fas fa-info-circle"></i> About the 20/70/10 System</h3>
-              </div>
-              <div style={{ padding: '20px' }}>
-                <p style={{ marginBottom: '12px' }}>
-                  The 20/70/10 performance management system categorizes employees based on their performance:
-                </p>
-                <ul style={{ marginLeft: '20px', lineHeight: '1.8' }}>
-                  <li><strong>Top 20%:</strong> High performers who exceed expectations consistently</li>
-                  <li><strong>Middle 70%:</strong> Solid performers who meet expectations</li>
-                  <li><strong>Bottom 10%:</strong> Underperformers who need improvement plans</li>
-                </ul>
-              </div>
-            </div>
+                      if (zone.lead) {
+                        rows.push(
+                          <tr key={'zone-' + zoneIdx + '-lead'}>
+                            <td><strong>{zone.lead.name}</strong></td>
+                            <td>{zone.lead.role}</td>
+                            <td>{zone.name}</td>
+                            <td>
+                              <span className="status-badge status-in-use">Lead</span>
+                            </td>
+                          </tr>
+                        );
+                      }
 
-            <div className="card">
-              <div className="card-header">
-                <h3><i className="fas fa-clipboard-check"></i> Employee Evaluations</h3>
-                <div className="tab-controls">
-                  <button className="btn btn-primary" disabled title="Coming soon">
-                    <i className="fas fa-plus"></i> Add Evaluation
-                  </button>
-                </div>
-              </div>
-              <div className="table-container">
-                <table className="data-table">
-                  <thead>
-                    <tr>
-                      <th>Employee</th>
-                      <th>Zone</th>
-                      <th>Category</th>
-                      <th>Avg. Score</th>
-                      <th>Performance Plan</th>
-                      <th>Last Evaluated</th>
-                      <th style={{ textAlign: 'right' }}>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {staffingData.zones?.flatMap((zone, zoneIdx) =>
-                      [
-                        zone.lead ? { ...zone.lead, zoneName: zone.name } : null,
-                        ...zone.members.map(member => ({ ...member, zoneName: zone.name }))
-                      ].filter(Boolean)
-                    ).map((person, index) => {
-                      const category = index % 10 < 2 ? '20' : index % 10 < 9 ? '70' : '10';
-                      const avgScore = category === '20' ? 92 + Math.floor(Math.random() * 8) :
-                                     category === '70' ? 75 + Math.floor(Math.random() * 15) :
-                                     55 + Math.floor(Math.random() * 15);
-                      const daysAgo = Math.floor(Math.random() * 90);
+                      zone.members.forEach((member, memberIdx) => {
+                        rows.push(
+                          <tr key={'zone-' + zoneIdx + '-member-' + memberIdx}>
+                            <td>{member.name}</td>
+                            <td>{member.role}</td>
+                            <td>{zone.name}</td>
+                            <td>Member</td>
+                          </tr>
+                        );
+                      });
 
-                      return (
-                        <tr key={person.id}>
-                          <td><strong>{person.name}</strong></td>
-                          <td>{person.zoneName}</td>
-                          <td>
-                            <span className={`status-badge ${
-                              category === '20' ? 'status-available' :
-                              category === '70' ? 'status-in-use' :
-                              'status-in-repairs'
-                            }`}>
-                              Top {category}%
-                            </span>
-                          </td>
-                          <td>
-                            <strong style={{
-                              color: avgScore >= 90 ? '#10b981' : avgScore >= 75 ? '#3b82f6' : '#ef4444'
-                            }}>
-                              {avgScore}%
-                            </strong>
-                          </td>
-                          <td>{category === '10' ? 'Performance Improvement Plan' : category === '20' ? 'Growth & Leadership' : 'Standard Development'}</td>
-                          <td>{daysAgo === 0 ? 'Today' : `${daysAgo} days ago`}</td>
-                          <td style={{ textAlign: 'right', display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-                            <button className="btn btn-secondary btn-small" disabled title="Coming soon">
-                              <i className="fas fa-eye"></i> View
-                            </button>
-                            {canManage && (
-                              <button className="btn btn-primary btn-small" disabled title="Coming soon">
-                                <i className="fas fa-edit"></i> Edit
-                              </button>
-                            )}
-                          </td>
-                        </tr>
-                      );
+                      return rows;
                     })}
+
+                    {getTotalStaff(staffingData) === 0 && (
+                      <tr>
+                        <td colSpan="4" style={{ textAlign: 'center', padding: '20px', color: '#6b7280' }}>
+                          No team members found
+                        </td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -403,32 +389,95 @@ const Team = () => {
             <div className="dashboard-grid" style={{ marginTop: '24px' }}>
               <div className="metric-card">
                 <div className="metric-header">
-                  <h3><i className="fas fa-star"></i> Top 20%</h3>
+                  <h3><i className="fas fa-building"></i> Management</h3>
                 </div>
                 <div className="metric-value">
-                  {Math.floor((staffingData.zones?.flatMap(z => [z.lead, ...z.members]).filter(Boolean).length || 0) * 0.2)}
+                  {staffingData.management?.length || 0}
                 </div>
-                <div className="metric-label">High Performers</div>
+                <div className="metric-label">Leadership Team</div>
               </div>
 
               <div className="metric-card">
                 <div className="metric-header">
-                  <h3><i className="fas fa-users"></i> Middle 70%</h3>
+                  <h3><i className="fas fa-star"></i> Zone Leads</h3>
                 </div>
                 <div className="metric-value">
-                  {Math.floor((staffingData.zones?.flatMap(z => [z.lead, ...z.members]).filter(Boolean).length || 0) * 0.7)}
+                  {staffingData.zones?.filter(z => z.lead).length || 0}
                 </div>
-                <div className="metric-label">Solid Performers</div>
+                <div className="metric-label">MIT Leads</div>
               </div>
 
               <div className="metric-card">
                 <div className="metric-header">
-                  <h3><i className="fas fa-exclamation-triangle"></i> Bottom 10%</h3>
+                  <h3><i className="fas fa-users"></i> Technicians</h3>
                 </div>
                 <div className="metric-value">
-                  {Math.floor((staffingData.zones?.flatMap(z => [z.lead, ...z.members]).filter(Boolean).length || 0) * 0.1)}
+                  {staffingData.zones?.reduce((acc, z) => acc + z.members.length, 0) || 0}
                 </div>
-                <div className="metric-label">Need Improvement</div>
+                <div className="metric-label">Field Team</div>
+              </div>
+
+              <div className="metric-card">
+                <div className="metric-header">
+                  <h3><i className="fas fa-map-marked-alt"></i> Active Zones</h3>
+                </div>
+                <div className="metric-value">
+                  {staffingData.zones?.length || 0}
+                </div>
+                <div className="metric-label">Service Areas</div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {showZoneModal && (
+          <div className="modal-overlay active" onClick={closeZoneModal}>
+            <div className="modal" onClick={(e) => e.stopPropagation()}>
+              <div className="modal-header">
+                <h3>
+                  <i className="fas fa-map-marked-alt"></i> {editingZone ? 'Edit Zone' : 'Add New Zone'}
+                </h3>
+                <button className="modal-close" onClick={closeZoneModal}>
+                  <i className="fas fa-times"></i>
+                </button>
+              </div>
+              <div className="modal-body">
+                <div className="form-group">
+                  <label htmlFor="zoneName">Zone Name <span style={{ color: 'red' }}>*</span></label>
+                  <input
+                    type="text"
+                    id="zoneName"
+                    name="name"
+                    className="form-control"
+                    value={zoneFormData.name}
+                    onChange={handleZoneFormChange}
+                    placeholder="e.g., North Houston, West Side, etc."
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="leadName">Zone Lead Name (Optional)</label>
+                  <input
+                    type="text"
+                    id="leadName"
+                    name="leadName"
+                    className="form-control"
+                    value={zoneFormData.leadName}
+                    onChange={handleZoneFormChange}
+                    placeholder="MIT Lead name"
+                  />
+                  <small style={{ color: '#6b7280', fontSize: '12px' }}>
+                    You can add or change the lead later
+                  </small>
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button className="btn btn-secondary" onClick={closeZoneModal}>
+                  Cancel
+                </button>
+                <button className="btn btn-primary" onClick={handleSaveZone}>
+                  <i className="fas fa-save"></i> {editingZone ? 'Update' : 'Create'} Zone
+                </button>
               </div>
             </div>
           </div>
