@@ -201,6 +201,28 @@ class FirebaseService {
     }
   }
 
+  // Second shift reports
+  async getSecondShiftReportByDate(dateString) {
+    try {
+      const docRef = doc(db, 'second_shift_reports', dateString);
+      const docSnap = await getDoc(docRef);
+      return docSnap.exists() ? docSnap.data() : null;
+    } catch (error) {
+      console.error('Error getting second shift report:', error);
+      return null;
+    }
+  }
+
+  async saveSecondShiftReport(dateString, data) {
+    try {
+      const docRef = doc(db, 'second_shift_reports', dateString);
+      await setDoc(docRef, data);
+    } catch (error) {
+      console.error('Error saving second shift report:', error);
+      throw error;
+    }
+  }
+
   // Fleet management
   async loadFleetData() {
     try {

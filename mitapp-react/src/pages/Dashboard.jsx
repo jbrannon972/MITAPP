@@ -18,7 +18,8 @@ const Dashboard = () => {
     staffingInfo: [],
     atAGlance: { techsOnRoute: 0, subTeams: 0, newJobsCapacity: 0, inefficientDemoHours: 0 },
     dailyHoursData: null,
-    warehouseData: { vehiclesInRepair: [], unassignedVehicles: [], techsOffToday: [] }
+    warehouseData: { vehiclesInRepair: [], unassignedVehicles: [], techsOffToday: [] },
+    secondShiftReport: null
   });
 
   useEffect(() => {
@@ -62,6 +63,12 @@ const Dashboard = () => {
       // Get warehouse data (if fleet data available)
       const warehouseData = await getWarehouseData(schedule);
 
+      // Get yesterday's second shift report
+      const yesterday = new Date(date);
+      yesterday.setDate(yesterday.getDate() - 1);
+      const yesterdayString = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
+      const secondShiftReport = await firebaseService.getSecondShiftReportByDate(yesterdayString);
+
       setDashboardData({
         jobStats,
         staffingInfo,
@@ -73,7 +80,8 @@ const Dashboard = () => {
           inefficientDemoHours: dailyHours.inefficientDemoHours || 0
         },
         dailyHoursData: dailyHours,
-        warehouseData
+        warehouseData,
+        secondShiftReport: { report: secondShiftReport, date: yesterday }
       });
     } catch (error) {
       console.error('Error loading dashboard data:', error);
@@ -272,6 +280,74 @@ const Dashboard = () => {
                 </div>
               </div>
             </div>
+
+            {/* Second Shift Report */}
+            {dashboardData.secondShiftReport && (
+              <div className="card second-shift-summary" style={{ marginTop: '24px' }}>
+                <div className="card-header">
+                  <h3><i className="fas fa-moon"></i> Second Shift Summary for {dashboardData.secondShiftReport.date?.toLocaleDateString()}</h3>
+                  {dashboardData.secondShiftReport.report && <span>By: {dashboardData.secondShiftReport.report.submittedBy}</span>}
+                </div>
+                {dashboardData.secondShiftReport.report ? (
+                  <div className="summary-grid">
+                    <div>
+                      <h4>Jobs to Know About</h4>
+                      <ul>
+                        {dashboardData.secondShiftReport.report.nuances && dashboardData.secondShiftReport.report.nuances.length > 0 ? (
+                          dashboardData.secondShiftReport.report.nuances.map((job, idx) => (
+                            <li key={idx}><strong>{job.jobName}:</strong> {job.notes}</li>
+                          ))
+                        ) : (
+                          <li>None</li>
+                        )}
+                      </ul>
+                    </div>
+                    <div>
+                      <h4>Cancelled/Rescheduled</h4>
+                      <ul>
+                        {dashboardData.secondShiftReport.report.cancelledJobs && dashboardData.secondShiftReport.report.cancelledJobs.length > 0 ? (
+                          dashboardData.secondShiftReport.report.cancelledJobs.map((job, idx) => (
+                            <li key={idx}><strong>{job.jobName}:</strong> {job.notes}</li>
+                          ))
+                        ) : (
+                          <li>None</li>
+                        )}
+                      </ul>
+                    </div>
+                    <div>
+                      <h4>After Hours Jobs</h4>
+                      <ul>
+                        {dashboardData.secondShiftReport.report.afterHoursJobs && dashboardData.secondShiftReport.report.afterHoursJobs.length > 0 ? (
+                          dashboardData.secondShiftReport.report.afterHoursJobs.map((job, idx) => (
+                            <li key={idx}><strong>{job.jobName}:</strong> {job.reason} <em>(Who: {job.who})</em></li>
+                          ))
+                        ) : (
+                          <li>None</li>
+                        )}
+                      </ul>
+                    </div>
+                    <div>
+                      <h4>Tech Shoutouts</h4>
+                      <p>{dashboardData.secondShiftReport.report.techShoutouts || 'None'}</p>
+                    </div>
+                    <div>
+                      <h4>Tech Concerns</h4>
+                      <p>{dashboardData.secondShiftReport.report.techConcerns || 'None'}</p>
+                    </div>
+                    <div>
+                      <h4>Dept. Shoutouts</h4>
+                      <p>{dashboardData.secondShiftReport.report.deptShoutouts || 'None'}</p>
+                    </div>
+                    <div>
+                      <h4>Dept. Concerns</h4>
+                      <p>{dashboardData.secondShiftReport.report.deptConcerns || 'None'}</p>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="no-entries">No report was submitted.</p>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
