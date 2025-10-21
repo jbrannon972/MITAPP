@@ -92,6 +92,19 @@ export const getTotalStaff = (staffingData) => {
   return total;
 };
 
+export const getDemoTechCount = (staffingData) => {
+  if (!staffingData || !staffingData.zones) return 0;
+  let count = 0;
+  staffingData.zones.forEach(zone => {
+    zone.members.forEach(member => {
+      if (member.role === 'Demo Tech') {
+        count++;
+      }
+    });
+  });
+  return count;
+};
+
 export const getAllTechnicians = (staffingData) => {
   if (!staffingData || !staffingData.zones) return [];
 
