@@ -8,8 +8,10 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "deploy": "npm run build && cd .. && firebase deploy --only hosting",
-    "deploy:gh-pages": "npm run build && gh-pages -d dist"
+    "deploy": "npm run build && netlify deploy --prod --dir=dist",
+    "deploy:firebase": "npm run build && cd .. && firebase deploy --only hosting",
+    "deploy:gh-pages": "npm run build && gh-pages -d dist",
+    "deploy:netlify": "npm run build && netlify deploy --prod --dir=dist"
   },
   "dependencies": {
     "chart.js": "^4.5.1",
@@ -32,6 +34,7 @@
     "firebase-tools": "^14.20.0",
     "gh-pages": "^6.3.0",
     "globals": "^16.4.0",
+    "netlify-cli": "^23.9.1",
     "vite": "^7.1.7"
   }
 }
