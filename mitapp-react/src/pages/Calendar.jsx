@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useData } from '../contexts/DataContext';
 import firebaseService from '../services/firebaseService';
 import { getCalculatedScheduleForDay, getHolidayName, formatNameCompact } from '../utils/calendarManager';
+import '../styles/calendar-styles.css';
 
 const Calendar = () => {
   const { currentUser } = useAuth();
@@ -270,65 +271,47 @@ const Calendar = () => {
 
     return (
       <div className="modal-overlay" onClick={closeModal} style={{ display: 'flex' }}>
-        <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '600px', maxHeight: '80vh', overflow: 'auto' }}>
+        <div className="modal-content" onClick={(e) => e.stopPropagation()}>
           <span className="close" onClick={closeModal}>&times;</span>
           <h2>{dateString}</h2>
 
           {isCalendarAdmin && (
-            <div style={{ marginBottom: '16px', padding: '12px', backgroundColor: '#dbeafe', borderRadius: '8px' }}>
-              <p style={{ margin: 0, fontSize: '14px' }}>
+            <div className="card" style={{ marginBottom: '16px', backgroundColor: '#dbeafe' }}>
+              <div style={{ padding: '12px' }}>
                 <i className="fas fa-edit"></i> Admin Mode: Click on staff members to edit their status, or modify notes below.
-              </p>
+              </div>
             </div>
           )}
 
           <div className="view-content">
-            <h3><i className="fas fa-sticky-note"></i> Notes:</h3>
-            <div className="view-notes" style={{
-              padding: '12px',
-              backgroundColor: '#f3f4f6',
-              borderRadius: '8px',
-              marginBottom: '20px',
-              minHeight: '60px'
-            }}>
+            <h3>Notes:</h3>
+            <div className="view-notes">
               {schedule.notes || 'No notes for this day.'}
             </div>
 
-            <h3><i className="fas fa-users"></i> {primaryHeaderText}</h3>
+            <h3>{primaryHeaderText}</h3>
             <div className="view-staff-list">
               {primaryList.length > 0 ? (
                 primaryList.map((s, idx) => (
-                  <div key={idx} className={`view-staff-item status-${s.status}`} style={{
-                    padding: '8px 12px',
-                    marginBottom: '8px',
-                    borderRadius: '6px',
-                    backgroundColor: '#f9fafb',
-                    borderLeft: '4px solid #3b82f6'
-                  }}>
+                  <div key={idx} className={`view-staff-item status-${s.status}`}>
                     <strong>{s.name}:</strong> {formatStatus(s)}
                   </div>
                 ))
               ) : (
-                <p style={{ color: '#6b7280', fontStyle: 'italic' }}>None</p>
+                <p className="no-entries">None</p>
               )}
             </div>
 
-            <h3 style={{ marginTop: '24px' }}><i className="fas fa-user-check"></i> {secondaryHeaderText}</h3>
+            <h3>{secondaryHeaderText}</h3>
             <div className="view-staff-list">
               {secondaryList.length > 0 ? (
                 secondaryList.map((s, idx) => (
-                  <div key={idx} className={`view-staff-item status-${s.status}`} style={{
-                    padding: '8px 12px',
-                    marginBottom: '8px',
-                    borderRadius: '6px',
-                    backgroundColor: '#f9fafb',
-                    borderLeft: '4px solid #10b981'
-                  }}>
+                  <div key={idx} className={`view-staff-item status-${s.status}`}>
                     <strong>{s.name}:</strong> {formatStatus(s)}
                   </div>
                 ))
               ) : (
-                <p style={{ color: '#6b7280', fontStyle: 'italic' }}>None</p>
+                <p className="no-entries">None</p>
               )}
             </div>
 
@@ -352,9 +335,8 @@ const Calendar = () => {
     return (
       <Layout>
         <div className="tab-content active">
-          <div style={{ padding: '40px', textAlign: 'center' }}>
-            <i className="fas fa-spinner fa-spin" style={{ fontSize: '48px', color: '#3b82f6', marginBottom: '16px' }}></i>
-            <p>Loading calendar...</p>
+          <div className="loading">
+            <i className="fas fa-spinner fa-spin"></i> Loading calendar...
           </div>
         </div>
       </Layout>
@@ -365,9 +347,9 @@ const Calendar = () => {
     <Layout>
       <div className="tab-content active">
         {/* Top Action Buttons */}
-        <div className="tab-header" style={{ marginBottom: '16px' }}>
+        <div className="tab-header">
           <div className="tab-controls">
-            <div className="calendar-actions" style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+            <div className="calendar-actions">
               <button
                 className="btn btn-success"
                 onClick={handleSyncWithRippling}
@@ -397,7 +379,7 @@ const Calendar = () => {
                 <i className="fas fa-print"></i> Print
               </button>
             </div>
-            <div className="calendar-auth-container" style={{ display: 'flex', gap: '12px' }}>
+            <div className="calendar-auth-container">
               {!isCalendarAdmin ? (
                 <button
                   className="btn btn-secondary"
@@ -456,15 +438,11 @@ const Calendar = () => {
 
         {/* Admin Status Indicator */}
         {isCalendarAdmin && (
-          <div style={{
-            padding: '12px 16px',
-            backgroundColor: '#dcfce7',
-            borderLeft: '4px solid #10b981',
-            marginBottom: '16px',
-            borderRadius: '8px'
-          }}>
-            <i className="fas fa-user-shield" style={{ color: '#10b981', marginRight: '8px' }}></i>
-            <strong>Calendar Admin Mode Active</strong> - Click on any day to edit schedules
+          <div className="card" style={{ marginBottom: '16px', backgroundColor: '#dcfce7', borderLeft: '4px solid #10b981' }}>
+            <div style={{ padding: '12px 16px' }}>
+              <i className="fas fa-user-shield" style={{ color: '#10b981', marginRight: '8px' }}></i>
+              <strong>Calendar Admin Mode Active</strong> - Click on any day to edit schedules
+            </div>
           </div>
         )}
 
@@ -472,25 +450,13 @@ const Calendar = () => {
         <div id="calendarContainer" className="calendar-container">
           {currentView === 'month' && renderMonthView()}
           {currentView === 'week' && (
-            <div className="card">
-              <div className="card-header">
-                <h3><i className="fas fa-calendar-week"></i> Week View</h3>
-              </div>
-              <div style={{ padding: '40px', textAlign: 'center', color: '#6b7280' }}>
-                <i className="fas fa-calendar-week" style={{ fontSize: '64px', marginBottom: '16px', opacity: 0.3 }}></i>
-                <p>Week view coming soon - will show detailed daily schedules for the selected week.</p>
-              </div>
+            <div className="week-view-container">
+              <p className="no-entries">Week view coming soon - will show detailed daily schedules for the selected week.</p>
             </div>
           )}
           {currentView === 'day' && (
-            <div className="card">
-              <div className="card-header">
-                <h3><i className="fas fa-calendar-day"></i> Day View</h3>
-              </div>
-              <div style={{ padding: '40px', textAlign: 'center', color: '#6b7280' }}>
-                <i className="fas fa-calendar-day" style={{ fontSize: '64px', marginBottom: '16px', opacity: 0.3 }}></i>
-                <p>Day view coming soon - will show hourly breakdown and detailed staff assignments.</p>
-              </div>
+            <div className="day-view-container">
+              <p className="no-entries">Day view coming soon - will show hourly breakdown and detailed staff assignments.</p>
             </div>
           )}
         </div>
@@ -500,33 +466,25 @@ const Calendar = () => {
 
         {/* Admin Login Modal */}
         {showAdminModal && (
-          <div className="modal-overlay" onClick={() => setShowAdminModal(false)} style={{ display: 'flex' }}>
-            <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '400px' }}>
+          <div className="cal-modal" style={{ display: 'flex' }}>
+            <div className="modal-content">
               <span className="close" onClick={() => setShowAdminModal(false)}>&times;</span>
-              <h2><i className="fas fa-lock"></i> Calendar Admin Login</h2>
-              <div className="form-group" style={{ marginTop: '20px' }}>
-                <label htmlFor="calPassword" style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
-                  Password:
-                </label>
+              <h2>Calendar Admin Login</h2>
+              <div className="form-group">
+                <label htmlFor="calPassword">Password:</label>
                 <input
                   type="password"
                   id="calPassword"
-                  className="form-input"
+                  className="form-control"
                   value={adminPassword}
                   onChange={(e) => setAdminPassword(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && handleAdminLogin()}
-                  style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #d1d5db' }}
                   placeholder="Enter admin password"
                 />
               </div>
-              <div style={{ marginTop: '20px', display: 'flex', gap: '12px' }}>
-                <button className="btn btn-primary" onClick={handleAdminLogin}>
-                  <i className="fas fa-sign-in-alt"></i> Login
-                </button>
-                <button className="btn btn-secondary" onClick={() => setShowAdminModal(false)}>
-                  Cancel
-                </button>
-              </div>
+              <button className="btn btn-primary" onClick={handleAdminLogin}>
+                <i className="fas fa-sign-in-alt"></i> Login
+              </button>
             </div>
           </div>
         )}
