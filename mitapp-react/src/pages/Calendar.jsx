@@ -65,7 +65,7 @@ const Calendar = () => {
   };
 
   const handleAdminLogin = () => {
-    if (adminPassword === 'Safety1') {
+    if (adminPassword === 'Entrusted1') {
       setIsCalendarAdmin(true);
       localStorage.setItem('calendarAdmin', 'true');
       setShowAdminModal(false);
