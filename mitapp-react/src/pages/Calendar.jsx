@@ -121,10 +121,39 @@ const Calendar = () => {
     if (!editingDate) return;
 
     try {
+      // Get notes from textarea
+      const notes = document.getElementById('calNotes')?.value?.trim() || '';
+
+      // Get staff data from the form - only save overrides
+      const staffData = [];
+      document.querySelectorAll('.staff-item-edit').forEach(item => {
+        const staffId = item.dataset.staffId;
+        const status = item.querySelector('.status-select')?.value;
+        const hours = item.querySelector('.hours-input')?.value?.trim() || '';
+
+        // Find the original staff member to check if this is different from default
+        const originalStaff = selectedDaySchedule.schedule.staff.find(s => s.id === staffId);
+
+        if (originalStaff) {
+          // Only save if it's different from the default (weekend default is 'off', weekday default is 'on')
+          const isWeekend = [0, 6].includes(editingDate.getDay());
+          const defaultStatus = isWeekend ? 'off' : 'on';
+
+          // Save if status is not default OR if there are custom hours
+          if (status !== defaultStatus || hours) {
+            staffData.push({
+              id: staffId,
+              status: status,
+              hours: hours
+            });
+          }
+        }
+      });
+
       const scheduleData = {
         date: editingDate,
-        staff: selectedDaySchedule.schedule.staff,
-        notes: selectedDaySchedule.schedule.notes
+        staff: staffData,
+        notes: notes
       };
 
       await firebaseService.saveSchedule(scheduleData);
@@ -253,6 +282,110 @@ const Calendar = () => {
     const isWeekend = [0, 6].includes(date.getDay());
     const offStatuses = ['off', 'sick', 'vacation', 'no-call-no-show'];
 
+    const formatStatus = (s) => {
+      let statusText = s.status.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+      if (s.hours) statusText += ` (${s.hours})`;
+      return statusText;
+    };
+
+    // If admin and editing, show edit modal
+    if (isCalendarAdmin && editingDate) {
+      // Sort staff: priority to those with special statuses or custom hours
+      const sortedStaff = [...schedule.staff].sort((a, b) => {
+        const aIsPriority = offStatuses.includes(a.status) || a.source === 'Recurring Rule' || a.hours;
+        const bIsPriority = offStatuses.includes(b.status) || b.source === 'Recurring Rule' || b.hours;
+
+        if (aIsPriority && !bIsPriority) return -1;
+        if (!aIsPriority && bIsPriority) return 1;
+        return a.name.localeCompare(b.name);
+      });
+
+      return (
+        <div className="modal-overlay active" onClick={closeModal}>
+          <div className="modal modal-lg" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Edit Schedule for {dateString}</h3>
+              <button className="modal-close" onClick={closeModal}>
+                <i className="fas fa-times"></i>
+              </button>
+            </div>
+
+            <div className="modal-body">
+              <div className="edit-modal-layout-stacked">
+                <div className="form-group">
+                  <label htmlFor="staffSearchInput">Search Staff (Overrides for this day)</label>
+                  <input
+                    type="text"
+                    id="staffSearchInput"
+                    className="form-control"
+                    placeholder="Start typing a name..."
+                    onChange={(e) => {
+                      const searchTerm = e.target.value.toLowerCase();
+                      document.querySelectorAll('.staff-item-edit').forEach(item => {
+                        const staffName = item.querySelector('.staff-name-container').textContent.toLowerCase();
+                        item.style.display = staffName.includes(searchTerm) ? 'flex' : 'none';
+                      });
+                    }}
+                  />
+                </div>
+
+                <div className="staff-list-section">
+                  {sortedStaff.map((staff, idx) => (
+                    <div key={staff.id || idx} className="staff-item-edit" data-staff-id={staff.id}>
+                      <span className="staff-name-container">
+                        {staff.name}
+                        {staff.source && (
+                          <span className={`status-source-badge source-${(staff.source || '').toLowerCase().replace(/ /g, '-')}`}>
+                            {staff.source}
+                          </span>
+                        )}
+                      </span>
+                      <div className="staff-controls">
+                        <input
+                          type="text"
+                          className="hours-input"
+                          placeholder="Notes..."
+                          defaultValue={staff.hours || ''}
+                          autoComplete="off"
+                        />
+                        <select className="status-select" defaultValue={staff.status}>
+                          <option value="on">On</option>
+                          <option value="off">Off</option>
+                          <option value="sick">Sick</option>
+                          <option value="vacation">Vacation</option>
+                          <option value="no-call-no-show">No Call No Show</option>
+                        </select>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="form-group notes-section-stacked">
+                  <label htmlFor="calNotes">Notes for this day:</label>
+                  <textarea
+                    id="calNotes"
+                    className="form-control"
+                    defaultValue={schedule.notes || ''}
+                    rows="4"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="modal-footer">
+              <button className="btn btn-secondary" onClick={closeModal}>
+                Cancel
+              </button>
+              <button className="btn btn-primary" onClick={handleSaveSchedule}>
+                <i className="fas fa-save"></i> Save Schedule
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // Otherwise show view-only modal
     const primaryHeaderText = isWeekend ? "Working Today" : "Scheduled Off / Custom";
     const secondaryHeaderText = isWeekend ? "Scheduled Off" : "Working Today";
 
@@ -262,12 +395,6 @@ const Calendar = () => {
     const secondaryList = schedule.staff.filter(s =>
       isWeekend ? (offStatuses.includes(s.status) && !s.hours) : (s.status === 'on' && !s.hours)
     );
-
-    const formatStatus = (s) => {
-      let statusText = s.status.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-      if (s.hours) statusText += ` (${s.hours})`;
-      return statusText;
-    };
 
     return (
       <div className="modal-overlay active" onClick={closeModal}>
@@ -313,17 +440,6 @@ const Calendar = () => {
               </div>
             </div>
           </div>
-
-          {isCalendarAdmin && editingDate && (
-            <div className="modal-footer">
-              <button className="btn btn-secondary" onClick={closeModal}>
-                Cancel
-              </button>
-              <button className="btn btn-primary" onClick={handleSaveSchedule}>
-                <i className="fas fa-save"></i> Save Changes
-              </button>
-            </div>
-          )}
         </div>
       </div>
     );
