@@ -1,31 +1,79 @@
 import { useState, useEffect } from 'react';
 import Layout from '../components/common/Layout';
 import { useAuth } from '../contexts/AuthContext';
+import { useData } from '../contexts/DataContext';
 import firebaseService from '../services/firebaseService';
+import { getTechsOnRouteToday, getSubTeamsToday, getDailyHoursData } from '../utils/dashboardCalculations';
+import { getCalculatedScheduleForDay } from '../utils/calendarManager';
+import DailyHoursChart from '../components/dashboard/DailyHoursChart';
 
 const Dashboard = () => {
   const { currentUser } = useAuth();
+  const { staffingData, monthlyData, unifiedTechnicianData } = useData();
   const [activeView, setActiveView] = useState('supervisor-dashboard');
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [loading, setLoading] = useState(true);
-  const [dashboardData, setDashboardData] = useState(null);
+  const [dashboardData, setDashboardData] = useState({
+    jobStats: { scheduled: 0, completed: 0, inProgress: 0, pending: 0 },
+    staffingInfo: [],
+    atAGlance: { techsOnRoute: 0, subTeams: 0, newJobsCapacity: 0, inefficientDemoHours: 0 },
+    dailyHoursData: null,
+    warehouseData: { vehiclesInRepair: [], unassignedVehicles: [], techsOffToday: [] }
+  });
 
   useEffect(() => {
-    loadDashboardData();
-  }, [selectedDate]);
+    if (staffingData && monthlyData && unifiedTechnicianData) {
+      loadDashboardData();
+    }
+  }, [selectedDate, staffingData, monthlyData, unifiedTechnicianData]);
 
   const loadDashboardData = async () => {
     try {
       setLoading(true);
-      // Load necessary data from Firebase
-      const [staffingData, calendarEvents] = await Promise.all([
-        firebaseService.loadStaffingData(),
-        firebaseService.getCalendarEvents(selectedDate, selectedDate)
-      ]);
+      const date = new Date(selectedDate);
+      const month = date.getMonth();
+      const year = date.getFullYear();
+
+      // Get monthly schedule data
+      const monthlySchedules = await firebaseService.getScheduleDataForMonth(year, month);
+
+      // Get calculated schedule for selected day
+      const schedule = getCalculatedScheduleForDay(date, monthlySchedules, unifiedTechnicianData);
+
+      // Calculate job stats (from Firebase calendar events)
+      const jobStats = await getDailyStats(selectedDate);
+
+      // Calculate "at a glance" metrics
+      const techsOnRoute = await getTechsOnRouteToday(date, staffingData, firebaseService, { getCalculatedScheduleForDay }, unifiedTechnicianData);
+      const subTeams = await getSubTeamsToday(date, staffingData, firebaseService, { getCalculatedScheduleForDay }, unifiedTechnicianData);
+      const dailyHours = await getDailyHoursData(date, monthlyData, staffingData, firebaseService, { getCalculatedScheduleForDay }, unifiedTechnicianData);
+
+      // Get staffing info (people off today or with custom schedules)
+      const offStatuses = ['off', 'sick', 'vacation', 'no-call-no-show'];
+      const isWeekend = [0, 6].includes(date.getDay());
+      const staffingInfo = schedule.staff.filter(s => {
+        if (isWeekend) {
+          return s.status === 'on' || s.hours;
+        } else {
+          return offStatuses.includes(s.status) || s.hours;
+        }
+      });
+
+      // Get warehouse data (if fleet data available)
+      const warehouseData = await getWarehouseData(schedule);
 
       setDashboardData({
-        staffingData,
-        calendarEvents
+        jobStats,
+        staffingInfo,
+        scheduleNotes: schedule.notes,
+        atAGlance: {
+          techsOnRoute,
+          subTeams,
+          newJobsCapacity: dailyHours.potentialNewJobs || 0,
+          inefficientDemoHours: dailyHours.inefficientDemoHours || 0
+        },
+        dailyHoursData: dailyHours,
+        warehouseData
       });
     } catch (error) {
       console.error('Error loading dashboard data:', error);
@@ -34,8 +82,51 @@ const Dashboard = () => {
     }
   };
 
+  const getDailyStats = async (dateString) => {
+    try {
+      const events = await firebaseService.getCalendarEvents(dateString, dateString);
+
+      const stats = {
+        scheduled: events.length,
+        completed: events.filter(e => e.status === 'completed').length,
+        inProgress: events.filter(e => e.status === 'in-progress').length,
+        pending: events.filter(e => e.status === 'pending' || !e.status).length
+      };
+
+      return stats;
+    } catch (error) {
+      console.error('Error getting daily stats:', error);
+      return { scheduled: 0, completed: 0, inProgress: 0, pending: 0 };
+    }
+  };
+
+  const getWarehouseData = async (schedule) => {
+    try {
+      // Get fleet data
+      const fleet = await firebaseService.loadFleetData();
+
+      // Vehicles in repair
+      const vehiclesInRepair = fleet.filter(v => v.status === 'in-repair' || v.hasActiveWorkOrder);
+
+      // Unassigned vehicles
+      const unassignedVehicles = fleet.filter(v => !v.assignedTo && v.status === 'active');
+
+      // Techs off today (vehicles available)
+      const techsOffToday = schedule.staff.filter(s => s.status === 'off' || s.status === 'vacation' || s.status === 'sick');
+
+      return { vehiclesInRepair, unassignedVehicles, techsOffToday };
+    } catch (error) {
+      console.error('Error getting warehouse data:', error);
+      return { vehiclesInRepair: [], unassignedVehicles: [], techsOffToday: [] };
+    }
+  };
+
   const switchView = (view) => {
     setActiveView(view);
+  };
+
+  const formatStatus = (status) => {
+    return status.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
   };
 
   return (
@@ -90,19 +181,19 @@ const Dashboard = () => {
                       <div className="stats-grid">
                         <div className="stat-item">
                           <span className="stat-label">Jobs Scheduled</span>
-                          <span className="stat-value">0</span>
+                          <span className="stat-value">{dashboardData.jobStats.scheduled}</span>
                         </div>
                         <div className="stat-item">
                           <span className="stat-label">Completed</span>
-                          <span className="stat-value">0</span>
+                          <span className="stat-value">{dashboardData.jobStats.completed}</span>
                         </div>
                         <div className="stat-item">
                           <span className="stat-label">In Progress</span>
-                          <span className="stat-value">0</span>
+                          <span className="stat-value">{dashboardData.jobStats.inProgress}</span>
                         </div>
                         <div className="stat-item">
                           <span className="stat-label">Pending</span>
-                          <span className="stat-value">0</span>
+                          <span className="stat-value">{dashboardData.jobStats.pending}</span>
                         </div>
                       </div>
                     )}
@@ -116,17 +207,27 @@ const Dashboard = () => {
                   <div id="staffing-info-list" className="staffing-info-list">
                     {loading ? (
                       <p>Loading schedule...</p>
-                    ) : dashboardData?.calendarEvents?.length > 0 ? (
-                      dashboardData.calendarEvents.map((event, index) => (
-                        <div key={index} className="staff-off-item">
-                          <span className="staff-name">{event.techName || event.title}</span>
-                          <span className={`staff-status-badge status-${event.status || 'off'}`}>
-                            {event.status || 'Off'}
-                          </span>
-                        </div>
-                      ))
                     ) : (
-                      <p className="no-entries">No staffing changes for this date.</p>
+                      <>
+                        {dashboardData.scheduleNotes && (
+                          <div className="schedule-notes">
+                            <strong>Notes:</strong> {dashboardData.scheduleNotes}
+                          </div>
+                        )}
+                        {dashboardData.staffingInfo.length > 0 ? (
+                          dashboardData.staffingInfo.map((staff, index) => (
+                            <div key={index} className="staff-off-item">
+                              <span className="staff-name">{staff.name}</span>
+                              <span className={`staff-status-badge status-${staff.status.replace(' ', '-')}`}>
+                                {formatStatus(staff.status)}
+                                {staff.hours && ` (${staff.hours})`}
+                              </span>
+                            </div>
+                          ))
+                        ) : (
+                          <p className="no-entries">No staffing changes for this date.</p>
+                        )}
+                      </>
                     )}
                   </div>
                 </div>
@@ -140,19 +241,19 @@ const Dashboard = () => {
                 </div>
                 <div className="glance-grid-two-col">
                   <div className="glance-item">
-                    <span className="glance-value" id="techsOnRoute">0</span>
+                    <span className="glance-value" id="techsOnRoute">{dashboardData.atAGlance.techsOnRoute}</span>
                     <span className="glance-label">Technicians On Route</span>
                   </div>
                   <div className="glance-item">
-                    <span className="glance-value" id="subTeams">0</span>
+                    <span className="glance-value" id="subTeams">{dashboardData.atAGlance.subTeams}</span>
                     <span className="glance-label">Sub Teams</span>
                   </div>
                   <div className="glance-item">
-                    <span className="glance-value" id="newJobsCapacity">0</span>
+                    <span className="glance-value" id="newJobsCapacity">{dashboardData.atAGlance.newJobsCapacity}</span>
                     <span className="glance-label">Install Windows Predicted</span>
                   </div>
                   <div className="glance-item">
-                    <span className="glance-value" id="inefficientDemoHours">0</span>
+                    <span className="glance-value" id="inefficientDemoHours">{dashboardData.atAGlance.inefficientDemoHours}</span>
                     <span className="glance-label">Inefficient Demo Hours</span>
                   </div>
                 </div>
@@ -163,7 +264,11 @@ const Dashboard = () => {
                   <h3><i className="fas fa-chart-bar"></i> Daily Hours</h3>
                 </div>
                 <div className="chart-container">
-                  <p style={{ textAlign: 'center', padding: '40px' }}>Chart will appear here</p>
+                  {loading ? (
+                    <p style={{ textAlign: 'center', padding: '40px' }}>Loading chart...</p>
+                  ) : (
+                    <DailyHoursChart dailyHoursData={dashboardData.dailyHoursData} />
+                  )}
                 </div>
               </div>
             </div>
@@ -183,7 +288,18 @@ const Dashboard = () => {
                   <h3><i className="fas fa-tools"></i> Vehicles in Repair</h3>
                 </div>
                 <div id="vehicles-in-repair-list" className="vehicle-list">
-                  <p className="no-entries">No vehicles in repair</p>
+                  {loading ? (
+                    <p>Loading...</p>
+                  ) : dashboardData.warehouseData.vehiclesInRepair.length > 0 ? (
+                    dashboardData.warehouseData.vehiclesInRepair.map((vehicle, index) => (
+                      <div key={index} className="vehicle-item">
+                        <strong>{vehicle.name || vehicle.vehicleNumber}</strong>
+                        {vehicle.assignedTo && <span> - {vehicle.assignedTo}</span>}
+                      </div>
+                    ))
+                  ) : (
+                    <p className="no-entries">No vehicles in repair</p>
+                  )}
                 </div>
               </div>
 
@@ -192,7 +308,17 @@ const Dashboard = () => {
                   <h3><i className="fas fa-user-slash"></i> Unassigned Vehicles</h3>
                 </div>
                 <div id="unassigned-vehicles-list" className="vehicle-list">
-                  <p className="no-entries">No unassigned vehicles</p>
+                  {loading ? (
+                    <p>Loading...</p>
+                  ) : dashboardData.warehouseData.unassignedVehicles.length > 0 ? (
+                    dashboardData.warehouseData.unassignedVehicles.map((vehicle, index) => (
+                      <div key={index} className="vehicle-item">
+                        <strong>{vehicle.name || vehicle.vehicleNumber}</strong>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="no-entries">No unassigned vehicles</p>
+                  )}
                 </div>
               </div>
 
@@ -201,7 +327,18 @@ const Dashboard = () => {
                   <h3><i className="fas fa-calendar-times"></i> Available (Tech Off Today)</h3>
                 </div>
                 <div id="available-tech-off-list" className="vehicle-list">
-                  <p className="no-entries">All techs working today</p>
+                  {loading ? (
+                    <p>Loading...</p>
+                  ) : dashboardData.warehouseData.techsOffToday.length > 0 ? (
+                    dashboardData.warehouseData.techsOffToday.map((tech, index) => (
+                      <div key={index} className="vehicle-item">
+                        <strong>{tech.name}</strong>
+                        <span> - {formatStatus(tech.status)}</span>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="no-entries">All techs working today</p>
+                  )}
                 </div>
               </div>
             </div>

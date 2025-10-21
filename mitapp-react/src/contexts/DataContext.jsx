@@ -18,6 +18,7 @@ export const DataProvider = ({ children }) => {
   const [staffingData, setStaffingData] = useState(null);
   const [wageSettings, setWageSettings] = useState(null);
   const [monthlyData, setMonthlyData] = useState({});
+  const [unifiedTechnicianData, setUnifiedTechnicianData] = useState([]);
   const [currentYear] = useState(new Date().getFullYear());
 
   // Load all data on mount
@@ -41,6 +42,10 @@ export const DataProvider = ({ children }) => {
       setStaffingData(staffing);
       setWageSettings(wages);
       setMonthlyData(monthly);
+
+      // Build unified technician data
+      const unified = await buildUnifiedTechnicianData(staffing);
+      setUnifiedTechnicianData(unified);
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
@@ -89,6 +94,44 @@ export const DataProvider = ({ children }) => {
       }
       return data;
     }
+  };
+
+  const buildUnifiedTechnicianData = async (staffing) => {
+    const unified = [];
+
+    if (!staffing || !staffing.zones) {
+      return unified;
+    }
+
+    // Get recurring rules for all technicians
+    const recurringRules = await firebaseService.getAllRecurringRules();
+
+    // Add zone leads and members
+    staffing.zones.forEach(zone => {
+      if (zone.lead) {
+        const leadData = {
+          ...zone.lead,
+          zoneName: zone.name,
+          isLead: true,
+          recurringRules: recurringRules.filter(r => r.technicianId === zone.lead.id)
+        };
+        unified.push(leadData);
+      }
+
+      if (zone.members) {
+        zone.members.forEach(member => {
+          const memberData = {
+            ...member,
+            zoneName: zone.name,
+            isLead: false,
+            recurringRules: recurringRules.filter(r => r.technicianId === member.id)
+          };
+          unified.push(memberData);
+        });
+      }
+    });
+
+    return unified;
   };
 
   const sanitizeStaffingData = (data) => {
@@ -201,6 +244,7 @@ export const DataProvider = ({ children }) => {
     staffingData,
     wageSettings,
     monthlyData,
+    unifiedTechnicianData,
     currentYear,
     loadAllData,
     saveStaffingData,

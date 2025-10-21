@@ -191,6 +191,50 @@ class FirebaseService {
     }
   }
 
+  // Recurring rules management
+  async getAllRecurringRules() {
+    try {
+      const rulesRef = collection(db, 'hou_recurring_rules');
+      const snapshot = await getDocs(rulesRef);
+      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    } catch (error) {
+      console.error('Error getting recurring rules:', error);
+      return []; // Return empty array on error
+    }
+  }
+
+  async getRecurringRulesForTech(techId) {
+    try {
+      const rulesRef = collection(db, 'hou_recurring_rules');
+      const q = query(rulesRef, where('technicianId', '==', techId));
+      const snapshot = await getDocs(q);
+      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    } catch (error) {
+      console.error('Error getting recurring rules for tech:', error);
+      return [];
+    }
+  }
+
+  async saveRecurringRule(ruleId, data) {
+    try {
+      const docRef = doc(db, 'hou_recurring_rules', ruleId);
+      await setDoc(docRef, data);
+    } catch (error) {
+      console.error('Error saving recurring rule:', error);
+      throw error;
+    }
+  }
+
+  async deleteRecurringRule(ruleId) {
+    try {
+      const docRef = doc(db, 'hou_recurring_rules', ruleId);
+      await deleteDoc(docRef);
+    } catch (error) {
+      console.error('Error deleting recurring rule:', error);
+      throw error;
+    }
+  }
+
   // Generic get document
   async getDocument(collectionName, docId) {
     try {
