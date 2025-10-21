@@ -15,6 +15,8 @@ const Equipment = () => {
     status: 'Available',
     location: ''
   });
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
 
   useEffect(() => {
     loadEquipmentData();
@@ -102,6 +104,19 @@ const Equipment = () => {
     }
   };
 
+  const filteredEquipment = equipmentData.filter(item => {
+    const matchesSearch = searchTerm === '' ||
+      (item.itemNumber?.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (item.name?.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (item.category?.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (item.assignedTo?.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (item.location?.toLowerCase().includes(searchTerm.toLowerCase()));
+
+    const matchesStatus = statusFilter === 'all' || item.status === statusFilter;
+
+    return matchesSearch && matchesStatus;
+  });
+
   if (loading) {
     return (
       <Layout>
@@ -119,6 +134,48 @@ const Equipment = () => {
           <h2>Equipment Management</h2>
         </div>
 
+        {/* Search and Filter */}
+        <div className="card">
+          <div className="card-header">
+            <h3><i className="fas fa-filter"></i> Search & Filter</h3>
+          </div>
+          <div style={{ padding: '20px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '16px', alignItems: 'end' }}>
+              <div className="form-group" style={{ margin: 0 }}>
+                <label htmlFor="searchInput">Search Equipment</label>
+                <input
+                  type="text"
+                  id="searchInput"
+                  className="form-control"
+                  placeholder="Search by item #, name, category, assignment, or location..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+              <div className="form-group" style={{ margin: 0, minWidth: '200px' }}>
+                <label htmlFor="statusFilter">Filter by Status</label>
+                <select
+                  id="statusFilter"
+                  className="form-control"
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                >
+                  <option value="all">All Statuses</option>
+                  <option value="Available">Available</option>
+                  <option value="In Use">In Use</option>
+                  <option value="In Repairs">In Repairs</option>
+                  <option value="Out of Service">Out of Service</option>
+                </select>
+              </div>
+            </div>
+            {(searchTerm || statusFilter !== 'all') && (
+              <div style={{ marginTop: '12px', fontSize: '14px', color: '#6b7280' }}>
+                Showing {filteredEquipment.length} of {equipmentData.length} items
+              </div>
+            )}
+          </div>
+        </div>
+
         {/* Equipment List */}
         <div className="card">
           <div className="card-header">
@@ -128,7 +185,7 @@ const Equipment = () => {
             </button>
           </div>
           <div className="table-container">
-            {equipmentData.length > 0 ? (
+            {filteredEquipment.length > 0 ? (
               <table className="data-table">
                 <thead>
                   <tr>
@@ -142,7 +199,7 @@ const Equipment = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {equipmentData.map((item, index) => (
+                  {filteredEquipment.map((item, index) => (
                     <tr key={item.id || index}>
                       <td><strong>{item.itemNumber || 'N/A'}</strong></td>
                       <td>{item.name || 'N/A'}</td>
@@ -174,7 +231,9 @@ const Equipment = () => {
                 </tbody>
               </table>
             ) : (
-              <p style={{ padding: '20px', textAlign: 'center' }}>No equipment in inventory.</p>
+              <p style={{ padding: '20px', textAlign: 'center' }}>
+                {equipmentData.length === 0 ? 'No equipment in inventory.' : 'No equipment matches your search criteria.'}
+              </p>
             )}
           </div>
         </div>

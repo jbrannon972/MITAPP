@@ -15,6 +15,8 @@ const Tools = () => {
     status: 'Available',
     location: ''
   });
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
 
   useEffect(() => {
     loadTools();
@@ -102,6 +104,19 @@ const Tools = () => {
     }
   };
 
+  const filteredTools = tools.filter(tool => {
+    const matchesSearch = searchTerm === '' ||
+      (tool.toolId?.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (tool.name?.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (tool.category?.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (tool.assignedTo?.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (tool.location?.toLowerCase().includes(searchTerm.toLowerCase()));
+
+    const matchesStatus = statusFilter === 'all' || tool.status === statusFilter;
+
+    return matchesSearch && matchesStatus;
+  });
+
   if (loading) {
     return (
       <Layout>
@@ -119,6 +134,49 @@ const Tools = () => {
           <h2>Tools Management</h2>
         </div>
 
+        {/* Search and Filter */}
+        <div className="card">
+          <div className="card-header">
+            <h3><i className="fas fa-filter"></i> Search & Filter</h3>
+          </div>
+          <div style={{ padding: '20px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '16px', alignItems: 'end' }}>
+              <div className="form-group" style={{ margin: 0 }}>
+                <label htmlFor="searchInput">Search Tools</label>
+                <input
+                  type="text"
+                  id="searchInput"
+                  className="form-control"
+                  placeholder="Search by tool ID, name, category, assignment, or location..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+              <div className="form-group" style={{ margin: 0, minWidth: '200px' }}>
+                <label htmlFor="statusFilter">Filter by Status</label>
+                <select
+                  id="statusFilter"
+                  className="form-control"
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                >
+                  <option value="all">All Statuses</option>
+                  <option value="Available">Available</option>
+                  <option value="In Use">In Use</option>
+                  <option value="In Repairs">In Repairs</option>
+                  <option value="Lost">Lost</option>
+                  <option value="Out of Service">Out of Service</option>
+                </select>
+              </div>
+            </div>
+            {(searchTerm || statusFilter !== 'all') && (
+              <div style={{ marginTop: '12px', fontSize: '14px', color: '#6b7280' }}>
+                Showing {filteredTools.length} of {tools.length} tools
+              </div>
+            )}
+          </div>
+        </div>
+
         <div className="card">
           <div className="card-header">
             <h3><i className="fas fa-wrench"></i> Tools Inventory</h3>
@@ -127,7 +185,7 @@ const Tools = () => {
             </button>
           </div>
           <div className="table-container">
-            {tools.length > 0 ? (
+            {filteredTools.length > 0 ? (
               <table className="data-table">
                 <thead>
                   <tr>
@@ -141,7 +199,7 @@ const Tools = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {tools.map((tool, index) => (
+                  {filteredTools.map((tool, index) => (
                     <tr key={tool.id || index}>
                       <td><strong>{tool.toolId || tool.id || 'N/A'}</strong></td>
                       <td>{tool.name || 'N/A'}</td>
@@ -173,7 +231,9 @@ const Tools = () => {
                 </tbody>
               </table>
             ) : (
-              <p style={{ padding: '20px', textAlign: 'center' }}>No tools in inventory.</p>
+              <p style={{ padding: '20px', textAlign: 'center' }}>
+                {tools.length === 0 ? 'No tools in inventory.' : 'No tools match your search criteria.'}
+              </p>
             )}
           </div>
         </div>

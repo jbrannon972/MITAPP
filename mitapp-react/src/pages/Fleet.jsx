@@ -23,6 +23,8 @@ const Fleet = () => {
     model: '',
     year: ''
   });
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
 
   useEffect(() => {
     loadFleetData();
@@ -119,6 +121,19 @@ const Fleet = () => {
     }
   };
 
+  const filteredVehicles = fleetData.filter(vehicle => {
+    const matchesSearch = searchTerm === '' ||
+      (vehicle.truckNumber?.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (vehicle.type?.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (vehicle.assignedTo?.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (vehicle.make?.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (vehicle.model?.toLowerCase().includes(searchTerm.toLowerCase()));
+
+    const matchesStatus = statusFilter === 'all' || vehicle.status === statusFilter;
+
+    return matchesSearch && matchesStatus;
+  });
+
   if (loading) {
     return (
       <Layout>
@@ -152,6 +167,48 @@ const Fleet = () => {
           </div>
         </div>
 
+        {/* Search and Filter */}
+        <div className="card">
+          <div className="card-header">
+            <h3><i className="fas fa-filter"></i> Search & Filter</h3>
+          </div>
+          <div style={{ padding: '20px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '16px', alignItems: 'end' }}>
+              <div className="form-group" style={{ margin: 0 }}>
+                <label htmlFor="searchInput">Search Vehicles</label>
+                <input
+                  type="text"
+                  id="searchInput"
+                  className="form-control"
+                  placeholder="Search by truck #, type, assignment, make, or model..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+              <div className="form-group" style={{ margin: 0, minWidth: '200px' }}>
+                <label htmlFor="statusFilter">Filter by Status</label>
+                <select
+                  id="statusFilter"
+                  className="form-control"
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                >
+                  <option value="all">All Statuses</option>
+                  <option value="Available">Available</option>
+                  <option value="In Use">In Use</option>
+                  <option value="In Repairs">In Repairs</option>
+                  <option value="Out of Service">Out of Service</option>
+                </select>
+              </div>
+            </div>
+            {(searchTerm || statusFilter !== 'all') && (
+              <div style={{ marginTop: '12px', fontSize: '14px', color: '#6b7280' }}>
+                Showing {filteredVehicles.length} of {fleetData.length} vehicles
+              </div>
+            )}
+          </div>
+        </div>
+
         {/* Fleet List */}
         <div className="card">
           <div className="card-header">
@@ -161,7 +218,7 @@ const Fleet = () => {
             </button>
           </div>
           <div className="table-container">
-            {fleetData.length > 0 ? (
+            {filteredVehicles.length > 0 ? (
               <table className="data-table">
                 <thead>
                   <tr>
@@ -175,7 +232,7 @@ const Fleet = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {fleetData.map((vehicle, index) => (
+                  {filteredVehicles.map((vehicle, index) => (
                     <tr key={vehicle.id || index}>
                       <td><strong>{vehicle.truckNumber || 'N/A'}</strong></td>
                       <td>{vehicle.type || 'N/A'}</td>
@@ -207,7 +264,9 @@ const Fleet = () => {
                 </tbody>
               </table>
             ) : (
-              <p style={{ padding: '20px', textAlign: 'center' }}>No vehicles in fleet.</p>
+              <p style={{ padding: '20px', textAlign: 'center' }}>
+                {fleetData.length === 0 ? 'No vehicles in fleet.' : 'No vehicles match your search criteria.'}
+              </p>
             )}
           </div>
         </div>
