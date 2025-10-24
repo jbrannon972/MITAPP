@@ -26,6 +26,8 @@ const Fleet = () => {
   });
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [selectedVehicles, setSelectedVehicles] = useState([]);
+  const [showBulkActions, setShowBulkActions] = useState(false);
 
   useEffect(() => {
     loadFleetData();
@@ -140,6 +142,67 @@ const Fleet = () => {
     exportToCSV(dataToExport, 'fleet_vehicles');
   };
 
+  const handleSelectVehicle = (vehicleId) => {
+    setSelectedVehicles(prev => {
+      if (prev.includes(vehicleId)) {
+        const newSelection = prev.filter(id => id !== vehicleId);
+        setShowBulkActions(newSelection.length > 0);
+        return newSelection;
+      } else {
+        const newSelection = [...prev, vehicleId];
+        setShowBulkActions(true);
+        return newSelection;
+      }
+    });
+  };
+
+  const handleSelectAll = () => {
+    if (selectedVehicles.length === filteredVehicles.length) {
+      setSelectedVehicles([]);
+      setShowBulkActions(false);
+    } else {
+      setSelectedVehicles(filteredVehicles.map(v => v.id));
+      setShowBulkActions(true);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (!window.confirm(`Are you sure you want to delete ${selectedVehicles.length} vehicle(s)?`)) {
+      return;
+    }
+
+    try {
+      await Promise.all(
+        selectedVehicles.map(id => firebaseService.deleteDocument('hou_fleet', id))
+      );
+      alert('Vehicles deleted successfully!');
+      setSelectedVehicles([]);
+      setShowBulkActions(false);
+      loadFleetData();
+    } catch (error) {
+      console.error('Error deleting vehicles:', error);
+      alert('Error deleting vehicles. Please try again.');
+    }
+  };
+
+  const handleBulkStatusChange = async (newStatus) => {
+    try {
+      const vehiclesToUpdate = fleetData.filter(v => selectedVehicles.includes(v.id));
+      await Promise.all(
+        vehiclesToUpdate.map(vehicle =>
+          firebaseService.saveFleetVehicle(vehicle.id, { ...vehicle, status: newStatus })
+        )
+      );
+      alert('Status updated successfully!');
+      setSelectedVehicles([]);
+      setShowBulkActions(false);
+      loadFleetData();
+    } catch (error) {
+      console.error('Error updating status:', error);
+      alert('Error updating status. Please try again.');
+    }
+  };
+
   if (loading) {
     return (
       <Layout>
@@ -215,6 +278,40 @@ const Fleet = () => {
           </div>
         </div>
 
+        {/* Bulk Actions Bar */}
+        {showBulkActions && (
+          <div className="card" style={{ backgroundColor: '#eff6ff', borderColor: '#3b82f6' }}>
+            <div style={{ padding: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <i className="fas fa-check-circle" style={{ color: '#3b82f6', fontSize: '20px' }}></i>
+                <span style={{ fontWeight: '500' }}>{selectedVehicles.length} vehicle(s) selected</span>
+              </div>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <select
+                  className="form-control"
+                  style={{ width: 'auto', display: 'inline-block' }}
+                  onChange={(e) => {
+                    if (e.target.value) {
+                      handleBulkStatusChange(e.target.value);
+                      e.target.value = '';
+                    }
+                  }}
+                  defaultValue=""
+                >
+                  <option value="">Change Status...</option>
+                  <option value="Available">Available</option>
+                  <option value="In Use">In Use</option>
+                  <option value="In Repairs">In Repairs</option>
+                  <option value="Out of Service">Out of Service</option>
+                </select>
+                <button className="btn btn-danger" onClick={handleBulkDelete}>
+                  <i className="fas fa-trash"></i> Delete Selected
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Fleet List */}
         <div className="card">
           <div className="card-header">
@@ -233,6 +330,14 @@ const Fleet = () => {
               <table className="data-table">
                 <thead>
                   <tr>
+                    <th style={{ width: '40px' }}>
+                      <input
+                        type="checkbox"
+                        checked={selectedVehicles.length === filteredVehicles.length && filteredVehicles.length > 0}
+                        onChange={handleSelectAll}
+                        style={{ cursor: 'pointer' }}
+                      />
+                    </th>
                     <th>Truck #</th>
                     <th>Type</th>
                     <th>Assigned To</th>
@@ -245,6 +350,14 @@ const Fleet = () => {
                 <tbody>
                   {filteredVehicles.map((vehicle, index) => (
                     <tr key={vehicle.id || index}>
+                      <td>
+                        <input
+                          type="checkbox"
+                          checked={selectedVehicles.includes(vehicle.id)}
+                          onChange={() => handleSelectVehicle(vehicle.id)}
+                          style={{ cursor: 'pointer' }}
+                        />
+                      </td>
                       <td><strong>{vehicle.truckNumber || 'N/A'}</strong></td>
                       <td>{vehicle.type || 'N/A'}</td>
                       <td>{vehicle.assignedTo || 'Unassigned'}</td>

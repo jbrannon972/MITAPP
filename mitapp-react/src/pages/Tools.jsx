@@ -18,6 +18,8 @@ const Tools = () => {
   });
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [selectedTools, setSelectedTools] = useState([]);
+  const [showBulkActions, setShowBulkActions] = useState(false);
 
   useEffect(() => {
     loadTools();
@@ -123,6 +125,67 @@ const Tools = () => {
     exportToCSV(dataToExport, 'tools_inventory');
   };
 
+  const handleSelectTool = (toolId) => {
+    setSelectedTools(prev => {
+      if (prev.includes(toolId)) {
+        const newSelection = prev.filter(id => id !== toolId);
+        setShowBulkActions(newSelection.length > 0);
+        return newSelection;
+      } else {
+        const newSelection = [...prev, toolId];
+        setShowBulkActions(true);
+        return newSelection;
+      }
+    });
+  };
+
+  const handleSelectAll = () => {
+    if (selectedTools.length === filteredTools.length) {
+      setSelectedTools([]);
+      setShowBulkActions(false);
+    } else {
+      setSelectedTools(filteredTools.map(tool => tool.id));
+      setShowBulkActions(true);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (!window.confirm(`Are you sure you want to delete ${selectedTools.length} tool(s)?`)) {
+      return;
+    }
+
+    try {
+      await Promise.all(
+        selectedTools.map(id => firebaseService.deleteDocument('hou_tools', id))
+      );
+      alert('Tools deleted successfully!');
+      setSelectedTools([]);
+      setShowBulkActions(false);
+      loadTools();
+    } catch (error) {
+      console.error('Error deleting tools:', error);
+      alert('Error deleting tools. Please try again.');
+    }
+  };
+
+  const handleBulkStatusChange = async (newStatus) => {
+    try {
+      const toolsToUpdate = tools.filter(tool => selectedTools.includes(tool.id));
+      await Promise.all(
+        toolsToUpdate.map(tool =>
+          firebaseService.saveDocument('hou_tools', tool.id, { ...tool, status: newStatus })
+        )
+      );
+      alert('Status updated successfully!');
+      setSelectedTools([]);
+      setShowBulkActions(false);
+      loadTools();
+    } catch (error) {
+      console.error('Error updating status:', error);
+      alert('Error updating status. Please try again.');
+    }
+  };
+
   if (loading) {
     return (
       <Layout>
@@ -183,6 +246,41 @@ const Tools = () => {
           </div>
         </div>
 
+        {/* Bulk Actions Bar */}
+        {showBulkActions && (
+          <div className="card" style={{ backgroundColor: '#eff6ff', borderColor: '#3b82f6' }}>
+            <div style={{ padding: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <i className="fas fa-check-circle" style={{ color: '#3b82f6', fontSize: '20px' }}></i>
+                <span style={{ fontWeight: '500' }}>{selectedTools.length} tool(s) selected</span>
+              </div>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <select
+                  className="form-control"
+                  style={{ width: 'auto', display: 'inline-block' }}
+                  onChange={(e) => {
+                    if (e.target.value) {
+                      handleBulkStatusChange(e.target.value);
+                      e.target.value = '';
+                    }
+                  }}
+                  defaultValue=""
+                >
+                  <option value="">Change Status...</option>
+                  <option value="Available">Available</option>
+                  <option value="In Use">In Use</option>
+                  <option value="In Repairs">In Repairs</option>
+                  <option value="Lost">Lost</option>
+                  <option value="Out of Service">Out of Service</option>
+                </select>
+                <button className="btn btn-danger" onClick={handleBulkDelete}>
+                  <i className="fas fa-trash"></i> Delete Selected
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="card">
           <div className="card-header">
             <h3><i className="fas fa-wrench"></i> Tools Inventory</h3>
@@ -200,6 +298,14 @@ const Tools = () => {
               <table className="data-table">
                 <thead>
                   <tr>
+                    <th style={{ width: '40px' }}>
+                      <input
+                        type="checkbox"
+                        checked={selectedTools.length === filteredTools.length && filteredTools.length > 0}
+                        onChange={handleSelectAll}
+                        style={{ cursor: 'pointer' }}
+                      />
+                    </th>
                     <th>Tool ID</th>
                     <th>Name</th>
                     <th>Category</th>
@@ -212,6 +318,14 @@ const Tools = () => {
                 <tbody>
                   {filteredTools.map((tool, index) => (
                     <tr key={tool.id || index}>
+                      <td>
+                        <input
+                          type="checkbox"
+                          checked={selectedTools.includes(tool.id)}
+                          onChange={() => handleSelectTool(tool.id)}
+                          style={{ cursor: 'pointer' }}
+                        />
+                      </td>
                       <td><strong>{tool.toolId || tool.id || 'N/A'}</strong></td>
                       <td>{tool.name || 'N/A'}</td>
                       <td>{tool.category || 'N/A'}</td>

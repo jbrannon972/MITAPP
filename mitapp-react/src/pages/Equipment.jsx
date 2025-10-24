@@ -18,6 +18,8 @@ const Equipment = () => {
   });
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [selectedItems, setSelectedItems] = useState([]);
+  const [showBulkActions, setShowBulkActions] = useState(false);
 
   useEffect(() => {
     loadEquipmentData();
@@ -123,6 +125,67 @@ const Equipment = () => {
     exportToCSV(dataToExport, 'equipment_inventory');
   };
 
+  const handleSelectItem = (itemId) => {
+    setSelectedItems(prev => {
+      if (prev.includes(itemId)) {
+        const newSelection = prev.filter(id => id !== itemId);
+        setShowBulkActions(newSelection.length > 0);
+        return newSelection;
+      } else {
+        const newSelection = [...prev, itemId];
+        setShowBulkActions(true);
+        return newSelection;
+      }
+    });
+  };
+
+  const handleSelectAll = () => {
+    if (selectedItems.length === filteredEquipment.length) {
+      setSelectedItems([]);
+      setShowBulkActions(false);
+    } else {
+      setSelectedItems(filteredEquipment.map(item => item.id));
+      setShowBulkActions(true);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (!window.confirm(`Are you sure you want to delete ${selectedItems.length} item(s)?`)) {
+      return;
+    }
+
+    try {
+      await Promise.all(
+        selectedItems.map(id => firebaseService.deleteDocument('hou_equipment', id))
+      );
+      alert('Equipment deleted successfully!');
+      setSelectedItems([]);
+      setShowBulkActions(false);
+      loadEquipmentData();
+    } catch (error) {
+      console.error('Error deleting equipment:', error);
+      alert('Error deleting equipment. Please try again.');
+    }
+  };
+
+  const handleBulkStatusChange = async (newStatus) => {
+    try {
+      const itemsToUpdate = equipmentData.filter(item => selectedItems.includes(item.id));
+      await Promise.all(
+        itemsToUpdate.map(item =>
+          firebaseService.saveEquipment(item.id, { ...item, status: newStatus })
+        )
+      );
+      alert('Status updated successfully!');
+      setSelectedItems([]);
+      setShowBulkActions(false);
+      loadEquipmentData();
+    } catch (error) {
+      console.error('Error updating status:', error);
+      alert('Error updating status. Please try again.');
+    }
+  };
+
   if (loading) {
     return (
       <Layout>
@@ -182,6 +245,40 @@ const Equipment = () => {
           </div>
         </div>
 
+        {/* Bulk Actions Bar */}
+        {showBulkActions && (
+          <div className="card" style={{ backgroundColor: '#eff6ff', borderColor: '#3b82f6' }}>
+            <div style={{ padding: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <i className="fas fa-check-circle" style={{ color: '#3b82f6', fontSize: '20px' }}></i>
+                <span style={{ fontWeight: '500' }}>{selectedItems.length} item(s) selected</span>
+              </div>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <select
+                  className="form-control"
+                  style={{ width: 'auto', display: 'inline-block' }}
+                  onChange={(e) => {
+                    if (e.target.value) {
+                      handleBulkStatusChange(e.target.value);
+                      e.target.value = '';
+                    }
+                  }}
+                  defaultValue=""
+                >
+                  <option value="">Change Status...</option>
+                  <option value="Available">Available</option>
+                  <option value="In Use">In Use</option>
+                  <option value="In Repairs">In Repairs</option>
+                  <option value="Out of Service">Out of Service</option>
+                </select>
+                <button className="btn btn-danger" onClick={handleBulkDelete}>
+                  <i className="fas fa-trash"></i> Delete Selected
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Equipment List */}
         <div className="card">
           <div className="card-header">
@@ -200,6 +297,14 @@ const Equipment = () => {
               <table className="data-table">
                 <thead>
                   <tr>
+                    <th style={{ width: '40px' }}>
+                      <input
+                        type="checkbox"
+                        checked={selectedItems.length === filteredEquipment.length && filteredEquipment.length > 0}
+                        onChange={handleSelectAll}
+                        style={{ cursor: 'pointer' }}
+                      />
+                    </th>
                     <th>Item #</th>
                     <th>Name</th>
                     <th>Category</th>
@@ -212,6 +317,14 @@ const Equipment = () => {
                 <tbody>
                   {filteredEquipment.map((item, index) => (
                     <tr key={item.id || index}>
+                      <td>
+                        <input
+                          type="checkbox"
+                          checked={selectedItems.includes(item.id)}
+                          onChange={() => handleSelectItem(item.id)}
+                          style={{ cursor: 'pointer' }}
+                        />
+                      </td>
                       <td><strong>{item.itemNumber || 'N/A'}</strong></td>
                       <td>{item.name || 'N/A'}</td>
                       <td>{item.category || 'N/A'}</td>
