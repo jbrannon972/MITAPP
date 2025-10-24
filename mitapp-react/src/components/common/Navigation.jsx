@@ -112,6 +112,13 @@ const Navigation = () => {
               </button>
             )}
             <button
+              id="settings-btn"
+              className="btn btn-secondary"
+              onClick={() => navigateTo('/settings')}
+            >
+              <i className="fas fa-cog"></i> Settings
+            </button>
+            <button
               id="logout-btn"
               className="btn btn-primary nav-logout-btn"
               onClick={handleLogout}
