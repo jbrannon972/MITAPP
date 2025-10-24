@@ -1,27 +1,242 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Layout from '../components/common/Layout';
+import firebaseService from '../services/firebaseService';
+import { useData } from '../contexts/DataContext';
+import { exportToCSV } from '../utils/exportUtils';
 
 const Reports = () => {
+  const { staffingData } = useData();
   const [selectedReport, setSelectedReport] = useState(null);
+  const [reportData, setReportData] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [filters, setFilters] = useState({
+    startDate: '',
+    endDate: '',
+    zone: 'all'
+  });
+
+  // Data state
+  const [fleetData, setFleetData] = useState([]);
+  const [equipmentData, setEquipmentData] = useState([]);
+  const [toolsData, setToolsData] = useState([]);
+  const [damagesData, setDamagesData] = useState([]);
+
+  useEffect(() => {
+    loadAllData();
+  }, []);
+
+  const loadAllData = async () => {
+    try {
+      const [fleet, equipment, tools, damages] = await Promise.all([
+        firebaseService.loadFleetData(),
+        firebaseService.getEquipment(),
+        firebaseService.getTools(),
+        firebaseService.getDocument('hou_damages', 'damage_reports')
+      ]);
+
+      setFleetData(fleet || []);
+      setEquipmentData(equipment || []);
+      setToolsData(tools || []);
+      setDamagesData(damages?.reports || []);
+    } catch (error) {
+      console.error('Error loading report data:', error);
+    }
+  };
 
   const reportTypes = [
-    { id: 'subContractorFinancialSummary', name: 'Sub-Contractor Financial Summary', icon: 'fa-dollar-sign' },
-    { id: 'specialServicesSpending', name: 'Special Services Spending', icon: 'fa-money-bill-wave' },
-    { id: 'subContractorEfficiency', name: 'Sub-Contractor Efficiency', icon: 'fa-chart-line' },
-    { id: 'zoneWorkloadDistribution', name: 'Zone Workload Distribution', icon: 'fa-map-marked-alt' },
-    { id: 'dailyJobLoad', name: 'Daily Job Load & Trend', icon: 'fa-calendar-day' },
-    { id: 'subContractorJobDetails', name: 'Sub-Contractor Job Details', icon: 'fa-clipboard-list' },
-    { id: 'techHourDistribution', name: 'Tech Hour Distribution', icon: 'fa-clock' },
-    { id: 'monthlyPerformance', name: 'Monthly Performance Dashboard', icon: 'fa-tachometer-alt' },
-    { id: 'weekdayVsWeekend', name: 'Weekday vs. Weekend Analysis', icon: 'fa-calendar-alt' },
-    { id: 'subContractorUsageTrend', name: 'Sub-Contractor Usage Trend', icon: 'fa-chart-area' },
-    { id: 'jobHotspot', name: 'Job Hotspot Report', icon: 'fa-fire' },
-    { id: 'secondShiftReport', name: 'Second Shift EOD Report', icon: 'fa-moon' },
-    { id: 'secondShiftInstallReport', name: 'Second Shift Install Report', icon: 'fa-hard-hat' },
-    { id: 'sickDayReport', name: 'Sick Day Report', icon: 'fa-notes-medical' },
-    { id: 'jobReturnFrequency', name: 'Job Return Frequency', icon: 'fa-redo' },
-    { id: 'officeLocationAnalysis', name: 'Office Location Analysis', icon: 'fa-building' }
+    { id: 'fleetUtilization', name: 'Fleet Utilization Report', icon: 'fa-truck', category: 'Fleet' },
+    { id: 'fleetStatus', name: 'Fleet Status Summary', icon: 'fa-car-side', category: 'Fleet' },
+    { id: 'equipmentStatus', name: 'Equipment Status Report', icon: 'fa-toolbox', category: 'Equipment' },
+    { id: 'equipmentAssignment', name: 'Equipment Assignment Report', icon: 'fa-clipboard-list', category: 'Equipment' },
+    { id: 'toolsInventory', name: 'Tools Inventory Report', icon: 'fa-wrench', category: 'Tools' },
+    { id: 'toolsUsage', name: 'Tools Usage Analysis', icon: 'fa-chart-line', category: 'Tools' },
+    { id: 'damagesCost', name: 'Damages Cost Analysis', icon: 'fa-dollar-sign', category: 'Damages' },
+    { id: 'damagesStatus', name: 'Damages Status Report', icon: 'fa-car-crash', category: 'Damages' },
+    { id: 'teamDistribution', name: 'Team Distribution Report', icon: 'fa-users', category: 'Team' },
+    { id: 'zoneResources', name: 'Zone Resources Report', icon: 'fa-map-marked-alt', category: 'Team' }
   ];
+
+  const generateReport = () => {
+    setLoading(true);
+    let data = null;
+
+    switch (selectedReport) {
+      case 'fleetStatus':
+        data = generateFleetStatusReport();
+        break;
+      case 'equipmentStatus':
+        data = generateEquipmentStatusReport();
+        break;
+      case 'toolsInventory':
+        data = generateToolsInventoryReport();
+        break;
+      case 'damagesCost':
+        data = generateDamagesCostReport();
+        break;
+      case 'teamDistribution':
+        data = generateTeamDistributionReport();
+        break;
+      default:
+        data = { message: 'This report is under development. Please select another report.' };
+    }
+
+    setReportData(data);
+    setLoading(false);
+  };
+
+  const generateFleetStatusReport = () => {
+    const statusCounts = {};
+    fleetData.forEach(vehicle => {
+      const status = vehicle.status || 'Unknown';
+      statusCounts[status] = (statusCounts[status] || 0) + 1;
+    });
+
+    const assignedCount = fleetData.filter(v => v.assignedTo).length;
+    const unassignedCount = fleetData.length - assignedCount;
+
+    return {
+      type: 'fleet',
+      summary: {
+        total: fleetData.length,
+        assigned: assignedCount,
+        unassigned: unassignedCount
+      },
+      statusBreakdown: statusCounts,
+      details: fleetData
+    };
+  };
+
+  const generateEquipmentStatusReport = () => {
+    const statusCounts = {};
+    equipmentData.forEach(item => {
+      const status = item.status || 'Unknown';
+      statusCounts[status] = (statusCounts[status] || 0) + 1;
+    });
+
+    return {
+      type: 'equipment',
+      summary: {
+        total: equipmentData.length,
+        available: statusCounts['Available'] || 0,
+        inUse: statusCounts['In Use'] || 0,
+        inRepairs: statusCounts['In Repairs'] || 0
+      },
+      statusBreakdown: statusCounts,
+      details: equipmentData
+    };
+  };
+
+  const generateToolsInventoryReport = () => {
+    const statusCounts = {};
+    const categoryCounts = {};
+
+    toolsData.forEach(tool => {
+      const status = tool.status || 'Unknown';
+      const category = tool.category || 'Uncategorized';
+      statusCounts[status] = (statusCounts[status] || 0) + 1;
+      categoryCounts[category] = (categoryCounts[category] || 0) + 1;
+    });
+
+    return {
+      type: 'tools',
+      summary: {
+        total: toolsData.length,
+        available: statusCounts['Available'] || 0,
+        inUse: statusCounts['In Use'] || 0,
+        lost: statusCounts['Lost'] || 0
+      },
+      statusBreakdown: statusCounts,
+      categoryBreakdown: categoryCounts,
+      details: toolsData
+    };
+  };
+
+  const generateDamagesCostReport = () => {
+    const totalCost = damagesData.reduce((sum, damage) => {
+      return sum + (parseFloat(damage.cost) || 0);
+    }, 0);
+
+    const statusCounts = {};
+    damagesData.forEach(damage => {
+      const status = damage.status || 'Pending';
+      statusCounts[status] = (statusCounts[status] || 0) + 1;
+    });
+
+    const costByStatus = {};
+    damagesData.forEach(damage => {
+      const status = damage.status || 'Pending';
+      costByStatus[status] = (costByStatus[status] || 0) + (parseFloat(damage.cost) || 0);
+    });
+
+    return {
+      type: 'damages',
+      summary: {
+        total: damagesData.length,
+        totalCost: totalCost,
+        avgCost: damagesData.length > 0 ? totalCost / damagesData.length : 0,
+        pending: statusCounts['Pending'] || 0,
+        resolved: statusCounts['Resolved'] || 0
+      },
+      statusBreakdown: statusCounts,
+      costByStatus: costByStatus,
+      details: damagesData
+    };
+  };
+
+  const generateTeamDistributionReport = () => {
+    if (!staffingData) return { message: 'No team data available' };
+
+    const totalStaff = (staffingData.management?.length || 0) +
+      (staffingData.zones?.reduce((sum, zone) => sum + zone.members.length + (zone.lead ? 1 : 0), 0) || 0);
+
+    const roleBreakdown = {};
+
+    if (staffingData.management) {
+      staffingData.management.forEach(member => {
+        const role = member.role || 'Unknown';
+        roleBreakdown[role] = (roleBreakdown[role] || 0) + 1;
+      });
+    }
+
+    if (staffingData.zones) {
+      staffingData.zones.forEach(zone => {
+        if (zone.lead) {
+          const role = zone.lead.role || 'Unknown';
+          roleBreakdown[role] = (roleBreakdown[role] || 0) + 1;
+        }
+        zone.members.forEach(member => {
+          const role = member.role || 'Unknown';
+          roleBreakdown[role] = (roleBreakdown[role] || 0) + 1;
+        });
+      });
+    }
+
+    return {
+      type: 'team',
+      summary: {
+        totalStaff: totalStaff,
+        zones: staffingData.zones?.length || 0,
+        management: staffingData.management?.length || 0
+      },
+      roleBreakdown: roleBreakdown,
+      zoneData: staffingData.zones || []
+    };
+  };
+
+  const handleExportReport = () => {
+    if (!reportData) return;
+
+    let dataToExport = [];
+    const reportName = reportTypes.find(r => r.id === selectedReport)?.name || 'report';
+
+    if (reportData.details) {
+      dataToExport = reportData.details;
+    } else {
+      dataToExport = [reportData.summary];
+    }
+
+    exportToCSV(dataToExport, reportName.toLowerCase().replace(/ /g, '_'));
+  };
 
   const renderReportContent = () => {
     if (!selectedReport) {
@@ -93,26 +308,170 @@ const Reports = () => {
               </div>
             </div>
             <div style={{ marginTop: '16px', display: 'flex', gap: '12px' }}>
-              <button className="btn btn-primary">
-                <i className="fas fa-play"></i> Generate Report
+              <button className="btn btn-primary" onClick={generateReport} disabled={loading}>
+                <i className="fas fa-play"></i> {loading ? 'Generating...' : 'Generate Report'}
               </button>
-              <button className="btn btn-secondary">
+              <button className="btn btn-secondary" onClick={handleExportReport} disabled={!reportData}>
                 <i className="fas fa-download"></i> Export
               </button>
             </div>
           </div>
         </div>
 
-        <div className="card" style={{ marginTop: '24px' }}>
-          <div className="card-header">
-            <h3><i className="fas fa-chart-bar"></i> Report Results</h3>
+        {/* Report Results */}
+        {reportData && (
+          <div className="card" style={{ marginTop: '24px' }}>
+            <div className="card-header">
+              <h3><i className="fas fa-chart-bar"></i> Report Results</h3>
+            </div>
+            <div style={{ padding: '20px' }}>
+              {reportData.message ? (
+                <div style={{ padding: '40px', textAlign: 'center', color: '#6b7280' }}>
+                  <i className="fas fa-info-circle" style={{ fontSize: '48px', marginBottom: '16px', color: '#3b82f6' }}></i>
+                  <p style={{ fontSize: '16px' }}>{reportData.message}</p>
+                </div>
+              ) : (
+                <>
+                  {/* Summary Metrics */}
+                  {reportData.summary && (
+                    <div className="dashboard-grid" style={{ marginBottom: '24px' }}>
+                      {Object.entries(reportData.summary).map(([key, value]) => (
+                        <div key={key} className="metric-card">
+                          <div className="metric-header">
+                            <h3>{key.replace(/([A-Z])/g, ' $1').trim().toUpperCase()}</h3>
+                          </div>
+                          <div className="metric-value">
+                            {typeof value === 'number' && key.toLowerCase().includes('cost')
+                              ? '$' + value.toFixed(2)
+                              : typeof value === 'number' && key.toLowerCase().includes('avg')
+                              ? value.toFixed(2)
+                              : value}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Status Breakdown */}
+                  {reportData.statusBreakdown && (
+                    <div style={{ marginTop: '24px' }}>
+                      <h4 style={{ marginBottom: '16px' }}>Status Breakdown</h4>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
+                        {Object.entries(reportData.statusBreakdown).map(([status, count]) => (
+                          <div key={status} style={{
+                            padding: '12px 16px',
+                            backgroundColor: '#f3f4f6',
+                            borderRadius: '6px',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center'
+                          }}>
+                            <span style={{ fontWeight: '500' }}>{status}</span>
+                            <span style={{
+                              backgroundColor: '#3b82f6',
+                              color: 'white',
+                              padding: '4px 12px',
+                              borderRadius: '12px',
+                              fontSize: '14px',
+                              fontWeight: '600'
+                            }}>{count}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Category Breakdown for Tools */}
+                  {reportData.categoryBreakdown && (
+                    <div style={{ marginTop: '24px' }}>
+                      <h4 style={{ marginBottom: '16px' }}>Category Breakdown</h4>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
+                        {Object.entries(reportData.categoryBreakdown).map(([category, count]) => (
+                          <div key={category} style={{
+                            padding: '12px 16px',
+                            backgroundColor: '#f3f4f6',
+                            borderRadius: '6px',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center'
+                          }}>
+                            <span style={{ fontWeight: '500' }}>{category}</span>
+                            <span style={{
+                              backgroundColor: '#10b981',
+                              color: 'white',
+                              padding: '4px 12px',
+                              borderRadius: '12px',
+                              fontSize: '14px',
+                              fontWeight: '600'
+                            }}>{count}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Role Breakdown for Team */}
+                  {reportData.roleBreakdown && (
+                    <div style={{ marginTop: '24px' }}>
+                      <h4 style={{ marginBottom: '16px' }}>Role Distribution</h4>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
+                        {Object.entries(reportData.roleBreakdown).map(([role, count]) => (
+                          <div key={role} style={{
+                            padding: '12px 16px',
+                            backgroundColor: '#f3f4f6',
+                            borderRadius: '6px',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center'
+                          }}>
+                            <span style={{ fontWeight: '500' }}>{role}</span>
+                            <span style={{
+                              backgroundColor: '#8b5cf6',
+                              color: 'white',
+                              padding: '4px 12px',
+                              borderRadius: '12px',
+                              fontSize: '14px',
+                              fontWeight: '600'
+                            }}>{count}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Cost by Status for Damages */}
+                  {reportData.costByStatus && (
+                    <div style={{ marginTop: '24px' }}>
+                      <h4 style={{ marginBottom: '16px' }}>Cost by Status</h4>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
+                        {Object.entries(reportData.costByStatus).map(([status, cost]) => (
+                          <div key={status} style={{
+                            padding: '12px 16px',
+                            backgroundColor: '#f3f4f6',
+                            borderRadius: '6px',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center'
+                          }}>
+                            <span style={{ fontWeight: '500' }}>{status}</span>
+                            <span style={{
+                              backgroundColor: '#ef4444',
+                              color: 'white',
+                              padding: '4px 12px',
+                              borderRadius: '12px',
+                              fontSize: '14px',
+                              fontWeight: '600'
+                            }}>${cost.toFixed(2)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
           </div>
-          <div style={{ padding: '40px', textAlign: 'center', color: '#6b7280' }}>
-            <i className="fas fa-info-circle" style={{ fontSize: '48px', marginBottom: '16px', color: '#3b82f6' }}></i>
-            <p style={{ fontSize: '16px' }}>Report generation and detailed analytics coming soon.</p>
-            <p style={{ marginTop: '8px' }}>This feature will provide comprehensive insights and data visualization for {report.name.toLowerCase()}.</p>
-          </div>
-        </div>
+        )}
       </div>
     );
   };
