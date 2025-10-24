@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import Layout from '../components/common/Layout';
 import { useAuth } from '../contexts/AuthContext';
 import firebaseService from '../services/firebaseService';
+import { exportToCSV, prepareFleetDataForExport } from '../utils/exportUtils';
 
 const Fleet = () => {
   const { currentUser } = useAuth();
@@ -134,6 +135,11 @@ const Fleet = () => {
     return matchesSearch && matchesStatus;
   });
 
+  const handleExport = () => {
+    const dataToExport = prepareFleetDataForExport(filteredVehicles);
+    exportToCSV(dataToExport, 'fleet_vehicles');
+  };
+
   if (loading) {
     return (
       <Layout>
@@ -213,9 +219,14 @@ const Fleet = () => {
         <div className="card">
           <div className="card-header">
             <h3><i className="fas fa-truck"></i> Fleet Vehicles</h3>
-            <button className="btn btn-primary" onClick={openAddModal}>
-              <i className="fas fa-plus"></i> Add Vehicle
-            </button>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button className="btn btn-secondary" onClick={handleExport}>
+                <i className="fas fa-download"></i> Export CSV
+              </button>
+              <button className="btn btn-primary" onClick={openAddModal}>
+                <i className="fas fa-plus"></i> Add Vehicle
+              </button>
+            </div>
           </div>
           <div className="table-container">
             {filteredVehicles.length > 0 ? (

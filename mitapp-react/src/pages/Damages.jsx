@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import Layout from '../components/common/Layout';
 import firebaseService from '../services/firebaseService';
+import { exportToCSV, prepareDamagesDataForExport } from '../utils/exportUtils';
 
 const Damages = () => {
   const [damages, setDamages] = useState([]);
@@ -138,6 +139,11 @@ const Damages = () => {
     return date.toLocaleDateString();
   };
 
+  const handleExport = () => {
+    const dataToExport = prepareDamagesDataForExport(filteredDamages);
+    exportToCSV(dataToExport, 'damage_reports');
+  };
+
   if (loading) {
     return (
       <Layout>
@@ -200,9 +206,14 @@ const Damages = () => {
         <div className="card">
           <div className="card-header">
             <h3><i className="fas fa-car-crash"></i> Damage Reports</h3>
-            <button className="btn btn-primary" onClick={openAddModal}>
-              <i className="fas fa-plus"></i> Report Damage
-            </button>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button className="btn btn-secondary" onClick={handleExport}>
+                <i className="fas fa-download"></i> Export CSV
+              </button>
+              <button className="btn btn-primary" onClick={openAddModal}>
+                <i className="fas fa-plus"></i> Report Damage
+              </button>
+            </div>
           </div>
           <div className="table-container">
             {filteredDamages.length > 0 ? (

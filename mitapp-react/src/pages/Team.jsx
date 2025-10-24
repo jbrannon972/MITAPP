@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useData } from '../contexts/DataContext';
 import ZoneCard from '../components/team/ZoneCard';
 import { getTotalStaff, getMITTechCount, getDemoTechCount } from '../utils/calculations';
+import { exportToCSV, prepareTeamDataForExport } from '../utils/exportUtils';
 
 const Team = () => {
   const { currentUser } = useAuth();
@@ -232,6 +233,11 @@ const Team = () => {
     openAddMemberModal(zoneIndex);
   };
 
+  const handleExport = () => {
+    const dataToExport = prepareTeamDataForExport(staffingData);
+    exportToCSV(dataToExport, 'team_roster');
+  };
+
   if (loading || !staffingData) {
     return (
       <Layout>
@@ -364,6 +370,9 @@ const Team = () => {
             <div className="card">
               <div className="card-header">
                 <h3><i className="fas fa-list"></i> Complete Team Roster</h3>
+                <button className="btn btn-secondary" onClick={handleExport}>
+                  <i className="fas fa-download"></i> Export CSV
+                </button>
               </div>
               <div className="table-container">
                 <table className="data-table">

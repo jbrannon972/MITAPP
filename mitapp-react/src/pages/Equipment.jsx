@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import Layout from '../components/common/Layout';
 import firebaseService from '../services/firebaseService';
+import { exportToCSV, prepareEquipmentDataForExport } from '../utils/exportUtils';
 
 const Equipment = () => {
   const [equipmentData, setEquipmentData] = useState([]);
@@ -117,6 +118,11 @@ const Equipment = () => {
     return matchesSearch && matchesStatus;
   });
 
+  const handleExport = () => {
+    const dataToExport = prepareEquipmentDataForExport(filteredEquipment);
+    exportToCSV(dataToExport, 'equipment_inventory');
+  };
+
   if (loading) {
     return (
       <Layout>
@@ -180,9 +186,14 @@ const Equipment = () => {
         <div className="card">
           <div className="card-header">
             <h3><i className="fas fa-toolbox"></i> Equipment Inventory</h3>
-            <button className="btn btn-primary" onClick={openAddModal}>
-              <i className="fas fa-plus"></i> Add Equipment
-            </button>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button className="btn btn-secondary" onClick={handleExport}>
+                <i className="fas fa-download"></i> Export CSV
+              </button>
+              <button className="btn btn-primary" onClick={openAddModal}>
+                <i className="fas fa-plus"></i> Add Equipment
+              </button>
+            </div>
           </div>
           <div className="table-container">
             {filteredEquipment.length > 0 ? (

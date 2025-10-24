@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import Layout from '../components/common/Layout';
 import firebaseService from '../services/firebaseService';
+import { exportToCSV, prepareToolsDataForExport } from '../utils/exportUtils';
 
 const Tools = () => {
   const [tools, setTools] = useState([]);
@@ -117,6 +118,11 @@ const Tools = () => {
     return matchesSearch && matchesStatus;
   });
 
+  const handleExport = () => {
+    const dataToExport = prepareToolsDataForExport(filteredTools);
+    exportToCSV(dataToExport, 'tools_inventory');
+  };
+
   if (loading) {
     return (
       <Layout>
@@ -180,9 +186,14 @@ const Tools = () => {
         <div className="card">
           <div className="card-header">
             <h3><i className="fas fa-wrench"></i> Tools Inventory</h3>
-            <button className="btn btn-primary" onClick={openAddModal}>
-              <i className="fas fa-plus"></i> Add Tool
-            </button>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button className="btn btn-secondary" onClick={handleExport}>
+                <i className="fas fa-download"></i> Export CSV
+              </button>
+              <button className="btn btn-primary" onClick={openAddModal}>
+                <i className="fas fa-plus"></i> Add Tool
+              </button>
+            </div>
           </div>
           <div className="table-container">
             {filteredTools.length > 0 ? (
