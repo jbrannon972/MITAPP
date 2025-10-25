@@ -20,11 +20,18 @@ const KanbanCalendar = ({
   const [dragOverTech, setDragOverTech] = useState(null);
   const [showMapModal, setShowMapModal] = useState(false);
   const [selectedTechForMap, setSelectedTechForMap] = useState(null);
+  const [showJobModal, setShowJobModal] = useState(false);
+  const [selectedJob, setSelectedJob] = useState(null);
   const [isCalculatingDrive, setIsCalculatingDrive] = useState(false);
   const [returnToOfficeTimes, setReturnToOfficeTimes] = useState({});
+  const scrollContainerRef = useRef(null);
   const columnRefs = useRef({});
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
+
+  // Get all techs including demo techs for second tech assignment
+  const allTechs = [...techs];
+  const demoTechs = techs.filter(t => t.isDemoTech || t.role?.toLowerCase().includes('demo'));
 
   // Sync with parent when props change
   useEffect(() => {
@@ -116,12 +123,17 @@ const KanbanCalendar = ({
     const map = new mapboxgl.Map({
       container: mapContainerRef.current,
       style: 'mapbox://styles/mapbox/streets-v12',
-      center: [-95.5698, 30.1945], // Houston
+      center: [-95.5698, 30.1945],
       zoom: 10
     });
 
     map.addControl(new mapboxgl.NavigationControl(), 'top-right');
-    mapInstanceRef.current = map;
+
+    // Wait for map to load before rendering route
+    map.on('load', () => {
+      mapInstanceRef.current = map;
+      renderRouteOnMap();
+    });
 
     return () => {
       if (mapInstanceRef.current) {
@@ -131,15 +143,24 @@ const KanbanCalendar = ({
     };
   }, [showMapModal]);
 
-  // Render route on map when tech is selected
-  useEffect(() => {
+  // Render route on map
+  const renderRouteOnMap = () => {
     if (!mapInstanceRef.current || !selectedTechForMap) return;
 
     const map = mapInstanceRef.current;
     const techRoute = localRoutes[selectedTechForMap];
-    if (!techRoute || !techRoute.jobs || techRoute.jobs.length === 0) return;
 
-    // Clear existing layers
+    if (!techRoute || !techRoute.jobs || techRoute.jobs.length === 0) {
+      console.log('No jobs to display on map');
+      return;
+    }
+
+    // Clear existing markers and layers
+    const markers = document.getElementsByClassName('mapboxgl-marker');
+    while(markers[0]) {
+      markers[0].remove();
+    }
+
     if (map.getLayer('route')) map.removeLayer('route');
     if (map.getSource('route')) map.removeSource('route');
 
@@ -151,19 +172,27 @@ const KanbanCalendar = ({
 
     const coordinates = [[officeCoords.lng, officeCoords.lat]];
 
+    // Add office marker
+    const officeEl = document.createElement('div');
+    officeEl.innerHTML = `<div style="background-color: #10b981; color: white; width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 16px; border: 3px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.3);"><i class="fas fa-home"></i></div>`;
+    new mapboxgl.Marker(officeEl)
+      .setLngLat([officeCoords.lng, officeCoords.lat])
+      .setPopup(new mapboxgl.Popup({ offset: 25 })
+        .setHTML(`<div style="padding: 8px;"><strong>${offices[officeKey]?.name}</strong><br/>Start/End Point</div>`))
+      .addTo(map);
+
     // Add job markers and build route
     techRoute.jobs.forEach((job, idx) => {
       if (job.coordinates && job.coordinates.lng && job.coordinates.lat) {
         coordinates.push([job.coordinates.lng, job.coordinates.lat]);
 
-        // Add marker
         const el = document.createElement('div');
         el.innerHTML = `<div style="background-color: #3b82f6; color: white; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 14px; border: 3px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.3); cursor: pointer;">${idx + 1}</div>`;
 
         new mapboxgl.Marker(el)
           .setLngLat([job.coordinates.lng, job.coordinates.lat])
           .setPopup(new mapboxgl.Popup({ offset: 25 })
-            .setHTML(`<div style="padding: 8px;"><strong>${idx + 1}. ${job.customerName}</strong><br/>${job.startTime || job.timeframeStart} - ${job.endTime || job.timeframeEnd}<br/>${job.duration}h</div>`))
+            .setHTML(`<div style="padding: 8px;"><strong>${idx + 1}. ${job.customerName}</strong><br/>${job.address}<br/>${job.startTime || job.timeframeStart} - ${job.endTime || job.timeframeEnd}<br/>${job.duration}h</div>`))
           .addTo(map);
       }
     });
@@ -171,7 +200,7 @@ const KanbanCalendar = ({
     // Return to office
     coordinates.push([officeCoords.lng, officeCoords.lat]);
 
-    // Draw route line
+    // Draw route line if we have coordinates
     if (coordinates.length > 2) {
       map.addSource('route', {
         type: 'geojson',
@@ -200,28 +229,34 @@ const KanbanCalendar = ({
         }
       });
 
-      // Fit map to route
+      // Fit map to show entire route
       const bounds = coordinates.reduce(
         (bounds, coord) => bounds.extend(coord),
         new mapboxgl.LngLatBounds(coordinates[0], coordinates[0])
       );
       map.fitBounds(bounds, { padding: 50 });
     }
-  }, [selectedTechForMap, localRoutes]);
+  };
 
-  // Time configuration (7 AM to 8 PM, each hour = 80px)
+  // Re-render route when tech or routes change
+  useEffect(() => {
+    if (showMapModal && mapInstanceRef.current) {
+      renderRouteOnMap();
+    }
+  }, [selectedTechForMap, localRoutes, showMapModal]);
+
+  // Time configuration
   const startHour = 7;
   const endHour = 20;
   const pixelsPerHour = 80;
   const totalHours = endHour - startHour;
+  const timelineHeight = totalHours * pixelsPerHour;
 
-  // Generate time slots
   const timeSlots = Array.from({ length: totalHours + 1 }, (_, i) => {
     const hour = startHour + i;
     return `${String(hour).padStart(2, '0')}:00`;
   });
 
-  // Color mapping for job types
   const getJobTypeColor = (jobType) => {
     const type = jobType.toLowerCase();
     if (type.includes('install')) return '#8b5cf6';
@@ -233,64 +268,52 @@ const KanbanCalendar = ({
     return '#6b7280';
   };
 
-  // Convert time string to minutes from start of day
   const timeToMinutes = (timeStr) => {
     const [hours, minutes] = timeStr.split(':').map(Number);
     return hours * 60 + minutes;
   };
 
-  // Convert minutes to time string
   const minutesToTime = (minutes) => {
     const hours = Math.floor(minutes / 60);
     const mins = minutes % 60;
     return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
   };
 
-  // Calculate Y position based on time
   const getYPosition = (timeStr) => {
     const [hours, minutes] = timeStr.split(':').map(Number);
     const minutesFromStart = (hours - startHour) * 60 + minutes;
     return (minutesFromStart / 60) * pixelsPerHour;
   };
 
-  // Calculate time from Y position (for drop)
   const getTimeFromY = (yPos) => {
     const minutesFromStart = Math.round((yPos / pixelsPerHour) * 60);
     const totalMinutes = startHour * 60 + minutesFromStart;
-    // Round to nearest 15 minutes
     const roundedMinutes = Math.round(totalMinutes / 15) * 15;
     return minutesToTime(roundedMinutes);
   };
 
-  // Calculate optimal start time based on previous job + drive time
+  // Calculate optimal start time with drive time intelligence
   const calculateOptimalStartTime = async (job, targetTechId, droppedYPos) => {
     const techRoute = localRoutes[targetTechId];
     const techJobs = techRoute?.jobs || [];
 
     if (techJobs.length === 0) {
-      // First job - use office location and start at shift start or dropped time
-      const officeKey = techs.find(t => t.id === targetTechId)?.office;
-      const shiftStart = '08:15'; // Default shift start
+      const shiftStart = '08:15';
       const droppedTime = getTimeFromY(droppedYPos);
-
-      // Use whichever is later
       const shiftMinutes = timeToMinutes(shiftStart);
       const droppedMinutes = timeToMinutes(droppedTime);
       return minutesToTime(Math.max(shiftMinutes, droppedMinutes));
     }
 
-    // Find where this job should go in the sequence
     const droppedTime = getTimeFromY(droppedYPos);
     const droppedMinutes = timeToMinutes(droppedTime);
 
-    // Sort jobs by start time
     const sortedJobs = [...techJobs].sort((a, b) => {
       const aTime = timeToMinutes(a.startTime || a.timeframeStart);
       const bTime = timeToMinutes(b.startTime || b.timeframeStart);
       return aTime - bTime;
     });
 
-    // Find the job that should come before this one
     let previousJob = null;
     for (let i = sortedJobs.length - 1; i >= 0; i--) {
       const jobEndMinutes = timeToMinutes(sortedJobs[i].endTime || sortedJobs[i].timeframeEnd);
@@ -301,34 +324,28 @@ const KanbanCalendar = ({
     }
 
     if (!previousJob) {
-      // No previous job, use shift start
       return minutesToTime(Math.max(timeToMinutes('08:15'), droppedMinutes));
     }
 
-    // Calculate drive time from previous job
+    // Calculate drive time
     setIsCalculatingDrive(true);
     try {
       const mapboxService = getMapboxService();
-      const prevAddress = previousJob.address;
-      const newAddress = job.address;
+      const result = await mapboxService.getDrivingDistance(previousJob.address, job.address);
+      const driveMinutes = Math.ceil(result.durationMinutes || 20);
 
-      const result = await mapboxService.getDrivingDistance(prevAddress, newAddress);
-      const driveMinutes = result.durationMinutes || 20; // Default 20 min
-
-      // Start time = previous job end + drive time
       const prevEndMinutes = timeToMinutes(previousJob.endTime);
       const calculatedStartMinutes = prevEndMinutes + driveMinutes;
 
-      // Use the later of calculated time or dropped time
-      const finalStartMinutes = Math.max(calculatedStartMinutes, droppedMinutes);
+      setIsCalculatingDrive(false);
 
-      setIsCalculatingDrive(false);
-      return minutesToTime(finalStartMinutes);
+      // Always use calculated time, not dropped time
+      return minutesToTime(calculatedStartMinutes);
     } catch (error) {
-      console.error('Drive time calculation error:', error);
+      console.error('Drive time error:', error);
       setIsCalculatingDrive(false);
-      // Fallback to dropped time + default buffer
-      return minutesToTime(droppedMinutes);
+      const prevEndMinutes = timeToMinutes(previousJob.endTime);
+      return minutesToTime(prevEndMinutes + 20);
     }
   };
 
@@ -365,31 +382,27 @@ const KanbanCalendar = ({
 
     const { job, sourceTechId } = draggedJob;
 
-    // Don't do anything if dropping on same tech without moving
     if (sourceTechId === targetTechId && !targetTechId) {
       setDraggedJob(null);
       return;
     }
 
-    // Calculate drop position
+    // Calculate Y position relative to the scroll container
     let yPos = 0;
-    if (targetTechId && columnRefs.current[targetTechId]) {
-      const column = columnRefs.current[targetTechId];
-      const rect = column.getBoundingClientRect();
-      yPos = e.clientY - rect.top + column.scrollTop;
+    if (targetTechId) {
+      const scrollContainer = scrollContainerRef.current;
+      const scrollTop = scrollContainer ? scrollContainer.scrollTop : 0;
+      yPos = e.clientY - scrollContainer.getBoundingClientRect().top + scrollTop - 80; // Adjust for header
     }
 
-    // Calculate optimal start time with drive time
     const startTime = targetTechId
       ? await calculateOptimalStartTime(job, targetTechId, yPos)
       : (job.startTime || job.timeframeStart);
 
-    // Calculate end time
     const startMinutes = timeToMinutes(startTime);
     const endMinutes = startMinutes + (job.duration * 60);
     const endTime = minutesToTime(endMinutes);
 
-    // Update job with new times
     const updatedJob = {
       ...job,
       startTime,
@@ -398,10 +411,8 @@ const KanbanCalendar = ({
       status: targetTechId ? 'assigned' : 'unassigned'
     };
 
-    // Update local state IMMEDIATELY for instant UI feedback
     const updatedRoutes = { ...localRoutes };
 
-    // Remove from source tech
     if (sourceTechId) {
       updatedRoutes[sourceTechId] = {
         ...updatedRoutes[sourceTechId],
@@ -409,7 +420,6 @@ const KanbanCalendar = ({
       };
     }
 
-    // Add to target tech
     if (targetTechId) {
       const targetTech = techs.find(t => t.id === targetTechId);
       if (!updatedRoutes[targetTechId]) {
@@ -421,7 +431,6 @@ const KanbanCalendar = ({
       updatedRoutes[targetTechId].jobs.push(updatedJob);
     }
 
-    // Update jobs assignment
     const updatedJobs = localJobs.map(j => {
       if (j.id === job.id) {
         return updatedJob;
@@ -429,12 +438,10 @@ const KanbanCalendar = ({
       return j;
     });
 
-    // Update local state FIRST for instant UI
     setLocalRoutes(updatedRoutes);
     setLocalJobs(updatedJobs);
     setDraggedJob(null);
 
-    // Then persist to parent/Firebase
     await onUpdateRoutes(updatedRoutes);
     await onUpdateJobs(updatedJobs);
   };
@@ -449,12 +456,9 @@ const KanbanCalendar = ({
     }
 
     const updatedRoutes = { ...localRoutes };
-
-    // Get jobs before swap
     const draggedJobs = updatedRoutes[draggedTech]?.jobs || [];
     const targetJobs = updatedRoutes[targetTechId]?.jobs || [];
 
-    // Swap the entire routes
     const temp = { ...updatedRoutes[draggedTech] };
     updatedRoutes[draggedTech] = {
       ...(updatedRoutes[targetTechId] || { jobs: [] }),
@@ -465,7 +469,6 @@ const KanbanCalendar = ({
       tech: updatedRoutes[targetTechId]?.tech || techs.find(t => t.id === targetTechId)
     };
 
-    // Update all jobs with new tech assignments
     const updatedJobs = localJobs.map(job => {
       if (draggedJobs.some(j => j.id === job.id)) {
         return { ...job, assignedTech: draggedTech };
@@ -476,12 +479,10 @@ const KanbanCalendar = ({
       return job;
     });
 
-    // Update local state FIRST for instant UI
     setLocalRoutes(updatedRoutes);
     setLocalJobs(updatedJobs);
     setDraggedTech(null);
 
-    // Then persist to parent/Firebase
     await onUpdateRoutes(updatedRoutes);
     await onUpdateJobs(updatedJobs);
   };
@@ -489,6 +490,39 @@ const KanbanCalendar = ({
   const handleTechClick = (techId) => {
     setSelectedTechForMap(techId);
     setShowMapModal(true);
+  };
+
+  const handleJobClick = (job) => {
+    setSelectedJob({...job});
+    setShowJobModal(true);
+  };
+
+  const handleSaveJobDetails = async () => {
+    if (!selectedJob) return;
+
+    const updatedJobs = localJobs.map(j => {
+      if (j.id === selectedJob.id) {
+        return selectedJob;
+      }
+      return j;
+    });
+
+    const updatedRoutes = { ...localRoutes };
+    if (selectedJob.assignedTech && updatedRoutes[selectedJob.assignedTech]) {
+      updatedRoutes[selectedJob.assignedTech].jobs = updatedRoutes[selectedJob.assignedTech].jobs.map(j => {
+        if (j.id === selectedJob.id) {
+          return selectedJob;
+        }
+        return j;
+      });
+    }
+
+    setLocalJobs(updatedJobs);
+    setLocalRoutes(updatedRoutes);
+    setShowJobModal(false);
+
+    await onUpdateJobs(updatedJobs);
+    await onUpdateRoutes(updatedRoutes);
   };
 
   const unassignedJobs = localJobs.filter(j => !j.assignedTech);
@@ -512,13 +546,13 @@ const KanbanCalendar = ({
             <i className="fas fa-calendar-day"></i> Timeline - {selectedDate}
           </h3>
           <p style={{ margin: 0, fontSize: '11px', color: '#6b7280' }}>
-            Drop jobs to auto-schedule • Click tech name for route map
+            Drop jobs to auto-schedule • Click job to edit • Click tech name for map
           </p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           {isCalculatingDrive && (
             <span style={{ fontSize: '11px', color: '#f59e0b' }}>
-              <i className="fas fa-spinner fa-spin"></i> Calculating drive time...
+              <i className="fas fa-spinner fa-spin"></i> Calculating...
             </span>
           )}
           <div style={{ fontSize: '12px', fontWeight: '500', color: '#3b82f6' }}>
@@ -527,46 +561,49 @@ const KanbanCalendar = ({
         </div>
       </div>
 
-      {/* Calendar Grid - Single Scroll Container */}
-      <div style={{
-        display: 'flex',
-        gap: '6px',
-        flex: 1,
-        minHeight: 0,
-        overflow: 'auto', // Single scroll for entire container
-        position: 'relative'
-      }}>
-        {/* Time Column - Sticky */}
+      {/* Calendar Grid - Single Unified Scroll */}
+      <div
+        ref={scrollContainerRef}
+        style={{
+          flex: 1,
+          overflow: 'auto',
+          position: 'relative',
+          backgroundColor: '#f9fafb'
+        }}
+      >
         <div style={{
-          width: '50px',
-          flexShrink: 0,
-          position: 'sticky',
-          left: 0,
-          zIndex: 10,
-          backgroundColor: '#ffffff',
-          borderRadius: '6px',
-          border: '1px solid #e5e7eb',
           display: 'flex',
-          flexDirection: 'column',
-          height: 'fit-content'
+          gap: '6px',
+          minHeight: `${timelineHeight + 100}px`,
+          padding: '0 8px 8px 8px'
         }}>
+          {/* Time Column - Sticky */}
           <div style={{
-            height: '60px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            borderBottom: '2px solid #e5e7eb',
-            fontSize: '10px',
-            fontWeight: '600',
-            color: '#6b7280',
+            width: '50px',
+            flexShrink: 0,
             position: 'sticky',
-            top: 0,
+            left: '8px',
+            zIndex: 10,
             backgroundColor: '#ffffff',
-            zIndex: 1
+            borderRadius: '6px',
+            border: '1px solid #e5e7eb',
+            height: 'fit-content'
           }}>
-            TIME
-          </div>
-          <div>
+            <div style={{
+              height: '60px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderBottom: '2px solid #e5e7eb',
+              fontSize: '10px',
+              fontWeight: '600',
+              color: '#6b7280',
+              position: 'sticky',
+              top: 0,
+              backgroundColor: '#ffffff'
+            }}>
+              TIME
+            </div>
             {timeSlots.map((time, idx) => (
               <div key={time} style={{
                 height: `${pixelsPerHour}px`,
@@ -583,102 +620,90 @@ const KanbanCalendar = ({
               </div>
             ))}
           </div>
-        </div>
 
-        {/* Unassigned Jobs Column - Sticky */}
-        <div
-          style={{
-            width: '140px',
-            flexShrink: 0,
-            position: 'sticky',
-            left: '56px',
-            zIndex: 9,
-            backgroundColor: dragOverTech === 'unassigned' ? '#fef3c7' : '#ffffff',
-            border: dragOverTech === 'unassigned' ? '2px solid #f59e0b' : '1px solid #e5e7eb',
-            borderRadius: '8px',
-            display: 'flex',
-            flexDirection: 'column',
-            transition: 'all 0.15s ease',
-            boxShadow: dragOverTech === 'unassigned' ? '0 4px 12px rgba(245, 158, 11, 0.2)' : 'none',
-            height: 'fit-content',
-            maxHeight: '100%'
-          }}
-          onDragOver={handleDragOver}
-          onDragEnter={() => handleDragEnter('unassigned')}
-          onDragLeave={handleDragLeave}
-          onDrop={(e) => handleJobDrop(e, null)}
-        >
-          <div style={{
-            padding: '8px',
-            borderBottom: '2px solid #e5e7eb',
-            backgroundColor: '#f9fafb',
-            position: 'sticky',
-            top: 0,
-            zIndex: 1
-          }}>
-            <h4 style={{ margin: 0, fontSize: '12px', fontWeight: '600', marginBottom: '2px' }}>
-              <i className="fas fa-inbox"></i> Unassigned
-            </h4>
-            <p style={{ margin: 0, fontSize: '10px', color: '#6b7280' }}>
-              {unassignedJobs.length} jobs
-            </p>
+          {/* Unassigned Column - Sticky */}
+          <div
+            style={{
+              width: '140px',
+              flexShrink: 0,
+              position: 'sticky',
+              left: '66px',
+              zIndex: 9,
+              backgroundColor: dragOverTech === 'unassigned' ? '#fef3c7' : '#ffffff',
+              border: dragOverTech === 'unassigned' ? '2px solid #f59e0b' : '1px solid #e5e7eb',
+              borderRadius: '8px',
+              transition: 'all 0.15s ease',
+              boxShadow: dragOverTech === 'unassigned' ? '0 4px 12px rgba(245, 158, 11, 0.2)' : 'none',
+              height: 'fit-content'
+            }}
+            onDragOver={handleDragOver}
+            onDragEnter={() => handleDragEnter('unassigned')}
+            onDragLeave={handleDragLeave}
+            onDrop={(e) => handleJobDrop(e, null)}
+          >
+            <div style={{
+              padding: '8px',
+              borderBottom: '2px solid #e5e7eb',
+              backgroundColor: '#f9fafb',
+              position: 'sticky',
+              top: 0,
+              height: '60px',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'center'
+            }}>
+              <h4 style={{ margin: 0, fontSize: '12px', fontWeight: '600', marginBottom: '2px' }}>
+                <i className="fas fa-inbox"></i> Unassigned
+              </h4>
+              <p style={{ margin: 0, fontSize: '10px', color: '#6b7280' }}>
+                {unassignedJobs.length} jobs
+              </p>
+            </div>
+
+            <div style={{ padding: '6px' }}>
+              {unassignedJobs.map(job => (
+                <div
+                  key={job.id}
+                  draggable
+                  onDragStart={(e) => handleJobDragStart(e, job, null)}
+                  onClick={() => handleJobClick(job)}
+                  style={{
+                    marginBottom: '4px',
+                    padding: '6px',
+                    backgroundColor: '#ffffff',
+                    border: `2px solid ${getJobTypeColor(job.jobType)}`,
+                    borderRadius: '6px',
+                    cursor: 'grab',
+                    transition: 'all 0.15s ease',
+                    boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-1px)';
+                    e.currentTarget.style.boxShadow = '0 3px 6px rgba(0,0,0,0.15)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = '0 1px 2px rgba(0,0,0,0.1)';
+                  }}
+                >
+                  <div style={{ fontWeight: '600', fontSize: '11px', marginBottom: '2px' }}>
+                    {job.customerName}
+                  </div>
+                  <div style={{ fontSize: '9px', color: '#6b7280' }}>
+                    <div>{job.jobType}</div>
+                    <div style={{ marginTop: '2px' }}>{job.duration}h</div>
+                    {job.requiresTwoTechs && (
+                      <div style={{ color: '#f59e0b', marginTop: '2px', fontWeight: '500' }}>
+                        <i className="fas fa-users"></i> 2 Techs
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
 
-          <div style={{ padding: '6px' }}>
-            {unassignedJobs.map(job => (
-              <div
-                key={job.id}
-                draggable
-                onDragStart={(e) => handleJobDragStart(e, job, null)}
-                style={{
-                  marginBottom: '4px',
-                  padding: '6px',
-                  backgroundColor: '#ffffff',
-                  border: `2px solid ${getJobTypeColor(job.jobType)}`,
-                  borderRadius: '6px',
-                  cursor: 'grab',
-                  transition: 'all 0.15s ease',
-                  boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = 'translateY(-1px)';
-                  e.currentTarget.style.boxShadow = '0 3px 6px rgba(0,0,0,0.15)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = '0 1px 2px rgba(0,0,0,0.1)';
-                }}
-              >
-                <div style={{ fontWeight: '600', fontSize: '11px', marginBottom: '2px' }}>
-                  {job.customerName}
-                </div>
-                <div style={{ fontSize: '9px', color: '#6b7280' }}>
-                  <div>{job.jobType}</div>
-                  <div style={{ marginTop: '2px' }}>{job.duration}h</div>
-                  {job.requiresTwoTechs && (
-                    <div style={{ color: '#f59e0b', marginTop: '2px', fontWeight: '500' }}>
-                      <i className="fas fa-users"></i> 2 Techs
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
-            {unassignedJobs.length === 0 && (
-              <div style={{
-                padding: '20px 10px',
-                textAlign: 'center',
-                color: '#9ca3af',
-                fontSize: '10px',
-                fontStyle: 'italic'
-              }}>
-                All assigned!
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Tech Columns */}
-        <div style={{ display: 'flex', gap: '6px', height: 'fit-content' }}>
+          {/* Tech Columns */}
           {techs.map(tech => {
             const techRoute = localRoutes[tech.id];
             const techJobs = techRoute?.jobs || [];
@@ -695,12 +720,11 @@ const KanbanCalendar = ({
                   backgroundColor: isDragOver ? '#dbeafe' : '#ffffff',
                   border: isDragging ? '2px solid #f59e0b' : (isDragOver ? '2px solid #3b82f6' : '1px solid #e5e7eb'),
                   borderRadius: '8px',
-                  display: 'flex',
-                  flexDirection: 'column',
                   opacity: isDragging ? 0.5 : 1,
                   transition: 'all 0.15s ease',
                   boxShadow: isDragOver ? '0 4px 12px rgba(59, 130, 246, 0.2)' : 'none',
-                  height: 'fit-content'
+                  height: 'fit-content',
+                  minHeight: `${timelineHeight + 60}px`
                 }}
                 onDragOver={handleDragOver}
                 onDragEnter={() => handleDragEnter(tech.id)}
@@ -713,7 +737,7 @@ const KanbanCalendar = ({
                   }
                 }}
               >
-                {/* Tech Header - Draggable & Clickable */}
+                {/* Tech Header */}
                 <div
                   draggable
                   onDragStart={(e) => handleTechDragStart(e, tech.id)}
@@ -725,7 +749,11 @@ const KanbanCalendar = ({
                     backgroundColor: '#f9fafb',
                     position: 'sticky',
                     top: 0,
-                    zIndex: 1
+                    zIndex: 1,
+                    height: '60px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'center'
                   }}
                   title="Click to view route map"
                 >
@@ -736,28 +764,21 @@ const KanbanCalendar = ({
                     </h4>
                     <i className="fas fa-map-marked-alt" style={{ color: '#3b82f6', fontSize: '10px' }}></i>
                   </div>
-                  <p style={{ margin: '2px 0 0 0', fontSize: '9px', color: '#6b7280' }}>
-                    {offices[tech.office]?.shortName}
-                  </p>
                   <div style={{ marginTop: '4px', display: 'flex', gap: '6px', fontSize: '9px', fontWeight: '500' }}>
-                    <span style={{ color: '#3b82f6' }}>
-                      {techJobs.length}j
-                    </span>
-                    <span style={{ color: '#10b981' }}>
-                      {totalHours.toFixed(1)}h
-                    </span>
+                    <span style={{ color: '#3b82f6' }}>{techJobs.length}j</span>
+                    <span style={{ color: '#10b981' }}>{totalHours.toFixed(1)}h</span>
                   </div>
                 </div>
 
-                {/* Timeline Jobs */}
+                {/* Timeline */}
                 <div
                   ref={el => columnRefs.current[tech.id] = el}
                   style={{
                     position: 'relative',
-                    minHeight: `${(totalHours + 1) * pixelsPerHour}px`
+                    minHeight: `${timelineHeight}px`
                   }}
                 >
-                  {/* Time grid lines */}
+                  {/* Grid lines */}
                   {timeSlots.map((time, idx) => (
                     <div
                       key={time}
@@ -773,19 +794,7 @@ const KanbanCalendar = ({
                     />
                   ))}
 
-                  {techJobs.length === 0 && (
-                    <div style={{
-                      padding: '40px 10px',
-                      textAlign: 'center',
-                      color: '#9ca3af',
-                      fontSize: '10px',
-                      fontStyle: 'italic',
-                      position: 'relative'
-                    }}>
-                      Drop here
-                    </div>
-                  )}
-
+                  {/* Jobs */}
                   {techJobs.map((job) => {
                     const yPos = job.startTime ? getYPosition(job.startTime) : 0;
                     const height = job.duration * pixelsPerHour;
@@ -795,6 +804,10 @@ const KanbanCalendar = ({
                         key={job.id}
                         draggable
                         onDragStart={(e) => handleJobDragStart(e, job, tech.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleJobClick(job);
+                        }}
                         style={{
                           position: 'absolute',
                           top: `${yPos}px`,
@@ -806,7 +819,7 @@ const KanbanCalendar = ({
                           border: `2px solid ${getJobTypeColor(job.jobType)}`,
                           borderLeft: `4px solid ${getJobTypeColor(job.jobType)}`,
                           borderRadius: '4px',
-                          cursor: 'grab',
+                          cursor: 'pointer',
                           transition: 'all 0.15s ease',
                           boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
                           overflow: 'hidden'
@@ -831,10 +844,15 @@ const KanbanCalendar = ({
                               <i className="fas fa-clock"></i> {job.startTime} - {job.endTime}
                             </div>
                           )}
-                          <div>{job.duration}h{job.travelTime > 0 && ` • ${job.travelTime}m drive`}</div>
+                          <div>{job.duration}h{job.travelTime > 0 && ` • ${job.travelTime}m`}</div>
                           {job.requiresTwoTechs && (
                             <div style={{ color: '#f59e0b', marginTop: '2px', fontWeight: '500' }}>
                               <i className="fas fa-users"></i> 2
+                            </div>
+                          )}
+                          {job.demoTech && (
+                            <div style={{ color: '#8b5cf6', fontSize: '8px', marginTop: '1px' }}>
+                              + {job.demoTech}
                             </div>
                           )}
                         </div>
@@ -842,7 +860,7 @@ const KanbanCalendar = ({
                     );
                   })}
 
-                  {/* Return to Office Card */}
+                  {/* Return to Office */}
                   {returnToOfficeTimes[tech.id] && (
                     <div
                       style={{
@@ -871,13 +889,8 @@ const KanbanCalendar = ({
                           <i className="fas fa-clock"></i> {returnToOfficeTimes[tech.id].time}
                         </div>
                         <div>
-                          <i className="fas fa-car"></i> {returnToOfficeTimes[tech.id].driveTime}m from last job
+                          <i className="fas fa-car"></i> {returnToOfficeTimes[tech.id].driveTime}m
                         </div>
-                        {returnToOfficeTimes[tech.id].isEstimate && (
-                          <div style={{ fontSize: '8px', color: '#6b7280', marginTop: '2px' }}>
-                            (estimated)
-                          </div>
-                        )}
                       </div>
                     </div>
                   )}
@@ -887,6 +900,102 @@ const KanbanCalendar = ({
           })}
         </div>
       </div>
+
+      {/* Job Details Modal */}
+      {showJobModal && selectedJob && (
+        <div
+          className="modal-overlay active"
+          onClick={() => setShowJobModal(false)}
+          style={{ zIndex: 1000 }}
+        >
+          <div
+            className="modal"
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: '500px' }}
+          >
+            <div className="modal-header">
+              <h3>
+                <i className="fas fa-edit"></i> Edit Job Details
+              </h3>
+              <button className="modal-close" onClick={() => setShowJobModal(false)}>
+                <i className="fas fa-times"></i>
+              </button>
+            </div>
+            <div className="modal-body">
+              <div style={{ display: 'grid', gap: '16px' }}>
+                <div>
+                  <strong style={{ fontSize: '14px' }}>{selectedJob.customerName}</strong>
+                  <p style={{ margin: '4px 0', fontSize: '12px', color: '#6b7280' }}>{selectedJob.address}</p>
+                </div>
+
+                <div className="form-group">
+                  <label>Duration (hours)</label>
+                  <input
+                    type="number"
+                    className="form-control"
+                    value={selectedJob.duration}
+                    onChange={(e) => setSelectedJob({...selectedJob, duration: parseFloat(e.target.value) || 1})}
+                    min="0.5"
+                    step="0.5"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={selectedJob.requiresTwoTechs || false}
+                      onChange={(e) => setSelectedJob({...selectedJob, requiresTwoTechs: e.target.checked})}
+                      style={{ marginRight: '8px' }}
+                    />
+                    Requires 2 Technicians
+                  </label>
+                </div>
+
+                {selectedJob.requiresTwoTechs && (
+                  <div className="form-group">
+                    <label>Second Technician</label>
+                    <select
+                      className="form-control"
+                      value={selectedJob.demoTech || ''}
+                      onChange={(e) => setSelectedJob({...selectedJob, demoTech: e.target.value})}
+                    >
+                      <option value="">Select Demo Tech...</option>
+                      {demoTechs.map(dt => (
+                        <option key={dt.id} value={dt.name}>{dt.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                <div className="form-group">
+                  <label>Job Type</label>
+                  <select
+                    className="form-control"
+                    value={selectedJob.jobType}
+                    onChange={(e) => setSelectedJob({...selectedJob, jobType: e.target.value})}
+                  >
+                    <option>Install</option>
+                    <option>Demo</option>
+                    <option>Demo Prep</option>
+                    <option>Service</option>
+                    <option>Maintenance</option>
+                    <option>Inspection</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-secondary" onClick={() => setShowJobModal(false)}>
+                Cancel
+              </button>
+              <button className="btn btn-primary" onClick={handleSaveJobDetails}>
+                <i className="fas fa-save"></i> Save Changes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Route Map Modal */}
       {showMapModal && (
