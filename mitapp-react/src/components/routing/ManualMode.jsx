@@ -6,8 +6,8 @@ import { optimizeRoute } from '../../utils/routeOptimizer';
 import googleCalendarService from '../../services/googleCalendarService';
 
 const ManualMode = ({
-  jobs,
-  routes,
+  jobs: initialJobs,
+  routes: initialRoutes,
   techs,
   offices,
   mapboxToken,
@@ -16,6 +16,8 @@ const ManualMode = ({
   onRefresh,
   selectedDate
 }) => {
+  const [jobs, setJobs] = useState(initialJobs);
+  const [routes, setRoutes] = useState(initialRoutes);
   const [buildingRoute, setBuildingRoute] = useState([]);
   const [showAllJobs, setShowAllJobs] = useState(false);
   const [hoveredJob, setHoveredJob] = useState(null);
@@ -27,6 +29,15 @@ const ManualMode = ({
     localStorage.getItem('googleClientId') || ''
   );
   const [showGoogleSetup, setShowGoogleSetup] = useState(false);
+
+  // Update local state when props change
+  useEffect(() => {
+    setJobs(initialJobs);
+  }, [initialJobs]);
+
+  useEffect(() => {
+    setRoutes(initialRoutes);
+  }, [initialRoutes]);
 
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
@@ -159,44 +170,50 @@ const ManualMode = ({
           </div>
         `;
 
-        // Hover effect
+        const popup = new mapboxgl.Popup({
+          offset: 25,
+          closeButton: false,
+          closeOnClick: false,
+          className: 'job-popup'
+        }).setHTML(`
+          <div style="padding: 10px; min-width: 240px;">
+            <strong style="font-size: 14px; display: block; margin-bottom: 8px;">${job.customerName}</strong>
+            <div style="font-size: 12px; color: #374151;">
+              <div style="margin-bottom: 4px;"><i class="fas fa-map-marker-alt" style="width: 16px;"></i> ${job.address}</div>
+              <div style="margin-bottom: 4px;"><i class="fas fa-wrench" style="width: 16px;"></i> ${job.jobType}</div>
+              <div style="margin-bottom: 4px; font-weight: 600; color: #1f2937;">
+                <i class="fas fa-hourglass-half" style="width: 16px;"></i> Duration: ${job.duration}h
+              </div>
+              <div style="margin-bottom: 4px; font-weight: 600; color: #1f2937;">
+                <i class="fas fa-clock" style="width: 16px;"></i> TF: ${job.timeframeStart} - ${job.timeframeEnd}
+              </div>
+              ${job.phone ? `<div style="margin-bottom: 4px;"><i class="fas fa-phone" style="width: 16px;"></i> ${job.phone}</div>` : ''}
+              ${job.description ? `<div style="margin-top: 6px; padding: 6px; background-color: #f3f4f6; border-radius: 4px; font-size: 11px;"><strong>Notes:</strong><br/>${job.description}</div>` : ''}
+              ${job.requiresTwoTechs ? '<div style="margin-top: 6px; padding: 4px; background-color: #fef3c7; color: #92400e; border-radius: 4px; font-weight: 600;"><i class="fas fa-users"></i> Requires 2 Techs</div>' : ''}
+            </div>
+          </div>
+        `);
+
+        const marker = new mapboxgl.Marker(el)
+          .setLngLat([coords.lng, coords.lat])
+          .addTo(map);
+
+        // Show popup on hover
         el.addEventListener('mouseenter', () => {
           el.querySelector('.job-marker').style.transform = 'scale(1.2)';
-          setHoveredJob(job);
+          popup.addTo(map);
+          popup.setLngLat([coords.lng, coords.lat]);
         });
 
         el.addEventListener('mouseleave', () => {
           el.querySelector('.job-marker').style.transform = 'scale(1)';
-          setHoveredJob(null);
+          popup.remove();
         });
 
         // Click to add to building route
         el.addEventListener('click', () => {
           handleJobClick(job);
         });
-
-        const popup = new mapboxgl.Popup({ offset: 25, closeButton: false })
-          .setHTML(`
-            <div style="padding: 10px; min-width: 220px;">
-              <strong style="font-size: 14px; display: block; margin-bottom: 8px;">${job.customerName}</strong>
-              <div style="font-size: 12px; color: #374151;">
-                <div style="margin-bottom: 4px;"><i class="fas fa-map-marker-alt" style="width: 16px;"></i> ${job.address}</div>
-                <div style="margin-bottom: 4px;"><i class="fas fa-wrench" style="width: 16px;"></i> ${job.jobType}</div>
-                <div style="margin-bottom: 4px; font-weight: 600; color: #1f2937;">
-                  <i class="fas fa-hourglass-half" style="width: 16px;"></i> Duration: ${job.duration}h
-                </div>
-                <div style="margin-bottom: 4px; font-weight: 600; color: #1f2937;">
-                  <i class="fas fa-clock" style="width: 16px;"></i> Timeframe: ${job.timeframeStart} - ${job.timeframeEnd}
-                </div>
-                ${job.requiresTwoTechs ? '<div style="margin-top: 6px; padding: 4px; background-color: #fef3c7; color: #92400e; border-radius: 4px; font-weight: 600;"><i class="fas fa-users"></i> Requires 2 Techs</div>' : ''}
-              </div>
-            </div>
-          `);
-
-        const marker = new mapboxgl.Marker(el)
-          .setLngLat([coords.lng, coords.lat])
-          .setPopup(popup)
-          .addTo(map);
 
         markersRef.current.push(marker);
       }
@@ -472,14 +489,27 @@ const ManualMode = ({
 
       setDraggedRoute(null);
 
-      // Callback to parent - make sure both are awaited
+      // Update local state immediately for UI responsiveness
+      setRoutes(updatedRoutes);
+      setJobs(updatedJobs);
+
+      // Callback to parent - save to Firebase
       await onUpdateRoutes(updatedRoutes);
       await onUpdateJobs(updatedJobs);
 
       // Show success message with timing info
       const shiftStart = shift === 'second' ? '1:15 PM' : '8:15 AM';
       const lastJob = optimized.optimizedJobs[optimized.optimizedJobs.length - 1];
-      alert(`✅ Route assigned successfully!\n\n${targetTech.name}\nLeaves office: ${shiftStart}\n${optimized.optimizedJobs.length} jobs\nLast job ends: ${lastJob.endTime}\nTotal work time: ${(optimized.totalDuration / 60).toFixed(1)}h`);
+
+      // Calculate return to office time (last job end time + estimated return drive)
+      const lastJobEndMinutes = parseInt(lastJob.endTime.split(':')[0]) * 60 + parseInt(lastJob.endTime.split(':')[1]);
+      const estimatedReturnDrive = 30; // Estimate 30 min back to office
+      const returnMinutes = lastJobEndMinutes + estimatedReturnDrive;
+      const returnHours = Math.floor(returnMinutes / 60);
+      const returnMins = returnMinutes % 60;
+      const returnTime = `${String(returnHours).padStart(2, '0')}:${String(returnMins).padStart(2, '0')}`;
+
+      alert(`✅ Route assigned successfully!\n\n${targetTech.name}\nLeaves office: ${shiftStart}\n${optimized.optimizedJobs.length} jobs\nLast job ends: ${lastJob.endTime}\nEstimated return: ${returnTime}\nTotal work time: ${(optimized.totalDuration / 60).toFixed(1)}h`);
 
     } catch (error) {
       console.error('Error assigning route:', error);
@@ -509,6 +539,10 @@ const ManualMode = ({
       }
       return job;
     });
+
+    // Update local state immediately
+    setRoutes(updatedRoutes);
+    setJobs(updatedJobs);
 
     await onUpdateRoutes(updatedRoutes);
     await onUpdateJobs(updatedJobs);
@@ -992,14 +1026,26 @@ const ManualMode = ({
                     </div>
                     {jobCount > 0 && (
                       <div style={{
-                        fontSize: '11px',
+                        fontSize: '10px',
                         fontWeight: '600',
                         color: '#3b82f6',
                         textAlign: 'right',
                         marginLeft: '8px'
                       }}>
-                        <div>{jobCount} job{jobCount !== 1 ? 's' : ''}</div>
-                        <div style={{ fontSize: '10px' }}>{totalHours.toFixed(1)}h</div>
+                        <div style={{ fontSize: '11px' }}>{jobCount} job{jobCount !== 1 ? 's' : ''}</div>
+                        <div>{totalHours.toFixed(1)}h work</div>
+                        {techRoute.jobs.length > 0 && techRoute.jobs[techRoute.jobs.length - 1].endTime && (
+                          <div style={{ fontSize: '9px', color: '#059669', marginTop: '2px' }}>
+                            Return: {(() => {
+                              const lastJob = techRoute.jobs[techRoute.jobs.length - 1];
+                              const endMinutes = parseInt(lastJob.endTime.split(':')[0]) * 60 + parseInt(lastJob.endTime.split(':')[1]);
+                              const returnMinutes = endMinutes + 30; // Add 30 min return drive
+                              const hours = Math.floor(returnMinutes / 60);
+                              const mins = returnMinutes % 60;
+                              return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
+                            })()}
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
