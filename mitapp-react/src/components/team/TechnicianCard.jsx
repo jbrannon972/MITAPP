@@ -5,7 +5,8 @@ const TechnicianCard = ({
   canManage,
   canClickProfile,
   onRemove,
-  onEdit
+  onEdit,
+  onViewProfile
 }) => {
   const formatName = (fullName) => {
     if (!fullName || typeof fullName !== 'string') return '';
@@ -43,6 +44,12 @@ const TechnicianCard = ({
       draggable={canManage}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
+      onClick={(e) => {
+        if (canClickProfile && onViewProfile && !e.target.closest('button')) {
+          onViewProfile();
+        }
+      }}
+      style={{ cursor: canClickProfile ? 'pointer' : 'default' }}
     >
       {canManage && zoneIndex !== 'management' && (
         <>

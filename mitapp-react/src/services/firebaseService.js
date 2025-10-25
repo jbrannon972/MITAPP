@@ -414,6 +414,53 @@ class FirebaseService {
       return [];
     }
   }
+
+  // Get latest evaluation for a technician
+  async getLatestEvaluation(technicianId) {
+    try {
+      const collectionRef = collection(db, 'technician-evaluations');
+      const q = query(
+        collectionRef,
+        where('technicianId', '==', technicianId),
+        orderBy('createdAt', 'desc')
+      );
+      const snapshot = await getDocs(q);
+      if (!snapshot.empty) {
+        return { id: snapshot.docs[0].id, ...snapshot.docs[0].data() };
+      }
+      return null;
+    } catch (error) {
+      console.error('Error getting latest evaluation:', error);
+      return null;
+    }
+  }
+
+  // Get all technicians with IDs
+  async getAllTechnicians() {
+    try {
+      const docRef = doc(db, this.collections.settings, 'staffing_data');
+      const docSnap = await getDoc(docRef);
+      if (!docSnap.exists()) return [];
+
+      const data = docSnap.data();
+      const techs = [];
+
+      // Get from zones
+      if (data.zones) {
+        data.zones.forEach(zone => {
+          if (zone.lead) techs.push({ ...zone.lead, zoneName: zone.name });
+          if (zone.members) {
+            zone.members.forEach(member => techs.push({ ...member, zoneName: zone.name }));
+          }
+        });
+      }
+
+      return techs;
+    } catch (error) {
+      console.error('Error getting all technicians:', error);
+      return [];
+    }
+  }
 }
 
 export default new FirebaseService();

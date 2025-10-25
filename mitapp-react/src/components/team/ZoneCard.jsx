@@ -9,7 +9,8 @@ const ZoneCard = ({
   onMovePersonToZone,
   onRemoveMember,
   onAddMember,
-  onEditMember
+  onEditMember,
+  onViewProfile
 }) => {
   const [dragOver, setDragOver] = useState(false);
 
@@ -98,6 +99,7 @@ const ZoneCard = ({
             canClickProfile={canClickProfile(member)}
             onRemove={() => onRemoveMember(zoneIndex, memberIndex)}
             onEdit={() => onEditMember(zoneIndex, memberIndex, member)}
+            onViewProfile={() => onViewProfile && onViewProfile(member)}
           />
         ))}
 
