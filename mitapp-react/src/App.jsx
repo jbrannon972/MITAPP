@@ -7,13 +7,10 @@ import Dashboard from './pages/Dashboard';
 import LaborForecasting from './pages/LaborForecasting';
 import Team from './pages/Team';
 import Calendar from './pages/Calendar';
-import Fleet from './pages/Fleet';
-import Equipment from './pages/Equipment';
-import Tools from './pages/Tools';
+import Warehouse from './pages/Warehouse';
 import Analyzer from './pages/Analyzer';
 import Damages from './pages/Damages';
 import InstallDpt from './pages/InstallDpt';
-import SlackMentions from './pages/SlackMentions';
 import Admin from './pages/Admin';
 import Reports from './pages/Reports';
 import Settings from './pages/Settings';
@@ -54,23 +51,16 @@ function App() {
             </ProtectedRoute>
           } />
 
-          <Route path="/fleet" element={
+          <Route path="/warehouse" element={
             <ProtectedRoute>
-              <Fleet />
+              <Warehouse />
             </ProtectedRoute>
           } />
 
-          <Route path="/equipment" element={
-            <ProtectedRoute>
-              <Equipment />
-            </ProtectedRoute>
-          } />
-
-          <Route path="/tools" element={
-            <ProtectedRoute>
-              <Tools />
-            </ProtectedRoute>
-          } />
+          {/* Redirect old routes to warehouse */}
+          <Route path="/fleet" element={<Navigate to="/warehouse" replace />} />
+          <Route path="/equipment" element={<Navigate to="/warehouse" replace />} />
+          <Route path="/tools" element={<Navigate to="/warehouse" replace />} />
 
           <Route path="/analyzer" element={
             <ProtectedRoute>
@@ -87,12 +77,6 @@ function App() {
           <Route path="/install-dpt" element={
             <ProtectedRoute>
               <InstallDpt />
-            </ProtectedRoute>
-          } />
-
-          <Route path="/slack" element={
-            <ProtectedRoute>
-              <SlackMentions />
             </ProtectedRoute>
           } />
 

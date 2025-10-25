@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import Layout from '../components/common/Layout';
 import firebaseService from '../services/firebaseService';
 import { exportToCSV, prepareToolsDataForExport } from '../utils/exportUtils';
 
@@ -188,17 +187,14 @@ const Tools = () => {
 
   if (loading) {
     return (
-      <Layout>
-        <div className="tab-content active">
-          <p>Loading tools...</p>
-        </div>
-      </Layout>
+      <div className="tab-content active">
+        <p>Loading tools...</p>
+      </div>
     );
   }
 
   return (
-    <Layout>
-      <div className="tab-content active">
+    <div className="tab-content active">
         <div className="tab-header">
           <h2>Tools Management</h2>
         </div>
@@ -306,7 +302,6 @@ const Tools = () => {
                         style={{ cursor: 'pointer' }}
                       />
                     </th>
-                    <th>Tool ID</th>
                     <th>Name</th>
                     <th>Category</th>
                     <th>Assigned To</th>
@@ -326,7 +321,6 @@ const Tools = () => {
                           style={{ cursor: 'pointer' }}
                         />
                       </td>
-                      <td><strong>{tool.toolId || tool.id || 'N/A'}</strong></td>
                       <td>{tool.name || 'N/A'}</td>
                       <td>{tool.category || 'N/A'}</td>
                       <td>{tool.assignedTo || 'Unassigned'}</td>
@@ -472,7 +466,6 @@ const Tools = () => {
           </div>
         )}
       </div>
-    </Layout>
   );
 };
 

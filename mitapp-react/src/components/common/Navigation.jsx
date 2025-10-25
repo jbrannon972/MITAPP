@@ -48,11 +48,9 @@ const Navigation = () => {
       navItems.push({ path: '/team', label: 'Team', icon: 'fa-users' });
     }
 
-    // Warehouse/Fleet/Equipment - everyone except Fleet Safety
+    // Warehouse (with Fleet/Equipment/Tools as sub-tabs) - everyone except Fleet Safety
     if (role !== 'Fleet Safety') {
-      navItems.push({ path: '/fleet', label: 'Fleet', icon: 'fa-truck' });
-      navItems.push({ path: '/equipment', label: 'Equipment', icon: 'fa-toolbox' });
-      navItems.push({ path: '/tools', label: 'Tools', icon: 'fa-wrench' });
+      navItems.push({ path: '/warehouse', label: 'Warehouse', icon: 'fa-warehouse' });
     }
 
     // Calendar - everyone except Fleet Safety
@@ -73,11 +71,6 @@ const Navigation = () => {
     // Damages - everyone except Fleet
     if (role !== 'Fleet') {
       navItems.push({ path: '/damages', label: 'Damages', icon: 'fa-car-crash' });
-    }
-
-    // Slack - everyone except Fleet
-    if (role !== 'Fleet') {
-      navItems.push({ path: '/slack', label: 'Slack', icon: 'fa-slack' });
     }
 
     // Reports - only Manager and Auditor

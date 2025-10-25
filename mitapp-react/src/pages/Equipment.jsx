@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import Layout from '../components/common/Layout';
 import firebaseService from '../services/firebaseService';
 import { exportToCSV, prepareEquipmentDataForExport } from '../utils/exportUtils';
 
@@ -188,17 +187,14 @@ const Equipment = () => {
 
   if (loading) {
     return (
-      <Layout>
-        <div className="tab-content active">
-          <p>Loading equipment data...</p>
-        </div>
-      </Layout>
+      <div className="tab-content active">
+        <p>Loading equipment data...</p>
+      </div>
     );
   }
 
   return (
-    <Layout>
-      <div id="equipment-tab" className="tab-content active">
+    <div id="equipment-tab" className="tab-content active">
         <div className="tab-header">
           <h2>Equipment Management</h2>
         </div>
@@ -471,7 +467,6 @@ const Equipment = () => {
           </div>
         )}
       </div>
-    </Layout>
   );
 };
 

@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import Layout from '../components/common/Layout';
 import { useAuth } from '../contexts/AuthContext';
 import firebaseService from '../services/firebaseService';
 import { exportToCSV, prepareFleetDataForExport } from '../utils/exportUtils';
@@ -205,17 +204,14 @@ const Fleet = () => {
 
   if (loading) {
     return (
-      <Layout>
-        <div className="tab-content active">
-          <p>Loading fleet data...</p>
-        </div>
-      </Layout>
+      <div className="tab-content active">
+        <p>Loading fleet data...</p>
+      </div>
     );
   }
 
   return (
-    <Layout>
-      <div id="fleet-tab" className="tab-content active">
+    <div id="fleet-tab" className="tab-content active">
         <div className="tab-header">
           <h2>Fleet Management</h2>
         </div>
@@ -512,7 +508,6 @@ const Fleet = () => {
           </div>
         )}
       </div>
-    </Layout>
   );
 };
 
