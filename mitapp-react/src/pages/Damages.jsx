@@ -27,8 +27,8 @@ const Damages = () => {
   const loadDamages = async () => {
     try {
       setLoading(true);
-      const data = await firebaseService.getDocument('hou_damages', 'damage_reports');
-      setDamages(data?.reports || []);
+      const data = await firebaseService.loadDamageReports();
+      setDamages(data || []);
     } catch (error) {
       console.error('Error loading damages:', error);
     } finally {
@@ -53,13 +53,13 @@ const Damages = () => {
   const openEditModal = (damage) => {
     setEditingDamage(damage);
     setFormData({
-      date: damage.date || new Date().toISOString().split('T')[0],
-      technician: damage.technician || '',
-      vehicle: damage.vehicle || '',
-      equipment: damage.equipment || '',
-      description: damage.description || '',
-      status: damage.status || 'Pending',
-      cost: damage.cost || ''
+      date: damage.date_of_occurrence || new Date().toISOString().split('T')[0],
+      technician: damage.technician_name || '',
+      vehicle: damage.vehicle_number || '',
+      equipment: damage.equipment_id || '',
+      description: damage.damage_description || '',
+      status: damage.status || (damage.resolved ? 'Resolved' : 'Pending'),
+      cost: damage.estimated_cost || ''
     });
     setShowModal(true);
   };
@@ -81,19 +81,25 @@ const Damages = () => {
         return;
       }
 
-      let updatedDamages;
-      if (editingDamage) {
+      const damageData = {
+        date_of_occurrence: formData.date,
+        technician_name: formData.technician,
+        vehicle_number: formData.vehicle,
+        equipment_id: formData.equipment,
+        damage_description: formData.description,
+        estimated_cost: parseFloat(formData.cost) || 0,
+        resolved: formData.status === 'Resolved',
+        status: formData.status,
+        createdAt: new Date()
+      };
+
+      if (editingDamage && editingDamage.id) {
         // Update existing damage
-        updatedDamages = damages.map(d =>
-          d === editingDamage ? { ...formData, id: editingDamage.id || `damage_${Date.now()}` } : d
-        );
+        await firebaseService.updateDocument('hou_damages', editingDamage.id, damageData);
       } else {
         // Add new damage
-        const newDamage = { ...formData, id: `damage_${Date.now()}` };
-        updatedDamages = [...damages, newDamage];
+        await firebaseService.addDocument('hou_damages', damageData);
       }
-
-      await firebaseService.saveDocument('hou_damages', 'damage_reports', { reports: updatedDamages });
 
       alert(editingDamage ? 'Damage report updated successfully!' : 'Damage report added successfully!');
       closeModal();
@@ -110,11 +116,11 @@ const Damages = () => {
     }
 
     try {
-      const updatedDamages = damages.filter(d => d !== damage);
-      await firebaseService.saveDocument('hou_damages', 'damage_reports', { reports: updatedDamages });
-
-      alert('Damage report deleted successfully!');
-      loadDamages();
+      if (damage.id) {
+        await firebaseService.deleteDocument('hou_damages', damage.id);
+        alert('Damage report deleted successfully!');
+        loadDamages();
+      }
     } catch (error) {
       console.error('Error deleting damage report:', error);
       alert('Error deleting damage report. Please try again.');
@@ -123,12 +129,12 @@ const Damages = () => {
 
   const filteredDamages = damages.filter(damage => {
     const matchesSearch = searchTerm === '' ||
-      (damage.technician?.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (damage.vehicle?.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (damage.equipment?.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (damage.description?.toLowerCase().includes(searchTerm.toLowerCase()));
+      (damage.technician_name?.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (damage.vehicle_number?.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (damage.equipment_id?.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (damage.damage_description?.toLowerCase().includes(searchTerm.toLowerCase()));
 
-    const matchesStatus = statusFilter === 'all' || damage.status === statusFilter;
+    const matchesStatus = statusFilter === 'all' || damage.status === statusFilter || (damage.resolved && statusFilter === 'Resolved');
 
     return matchesSearch && matchesStatus;
   });
@@ -232,16 +238,16 @@ const Damages = () => {
                 <tbody>
                   {filteredDamages.map((damage, index) => (
                     <tr key={damage.id || index}>
-                      <td>{formatDate(damage.date)}</td>
-                      <td>{damage.technician || 'N/A'}</td>
-                      <td>{damage.vehicle || damage.equipment || 'N/A'}</td>
-                      <td>{damage.description || 'No description'}</td>
+                      <td>{formatDate(damage.date_of_occurrence)}</td>
+                      <td>{damage.technician_name || 'N/A'}</td>
+                      <td>{damage.vehicle_number || damage.equipment_id || 'N/A'}</td>
+                      <td>{damage.damage_description || 'No description'}</td>
                       <td>
                         <span className={`status-badge status-${(damage.status || 'pending').toLowerCase().replace(' ', '-')}`}>
-                          {damage.status || 'Pending'}
+                          {damage.status || (damage.resolved ? 'Resolved' : 'Pending')}
                         </span>
                       </td>
-                      <td>{damage.cost ? `$${parseFloat(damage.cost).toFixed(2)}` : 'TBD'}</td>
+                      <td>{damage.estimated_cost ? `$${parseFloat(damage.estimated_cost).toFixed(2)}` : 'TBD'}</td>
                       <td>
                         <button
                           className="btn btn-secondary btn-small"
