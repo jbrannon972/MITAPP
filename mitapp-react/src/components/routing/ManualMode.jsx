@@ -14,7 +14,8 @@ const ManualMode = ({
   onUpdateRoutes,
   onUpdateJobs,
   onRefresh,
-  selectedDate
+  selectedDate,
+  onImportCSV
 }) => {
   const [jobs, setJobs] = useState(initialJobs);
   const [routes, setRoutes] = useState(initialRoutes);
@@ -667,6 +668,22 @@ const ManualMode = ({
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          {onImportCSV && (
+            <button
+              onClick={onImportCSV}
+              className="btn btn-primary btn-small"
+              style={{
+                padding: '6px 12px',
+                fontSize: '13px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}
+            >
+              <i className="fas fa-upload"></i> Import CSV
+            </button>
+          )}
+
           <button
             onClick={handlePushToCalendars}
             disabled={pushingToCalendar || Object.values(routes).filter(r => r.jobs?.length > 0).length === 0}

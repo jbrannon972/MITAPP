@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import Layout from '../components/common/Layout';
 import ManualMode from '../components/routing/ManualMode';
+import KanbanCalendar from '../components/routing/KanbanCalendar';
 import { useData } from '../contexts/DataContext';
 import firebaseService from '../services/firebaseService';
 import { getMapboxService, initMapboxService } from '../services/mapboxService';
@@ -16,7 +17,7 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 
 const Routing = () => {
   const { staffingData } = useData();
-  const [activeView, setActiveView] = useState('jobs');
+  const [activeView, setActiveView] = useState('routing');
   const [jobs, setJobs] = useState([]);
   const [routes, setRoutes] = useState({});
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
@@ -602,403 +603,13 @@ const Routing = () => {
     );
   };
 
-  const renderRoutesView = () => {
-    const leadTechs = getLeadTechs();
-
-    return (
-      <div>
-        <h3 style={{ marginBottom: '24px' }}>Route Assignments - {selectedDate}</h3>
-
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(450px, 1fr))', gap: '20px' }}>
-          {leadTechs.map(tech => {
-            const techRoute = routes[tech.id];
-            const summary = calculateRouteSummary(techRoute);
-
-            return (
-              <div key={tech.id} className="card">
-                <div className="card-header" style={{ backgroundColor: summary.totalJobs > 0 ? '#eff6ff' : '#f9fafb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div>
-                    <h3 style={{ margin: 0, marginBottom: '4px' }}>
-                      <i className="fas fa-user"></i> {tech.name}
-                    </h3>
-                    <p style={{ margin: 0, fontSize: '14px', color: '#6b7280' }}>
-                      {tech.role} | {tech.zone} | {offices[tech.office]?.shortName}
-                    </p>
-                  </div>
-                  {summary.totalJobs > 0 && (
-                    <button
-                      className="btn btn-primary btn-small"
-                      onClick={() => handleTechClick(tech.id)}
-                      style={{ padding: '6px 12px', fontSize: '12px' }}
-                    >
-                      <i className="fas fa-map"></i> View on Map
-                    </button>
-                  )}
-                </div>
-                <div style={{ padding: '16px' }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', marginBottom: '16px' }}>
-                    <div style={{ textAlign: 'center', padding: '8px', backgroundColor: '#f9fafb', borderRadius: '6px' }}>
-                      <div style={{ fontSize: '20px', fontWeight: '600', color: '#3b82f6' }}>{summary.totalJobs}</div>
-                      <div style={{ fontSize: '12px', color: '#6b7280' }}>Jobs</div>
-                    </div>
-                    <div style={{ textAlign: 'center', padding: '8px', backgroundColor: '#f9fafb', borderRadius: '6px' }}>
-                      <div style={{ fontSize: '20px', fontWeight: '600', color: '#10b981' }}>{summary.totalHours}h</div>
-                      <div style={{ fontSize: '12px', color: '#6b7280' }}>Work</div>
-                    </div>
-                    <div style={{ textAlign: 'center', padding: '8px', backgroundColor: '#f9fafb', borderRadius: '6px' }}>
-                      <div style={{ fontSize: '20px', fontWeight: '600', color: '#f59e0b' }}>{summary.totalDriveHours || 0}h</div>
-                      <div style={{ fontSize: '12px', color: '#6b7280' }}>Drive</div>
-                    </div>
-                  </div>
-
-                  {techRoute && techRoute.jobs && techRoute.jobs.length > 0 ? (
-                    <div>
-                      {techRoute.jobs.map((job, idx) => (
-                        <div
-                          key={job.id}
-                          style={{
-                            padding: '12px',
-                            backgroundColor: '#f9fafb',
-                            borderRadius: '6px',
-                            marginBottom: '8px',
-                            borderLeft: '3px solid #3b82f6'
-                          }}
-                        >
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
-                            <div style={{ flex: 1 }}>
-                              <strong style={{ fontSize: '14px' }}>
-                                {idx + 1}. {job.customerName}
-                              </strong>
-                              {job.demoTech && (
-                                <span style={{ marginLeft: '8px', fontSize: '12px', color: '#8b5cf6' }}>
-                                  <i className="fas fa-user-plus"></i> + {job.demoTech}
-                                </span>
-                              )}
-                              <p style={{ margin: '4px 0', fontSize: '12px', color: '#6b7280' }}>
-                                <i className="fas fa-map-marker-alt"></i> {job.address}
-                              </p>
-                              <div style={{ display: 'flex', gap: '12px', marginTop: '8px', flexWrap: 'wrap' }}>
-                                {job.startTime && (
-                                  <span style={{ fontSize: '12px' }}>
-                                    <i className="fas fa-clock"></i> {job.startTime}
-                                  </span>
-                                )}
-                                {!job.startTime && (
-                                  <span style={{ fontSize: '12px' }}>
-                                    <i className="fas fa-clock"></i> {job.timeframeStart}-{job.timeframeEnd}
-                                  </span>
-                                )}
-                                <span style={{ fontSize: '12px' }}>
-                                  <i className="fas fa-hourglass-half"></i> {job.duration}h
-                                </span>
-                                {job.travelTime > 0 && (
-                                  <span style={{ fontSize: '12px', color: '#f59e0b' }}>
-                                    <i className="fas fa-car"></i> {job.travelTime}min
-                                  </span>
-                                )}
-                                <span style={{ fontSize: '12px' }}>
-                                  {job.jobType}
-                                </span>
-                              </div>
-                            </div>
-                            <button
-                              className="btn btn-secondary btn-small"
-                              onClick={() => unassignJob(job.id)}
-                              style={{ padding: '4px 8px', fontSize: '12px' }}
-                            >
-                              <i className="fas fa-times"></i>
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-
-                      {summary.efficiency > 0 && (
-                        <div style={{ marginTop: '12px', padding: '8px', backgroundColor: summary.efficiency > 70 ? '#d1fae5' : '#fef3c7', borderRadius: '6px', textAlign: 'center' }}>
-                          <span style={{ fontSize: '12px', fontWeight: '500' }}>
-                            Efficiency: {summary.efficiency}%
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <p style={{ textAlign: 'center', color: '#6b7280', fontSize: '14px', padding: '20px' }}>
-                      No jobs assigned
-                    </p>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    );
-  };
-
-  const handleTechClick = (techId) => {
-    setSelectedTech(techId);
-    setActiveView('map');
-  };
-
-  // Initialize map when map view is active
-  useEffect(() => {
-    if (activeView !== 'map' || !mapContainerRef.current || mapInstanceRef.current) return;
-
-    mapboxgl.accessToken = mapboxToken;
-
-    const map = new mapboxgl.Map({
-      container: mapContainerRef.current,
-      style: 'mapbox://styles/mapbox/streets-v12',
-      center: [-95.5698, 30.1945], // Houston center
-      zoom: 10
-    });
-
-    map.addControl(new mapboxgl.NavigationControl(), 'top-right');
-    mapInstanceRef.current = map;
-
-    return () => {
-      map.remove();
-      mapInstanceRef.current = null;
-    };
-  }, [activeView, mapboxToken]);
-
-  // Update markers and routes when selected tech changes
-  useEffect(() => {
-    if (!mapInstanceRef.current || activeView !== 'map') return;
-
-    const renderRouteOnMap = async () => {
-      // Clear existing markers
-      markersRef.current.forEach(marker => marker.remove());
-      markersRef.current = [];
-
-      const map = mapInstanceRef.current;
-
-      // Remove existing route layer and source if they exist
-      if (map.getLayer('route')) map.removeLayer('route');
-      if (map.getSource('route')) map.removeSource('route');
-
-      // Add office markers
-      const officeLocations = {
-        office_1: { lng: -95.4559, lat: 30.3119, name: 'Conroe' },
-        office_2: { lng: -95.6508, lat: 29.7858, name: 'Katy' }
-      };
-
-      Object.values(officeLocations).forEach(office => {
-        const el = document.createElement('div');
-        el.innerHTML = `<div style="background-color: #3b82f6; color: white; padding: 6px 10px; border-radius: 4px; font-weight: bold; font-size: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.2);"><i class="fas fa-building"></i> ${office.name}</div>`;
-
-        const marker = new mapboxgl.Marker(el)
-          .setLngLat([office.lng, office.lat])
-          .addTo(map);
-
-        markersRef.current.push(marker);
-      });
-
-      // Add job markers and route lines if tech is selected
-      if (selectedTech && routes[selectedTech]) {
-        const techRoute = routes[selectedTech];
-        const officeCoords = officeLocations[techRoute.tech.office];
-        const coordinates = [[officeCoords.lng, officeCoords.lat]];
-
-        // Add job markers with real coordinates
-        for (let idx = 0; idx < (techRoute.jobs?.length || 0); idx++) {
-          const job = techRoute.jobs[idx];
-
-          // Use stored coordinates or skip if not available
-          if (job.coordinates && job.coordinates.lng && job.coordinates.lat) {
-            coordinates.push([job.coordinates.lng, job.coordinates.lat]);
-
-            const el = document.createElement('div');
-            el.innerHTML = `<div style="background-color: #10b981; color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 12px; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3); cursor: pointer;">${idx + 1}</div>`;
-
-            const marker = new mapboxgl.Marker(el)
-              .setLngLat([job.coordinates.lng, job.coordinates.lat])
-              .setPopup(new mapboxgl.Popup({ offset: 25 })
-                .setHTML(`<div style="padding: 8px;"><strong>${idx + 1}. ${job.customerName}</strong><br/>${job.address}<br/>${job.duration}h job${job.travelTime ? `<br/>${job.travelTime}min drive` : ''}</div>`))
-              .addTo(map);
-
-            markersRef.current.push(marker);
-          }
-        }
-
-        // Return to office at end
-        coordinates.push([officeCoords.lng, officeCoords.lat]);
-
-        // Draw route line if we have coordinates
-        if (coordinates.length > 2) {
-          map.addSource('route', {
-            type: 'geojson',
-            data: {
-              type: 'Feature',
-              properties: {},
-              geometry: {
-                type: 'LineString',
-                coordinates: coordinates
-              }
-            }
-          });
-
-          map.addLayer({
-            id: 'route',
-            type: 'line',
-            source: 'route',
-            layout: {
-              'line-join': 'round',
-              'line-cap': 'round'
-            },
-            paint: {
-              'line-color': '#3b82f6',
-              'line-width': 4,
-              'line-opacity': 0.75
-            }
-          });
-
-          // Fit map to show entire route
-          const bounds = coordinates.reduce(
-            (bounds, coord) => bounds.extend(coord),
-            new mapboxgl.LngLatBounds(coordinates[0], coordinates[0])
-          );
-          map.fitBounds(bounds, { padding: 50 });
-        }
-      }
-    };
-
-    renderRouteOnMap();
-  }, [selectedTech, routes, activeView]);
-
-  const renderMapView = () => {
-    const techRoute = selectedTech ? routes[selectedTech] : null;
-
-    return (
-      <div>
-        <div style={{ marginBottom: '16px', display: 'flex', gap: '12px', alignItems: 'center' }}>
-          <h3 style={{ margin: 0 }}>Route Map</h3>
-          {selectedTech && techRoute && (
-            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-              <span style={{ fontSize: '14px', color: '#6b7280' }}>Showing route for:</span>
-              <span style={{ fontSize: '14px', fontWeight: '500', color: '#3b82f6' }}>
-                {techRoute.tech.name}
-              </span>
-              <button
-                className="btn btn-secondary btn-small"
-                onClick={() => setSelectedTech(null)}
-                style={{ padding: '4px 8px', fontSize: '12px' }}
-              >
-                Clear Selection
-              </button>
-            </div>
-          )}
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: '300px 1fr', gap: '20px' }}>
-          {/* Tech List */}
-          <div className="card" style={{ maxHeight: '600px', overflow: 'auto' }}>
-            <div className="card-header">
-              <h4><i className="fas fa-users"></i> Select Tech</h4>
-            </div>
-            <div style={{ padding: '12px' }}>
-              {Object.entries(routes).map(([techId, route]) => {
-                const summary = calculateRouteSummary(route);
-                return (
-                  <div
-                    key={techId}
-                    onClick={() => setSelectedTech(techId)}
-                    style={{
-                      padding: '12px',
-                      marginBottom: '8px',
-                      backgroundColor: selectedTech === techId ? '#eff6ff' : '#f9fafb',
-                      border: selectedTech === techId ? '2px solid #3b82f6' : '1px solid #e5e7eb',
-                      borderRadius: '8px',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s'
-                    }}
-                  >
-                    <div style={{ fontWeight: '500', marginBottom: '4px' }}>
-                      {route.tech.name}
-                    </div>
-                    <div style={{ fontSize: '12px', color: '#6b7280' }}>
-                      {summary.totalJobs} jobs • {summary.totalHours}h work
-                    </div>
-                    {summary.totalDriveHours > 0 && (
-                      <div style={{ fontSize: '12px', color: '#f59e0b' }}>
-                        <i className="fas fa-car"></i> {summary.totalDriveHours}h drive
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Map */}
-          <div className="card" style={{ padding: 0, overflow: 'hidden', position: 'relative' }}>
-            <div
-              ref={mapContainerRef}
-              style={{ width: '100%', height: '600px' }}
-            />
-
-            {/* Route Details Overlay */}
-            {techRoute && (
-              <div style={{
-                position: 'absolute',
-                top: '16px',
-                left: '16px',
-                backgroundColor: 'white',
-                padding: '16px',
-                borderRadius: '8px',
-                boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
-                maxWidth: '300px',
-                maxHeight: '500px',
-                overflow: 'auto',
-                zIndex: 1
-              }}>
-                <h4 style={{ margin: '0 0 12px 0' }}>
-                  {techRoute.tech.name}'s Route
-                </h4>
-                <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '12px' }}>
-                  <div><strong>Office:</strong> {offices[techRoute.tech.office]?.shortName}</div>
-                  <div><strong>Zone:</strong> {techRoute.tech.zone}</div>
-                  <div><strong>Shift:</strong> {techRoute.tech.name?.toLowerCase().includes('second') ? '2nd (1:15 PM - 9-11 PM)' : '1st (8:15 AM - 4-6 PM)'}</div>
-                </div>
-                <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '12px' }}>
-                  {techRoute.jobs.map((job, idx) => (
-                    <div
-                      key={job.id}
-                      style={{
-                        marginBottom: '12px',
-                        paddingBottom: '12px',
-                        borderBottom: idx < techRoute.jobs.length - 1 ? '1px solid #f3f4f6' : 'none'
-                      }}
-                    >
-                      <div style={{ fontWeight: '500', fontSize: '13px', marginBottom: '4px' }}>
-                        {idx + 1}. {job.customerName}
-                      </div>
-                      <div style={{ fontSize: '11px', color: '#6b7280' }}>
-                        {job.startTime && `${job.startTime} • `}
-                        {job.duration}h
-                        {job.travelTime > 0 && ` • ${job.travelTime}min drive`}
-                      </div>
-                      {job.demoTech && (
-                        <div style={{ fontSize: '11px', color: '#8b5cf6', marginTop: '2px' }}>
-                          + {job.demoTech}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  };
 
   const handleRefresh = () => {
     loadJobs();
     loadRoutes();
   };
 
-  const renderManualView = () => {
+  const renderRoutingView = () => {
     const leadTechs = getLeadTechs();
 
     return (
@@ -1012,129 +623,24 @@ const Routing = () => {
         onUpdateJobs={saveJobs}
         onRefresh={handleRefresh}
         selectedDate={selectedDate}
+        onImportCSV={() => setShowImportModal(true)}
       />
     );
   };
 
-  const renderTechsView = () => {
-    const allTechs = getTechList();
+  const renderKanbanView = () => {
     const leadTechs = getLeadTechs();
-    const demoTechs = getDemoTechs();
 
     return (
-      <div>
-        <h3 style={{ marginBottom: '24px' }}>Technician Directory - Houston</h3>
-
-        <div className="dashboard-grid" style={{ marginBottom: '24px' }}>
-          <div className="metric-card">
-            <div className="metric-header">
-              <h3>Total Techs</h3>
-            </div>
-            <div className="metric-value">{allTechs.length}</div>
-          </div>
-          <div className="metric-card">
-            <div className="metric-header">
-              <h3>Lead Techs</h3>
-            </div>
-            <div className="metric-value" style={{ color: '#3b82f6' }}>{leadTechs.length}</div>
-          </div>
-          <div className="metric-card">
-            <div className="metric-header">
-              <h3>Demo Techs</h3>
-            </div>
-            <div className="metric-value" style={{ color: '#8b5cf6' }}>{demoTechs.length}</div>
-          </div>
-          <div className="metric-card">
-            <div className="metric-header">
-              <h3>Offices</h3>
-            </div>
-            <div className="metric-value">2</div>
-          </div>
-        </div>
-
-        <div className="card" style={{ marginBottom: '24px' }}>
-          <div className="card-header">
-            <h3><i className="fas fa-building"></i> Office Locations</h3>
-          </div>
-          <div style={{ padding: '20px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-            {Object.entries(offices).map(([key, office]) => (
-              <div key={key} style={{ padding: '16px', backgroundColor: '#f9fafb', borderRadius: '8px' }}>
-                <h4 style={{ margin: 0, marginBottom: '8px', color: '#3b82f6' }}>
-                  <i className="fas fa-map-marker-alt"></i> {office.name}
-                </h4>
-                <p style={{ margin: 0, fontSize: '14px', color: '#6b7280' }}>{office.address}</p>
-                <p style={{ margin: '8px 0 0 0', fontSize: '12px', color: '#6b7280' }}>
-                  {allTechs.filter(t => t.office === key).length} technicians
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="card">
-          <div className="card-header">
-            <h3><i className="fas fa-users"></i> All Technicians</h3>
-          </div>
-          <div className="table-container">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>Role</th>
-                  <th>Zone</th>
-                  <th>Office</th>
-                  <th>Type</th>
-                  <th>Can Route</th>
-                  <th>Assigned Jobs</th>
-                </tr>
-              </thead>
-              <tbody>
-                {allTechs.map(tech => {
-                  const techRoute = routes[tech.id];
-                  const jobCount = techRoute?.jobs?.length || 0;
-                  const canRoute = leadTechs.some(lt => lt.id === tech.id);
-
-                  return (
-                    <tr key={tech.id}>
-                      <td><strong>{tech.name}</strong></td>
-                      <td>{tech.role}</td>
-                      <td>{tech.zone}</td>
-                      <td>{offices[tech.office]?.shortName || 'N/A'}</td>
-                      <td>
-                        {tech.isDemoTech ? (
-                          <span className="status-badge status-in-use">Demo Tech</span>
-                        ) : (
-                          <span className="status-badge status-available">Lead Tech</span>
-                        )}
-                      </td>
-                      <td>
-                        {canRoute ? (
-                          <span style={{ color: '#10b981' }}>
-                            <i className="fas fa-check-circle"></i> Yes
-                          </span>
-                        ) : (
-                          <span style={{ color: '#6b7280' }}>
-                            <i className="fas fa-times-circle"></i> No
-                          </span>
-                        )}
-                      </td>
-                      <td>
-                        {jobCount > 0 ? (
-                          <span style={{ color: '#3b82f6', fontWeight: '500' }}>
-                            {jobCount} job{jobCount !== 1 ? 's' : ''}
-                          </span>
-                        ) : (
-                          <span style={{ color: '#6b7280' }}>None</span>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
+      <KanbanCalendar
+        jobs={jobs}
+        routes={routes}
+        techs={leadTechs}
+        offices={offices}
+        onUpdateRoutes={saveRoutes}
+        onUpdateJobs={saveJobs}
+        selectedDate={selectedDate}
+      />
     );
   };
 
@@ -1148,34 +654,22 @@ const Routing = () => {
         <div className="tab-controls" style={{ marginBottom: '24px' }}>
           <div className="sub-nav">
             <button
+              className={`sub-nav-btn ${activeView === 'routing' ? 'active' : ''}`}
+              onClick={() => setActiveView('routing')}
+            >
+              <i className="fas fa-route"></i> Routing
+            </button>
+            <button
+              className={`sub-nav-btn ${activeView === 'kanban' ? 'active' : ''}`}
+              onClick={() => setActiveView('kanban')}
+            >
+              <i className="fas fa-columns"></i> Kanban Calendar
+            </button>
+            <button
               className={`sub-nav-btn ${activeView === 'jobs' ? 'active' : ''}`}
               onClick={() => setActiveView('jobs')}
             >
               <i className="fas fa-clipboard-list"></i> Jobs
-            </button>
-            <button
-              className={`sub-nav-btn ${activeView === 'routes' ? 'active' : ''}`}
-              onClick={() => setActiveView('routes')}
-            >
-              <i className="fas fa-route"></i> Routes
-            </button>
-            <button
-              className={`sub-nav-btn ${activeView === 'manual' ? 'active' : ''}`}
-              onClick={() => setActiveView('manual')}
-            >
-              <i className="fas fa-hand-pointer"></i> Manual Mode
-            </button>
-            <button
-              className={`sub-nav-btn ${activeView === 'map' ? 'active' : ''}`}
-              onClick={() => setActiveView('map')}
-            >
-              <i className="fas fa-map"></i> Map View
-            </button>
-            <button
-              className={`sub-nav-btn ${activeView === 'techs' ? 'active' : ''}`}
-              onClick={() => setActiveView('techs')}
-            >
-              <i className="fas fa-users"></i> Technicians
             </button>
           </div>
         </div>
@@ -1184,11 +678,9 @@ const Routing = () => {
           <p>Loading...</p>
         ) : (
           <>
+            {activeView === 'routing' && renderRoutingView()}
+            {activeView === 'kanban' && renderKanbanView()}
             {activeView === 'jobs' && renderJobsView()}
-            {activeView === 'routes' && renderRoutesView()}
-            {activeView === 'manual' && renderManualView()}
-            {activeView === 'map' && renderMapView()}
-            {activeView === 'techs' && renderTechsView()}
           </>
         )}
 
