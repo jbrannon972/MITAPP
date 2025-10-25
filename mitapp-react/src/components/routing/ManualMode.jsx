@@ -17,10 +17,23 @@ const ManualMode = ({
   const [hoveredJob, setHoveredJob] = useState(null);
   const [draggedRoute, setDraggedRoute] = useState(null);
   const [selectedJobOnMap, setSelectedJobOnMap] = useState(null);
+  const [selectedTech, setSelectedTech] = useState(null);
 
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const markersRef = useRef([]);
+
+  // Color mapping for different job types
+  const getJobTypeColor = (jobType) => {
+    const type = jobType.toLowerCase();
+    if (type.includes('install')) return '#8b5cf6'; // Purple
+    if (type.includes('demo prep') || type.includes('demo-prep')) return '#f59e0b'; // Orange
+    if (type.includes('demo') && !type.includes('check')) return '#ec4899'; // Pink
+    if (type.includes('service') || type.includes('repair')) return '#3b82f6'; // Blue
+    if (type.includes('maintenance') || type.includes('maint')) return '#10b981'; // Green
+    if (type.includes('inspection') || type.includes('check')) return '#06b6d4'; // Cyan
+    return '#6b7280'; // Gray for other/unknown
+  };
 
   // Initialize map
   useEffect(() => {
@@ -46,7 +59,7 @@ const ManualMode = ({
     };
   }, [mapboxToken]);
 
-  // Update markers when jobs or filter changes
+  // Update markers and routes when jobs, filter, or selected tech changes
   useEffect(() => {
     if (!mapInstanceRef.current) return;
 
@@ -56,6 +69,10 @@ const ManualMode = ({
       markersRef.current = [];
 
       const map = mapInstanceRef.current;
+
+      // Remove existing route layers
+      if (map.getLayer('route')) map.removeLayer('route');
+      if (map.getSource('route')) map.removeSource('route');
 
       // Add office markers
       const officeLocations = {
@@ -98,13 +115,17 @@ const ManualMode = ({
 
         if (!coords || !coords.lng || !coords.lat) continue;
 
-        // Determine marker color based on status
-        let markerColor = '#10b981'; // Green for unassigned
-        if (job.assignedTech) {
-          markerColor = '#6b7280'; // Gray for assigned
-        }
+        // Determine marker color based on job type and status
+        let markerColor = getJobTypeColor(job.jobType);
+
+        // Override with status colors
         if (buildingRoute.some(j => j.id === job.id)) {
-          markerColor = '#f59e0b'; // Orange for in building route
+          markerColor = '#fbbf24'; // Bright yellow for in building route
+        } else if (job.assignedTech && !showAllJobs) {
+          continue; // Skip assigned jobs if not showing all
+        } else if (job.assignedTech) {
+          // Dim the color for assigned jobs
+          markerColor = markerColor + '80'; // Add transparency
         }
 
         const el = document.createElement('div');
@@ -166,10 +187,105 @@ const ManualMode = ({
 
         markersRef.current.push(marker);
       }
+
+      // Draw selected tech's route on the map
+      if (selectedTech && routes[selectedTech]) {
+        const techRoute = routes[selectedTech];
+        const officeLocations = {
+          office_1: { lng: -95.4559, lat: 30.3119 },
+          office_2: { lng: -95.6508, lat: 29.7858 }
+        };
+
+        const officeCoords = officeLocations[techRoute.tech.office];
+        const coordinates = [[officeCoords.lng, officeCoords.lat]];
+
+        // Add route job markers
+        for (let idx = 0; idx < (techRoute.jobs?.length || 0); idx++) {
+          const job = techRoute.jobs[idx];
+
+          if (job.coordinates && job.coordinates.lng && job.coordinates.lat) {
+            coordinates.push([job.coordinates.lng, job.coordinates.lat]);
+
+            // Add numbered markers for route jobs
+            const el = document.createElement('div');
+            el.innerHTML = `
+              <div style="
+                background-color: ${getJobTypeColor(job.jobType)};
+                color: white;
+                width: 32px;
+                height: 32px;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-weight: bold;
+                font-size: 14px;
+                border: 3px solid white;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+              ">${idx + 1}</div>
+            `;
+
+            const marker = new mapboxgl.Marker(el)
+              .setLngLat([job.coordinates.lng, job.coordinates.lat])
+              .setPopup(new mapboxgl.Popup({ offset: 25 })
+                .setHTML(`
+                  <div style="padding: 8px;">
+                    <strong>${idx + 1}. ${job.customerName}</strong><br/>
+                    ${job.address}<br/>
+                    ${job.jobType} • ${job.duration}h
+                    ${job.travelTime ? `<br/>${job.travelTime}min drive` : ''}
+                  </div>
+                `))
+              .addTo(map);
+
+            markersRef.current.push(marker);
+          }
+        }
+
+        // Return to office at end
+        coordinates.push([officeCoords.lng, officeCoords.lat]);
+
+        // Draw route line if we have coordinates
+        if (coordinates.length > 2) {
+          map.addSource('route', {
+            type: 'geojson',
+            data: {
+              type: 'Feature',
+              properties: {},
+              geometry: {
+                type: 'LineString',
+                coordinates: coordinates
+              }
+            }
+          });
+
+          map.addLayer({
+            id: 'route',
+            type: 'line',
+            source: 'route',
+            layout: {
+              'line-join': 'round',
+              'line-cap': 'round'
+            },
+            paint: {
+              'line-color': '#3b82f6',
+              'line-width': 4,
+              'line-opacity': 0.75
+            }
+          });
+
+          // Fit map to show entire route
+          const bounds = coordinates.reduce(
+            (bounds, coord) => bounds.extend(coord),
+            new mapboxgl.LngLatBounds(coordinates[0], coordinates[0])
+          );
+          map.fitBounds(bounds, { padding: 50 });
+        }
+      }
     };
 
     renderJobMarkers();
-  }, [jobs, showAllJobs, buildingRoute]);
+  }, [jobs, showAllJobs, buildingRoute, selectedTech, routes]);
 
   const handleJobClick = (job) => {
     // Don't add assigned jobs to building route unless showing all
@@ -294,58 +410,55 @@ const ManualMode = ({
   const unassignedCount = jobs.filter(j => !j.assignedTech).length;
   const assignedCount = jobs.filter(j => j.assignedTech).length;
 
+  const handleTechClick = (techId) => {
+    setSelectedTech(selectedTech === techId ? null : techId);
+  };
+
   return (
-    <div>
-      {/* Header with toggle */}
+    <div style={{ height: 'calc(100vh - 200px)', display: 'flex', flexDirection: 'column' }}>
+      {/* Compact Header */}
       <div style={{
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: '20px',
-        padding: '16px',
+        marginBottom: '12px',
+        padding: '12px 16px',
         backgroundColor: '#f9fafb',
-        borderRadius: '8px',
+        borderRadius: '6px',
         border: '1px solid #e5e7eb'
       }}>
-        <div>
-          <h3 style={{ margin: 0, marginBottom: '8px' }}>Manual Route Builder</h3>
-          <p style={{ margin: 0, fontSize: '14px', color: '#6b7280' }}>
-            Click jobs on the map to build routes, then drag routes to technicians
-          </p>
-        </div>
-
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <div style={{ fontSize: '14px', color: '#6b7280' }}>
-            <span style={{ fontWeight: '500', color: '#10b981' }}>{unassignedCount}</span> unassigned •
-            <span style={{ fontWeight: '500', color: '#3b82f6', marginLeft: '4px' }}>{assignedCount}</span> assigned
+          <h3 style={{ margin: 0, fontSize: '16px' }}>Manual Route Builder</h3>
+          <div style={{ fontSize: '13px', color: '#6b7280' }}>
+            <span style={{ fontWeight: '600', color: '#10b981' }}>{unassignedCount}</span> unassigned •
+            <span style={{ fontWeight: '600', color: '#3b82f6', marginLeft: '4px' }}>{assignedCount}</span> assigned
           </div>
-
-          <label style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            cursor: 'pointer',
-            padding: '8px 16px',
-            backgroundColor: 'white',
-            borderRadius: '6px',
-            border: '2px solid #e5e7eb',
-            fontSize: '14px',
-            fontWeight: '500',
-            transition: 'all 0.2s'
-          }}>
-            <input
-              type="checkbox"
-              checked={showAllJobs}
-              onChange={(e) => setShowAllJobs(e.target.checked)}
-              style={{ width: '18px', height: '18px', cursor: 'pointer' }}
-            />
-            <span>Show All Jobs</span>
-          </label>
         </div>
+
+        <label style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          cursor: 'pointer',
+          padding: '6px 12px',
+          backgroundColor: 'white',
+          borderRadius: '4px',
+          border: '2px solid #e5e7eb',
+          fontSize: '13px',
+          fontWeight: '500'
+        }}>
+          <input
+            type="checkbox"
+            checked={showAllJobs}
+            onChange={(e) => setShowAllJobs(e.target.checked)}
+            style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+          />
+          <span>Show All Jobs</span>
+        </label>
       </div>
 
-      {/* Main layout: Map + Tech List */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 400px', gap: '20px', height: 'calc(100vh - 300px)' }}>
+      {/* Main layout: Map + Compact Tech List */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 280px', gap: '12px', flex: 1, minHeight: 0 }}>
 
         {/* Map Section */}
         <div className="card" style={{ padding: 0, overflow: 'hidden', position: 'relative', height: '100%' }}>
@@ -456,125 +569,223 @@ const ManualMode = ({
           {/* Legend */}
           <div style={{
             position: 'absolute',
-            top: '16px',
-            left: '16px',
+            top: '12px',
+            left: '12px',
             backgroundColor: 'white',
-            padding: '12px',
-            borderRadius: '8px',
+            padding: '10px',
+            borderRadius: '6px',
             boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-            fontSize: '12px',
-            zIndex: 1
+            fontSize: '11px',
+            zIndex: 1,
+            maxWidth: '200px'
           }}>
-            <div style={{ fontWeight: '600', marginBottom: '8px' }}>Legend</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
-              <div style={{ width: '16px', height: '16px', borderRadius: '50%', backgroundColor: '#10b981' }}></div>
-              <span>Unassigned</span>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
-              <div style={{ width: '16px', height: '16px', borderRadius: '50%', backgroundColor: '#f59e0b' }}></div>
-              <span>In Building Route</span>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <div style={{ width: '16px', height: '16px', borderRadius: '50%', backgroundColor: '#6b7280' }}></div>
-              <span>Assigned</span>
+            <div style={{ fontWeight: '600', marginBottom: '6px' }}>Job Types</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#8b5cf6' }}></div>
+                <span>Install</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#ec4899' }}></div>
+                <span>Demo</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#3b82f6' }}></div>
+                <span>Service</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#10b981' }}></div>
+                <span>Maint</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#06b6d4' }}></div>
+                <span>Inspect</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#fbbf24' }}></div>
+                <span>Building</span>
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Tech List Section */}
-        <div className="card" style={{ padding: '16px', height: '100%', overflow: 'auto' }}>
-          <h4 style={{ margin: 0, marginBottom: '16px' }}>
-            <i className="fas fa-users"></i> Technicians ({techs.length})
-          </h4>
-
-          {techs.map(tech => {
-            const techRoute = routes[tech.id];
-            const jobCount = techRoute?.jobs?.length || 0;
-            const totalHours = techRoute?.jobs?.reduce((sum, j) => sum + j.duration, 0) || 0;
-
-            return (
-              <div
-                key={tech.id}
-                onDragOver={handleDragOver}
-                onDrop={(e) => handleDropOnTech(e, tech.id)}
-                style={{
-                  marginBottom: '12px',
-                  padding: '12px',
-                  backgroundColor: jobCount > 0 ? '#eff6ff' : '#f9fafb',
-                  border: '2px dashed #e5e7eb',
-                  borderRadius: '8px',
-                  transition: 'all 0.2s'
-                }}
-              >
-                <div style={{ marginBottom: '8px' }}>
-                  <div style={{ fontWeight: '600', fontSize: '14px', marginBottom: '4px' }}>
-                    {tech.name}
+          {/* Selected Tech Route on Map */}
+          {selectedTech && routes[selectedTech] && routes[selectedTech].jobs?.length > 0 && (
+            <div style={{
+              position: 'absolute',
+              top: '12px',
+              right: '12px',
+              backgroundColor: 'white',
+              padding: '12px',
+              borderRadius: '6px',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+              maxWidth: '250px',
+              maxHeight: '400px',
+              overflow: 'auto',
+              zIndex: 1
+            }}>
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: '8px',
+                paddingBottom: '8px',
+                borderBottom: '2px solid #e5e7eb'
+              }}>
+                <h4 style={{ margin: 0, fontSize: '13px' }}>
+                  {routes[selectedTech].tech.name}
+                </h4>
+                <button
+                  onClick={() => setSelectedTech(null)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    padding: '2px',
+                    color: '#6b7280'
+                  }}
+                >
+                  <i className="fas fa-times"></i>
+                </button>
+              </div>
+              {routes[selectedTech].jobs.map((job, idx) => (
+                <div
+                  key={job.id}
+                  style={{
+                    padding: '6px',
+                    backgroundColor: '#f9fafb',
+                    borderRadius: '4px',
+                    marginBottom: '4px',
+                    borderLeft: `3px solid ${getJobTypeColor(job.jobType)}`,
+                    fontSize: '11px'
+                  }}
+                >
+                  <div style={{ fontWeight: '600', marginBottom: '2px' }}>
+                    {idx + 1}. {job.customerName}
                   </div>
-                  <div style={{ fontSize: '12px', color: '#6b7280' }}>
-                    {tech.role} • {tech.zone} • {offices[tech.office]?.shortName}
-                  </div>
-                  <div style={{ fontSize: '12px', color: '#3b82f6', marginTop: '4px', fontWeight: '500' }}>
-                    {jobCount} jobs • {totalHours.toFixed(1)}h
+                  <div style={{ color: '#6b7280', fontSize: '10px' }}>
+                    {job.jobType} • {job.duration}h
+                    {job.requiresTwoTechs && (
+                      <span style={{ color: '#f59e0b', marginLeft: '4px' }}>
+                        <i className="fas fa-users"></i>
+                      </span>
+                    )}
                   </div>
                 </div>
+              ))}
+            </div>
+          )}
+        </div>
 
-                {techRoute && techRoute.jobs && techRoute.jobs.length > 0 && (
-                  <div
-                    draggable
-                    onDragStart={(e) => handleDragStart(e, techRoute.jobs, tech.id)}
-                    style={{ cursor: 'grab' }}
-                  >
-                    {techRoute.jobs.map((job, idx) => (
-                      <div
-                        key={job.id}
-                        style={{
-                          padding: '8px',
-                          backgroundColor: 'white',
-                          borderRadius: '4px',
-                          marginBottom: '4px',
-                          fontSize: '12px',
-                          borderLeft: '3px solid #3b82f6'
-                        }}
-                      >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
-                          <div style={{ flex: 1 }}>
-                            <strong>{idx + 1}. {job.customerName}</strong>
-                            <div style={{ color: '#6b7280', marginTop: '2px', fontSize: '11px' }}>
-                              {job.jobType} • {job.duration}h
-                              {job.requiresTwoTechs && (
-                                <span style={{ color: '#f59e0b', marginLeft: '4px' }}>
-                                  <i className="fas fa-users"></i>
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                          <button
-                            onClick={() => removeJobFromTech(job.id, tech.id)}
-                            className="btn btn-secondary btn-small"
-                            style={{ padding: '2px 6px', fontSize: '10px' }}
-                          >
-                            <i className="fas fa-times"></i>
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
+        {/* Compact Tech List Section */}
+        <div className="card" style={{ padding: '12px', height: '100%', overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
+          <h4 style={{ margin: 0, marginBottom: '12px', fontSize: '14px' }}>
+            <i className="fas fa-users"></i> Techs ({techs.length})
+          </h4>
 
-                {(!techRoute || !techRoute.jobs || techRoute.jobs.length === 0) && (
+          <div style={{ flex: 1, overflow: 'auto' }}>
+            {techs.map(tech => {
+              const techRoute = routes[tech.id];
+              const jobCount = techRoute?.jobs?.length || 0;
+              const totalHours = techRoute?.jobs?.reduce((sum, j) => sum + j.duration, 0) || 0;
+              const isSelected = selectedTech === tech.id;
+
+              return (
+                <div
+                  key={tech.id}
+                  onDragOver={handleDragOver}
+                  onDrop={(e) => handleDropOnTech(e, tech.id)}
+                  onClick={() => handleTechClick(tech.id)}
+                  style={{
+                    marginBottom: '6px',
+                    padding: '8px',
+                    backgroundColor: isSelected ? '#dbeafe' : (jobCount > 0 ? '#eff6ff' : '#f9fafb'),
+                    border: isSelected ? '2px solid #3b82f6' : '2px dashed #e5e7eb',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s'
+                  }}
+                >
                   <div style={{
-                    padding: '16px',
-                    textAlign: 'center',
-                    color: '#9ca3af',
-                    fontSize: '12px',
-                    fontStyle: 'italic'
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginBottom: jobCount > 0 ? '6px' : '0'
                   }}>
-                    Drop route here
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{
+                        fontWeight: '600',
+                        fontSize: '12px',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis'
+                      }}>
+                        {tech.name}
+                      </div>
+                      <div style={{ fontSize: '10px', color: '#6b7280' }}>
+                        {offices[tech.office]?.shortName}
+                      </div>
+                    </div>
+                    {jobCount > 0 && (
+                      <div style={{
+                        fontSize: '11px',
+                        fontWeight: '600',
+                        color: '#3b82f6',
+                        textAlign: 'right',
+                        marginLeft: '8px'
+                      }}>
+                        <div>{jobCount} job{jobCount !== 1 ? 's' : ''}</div>
+                        <div style={{ fontSize: '10px' }}>{totalHours.toFixed(1)}h</div>
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-            );
-          })}
+
+                  {/* Job type indicators */}
+                  {techRoute && techRoute.jobs && techRoute.jobs.length > 0 && (
+                    <div
+                      draggable
+                      onDragStart={(e) => {
+                        e.stopPropagation();
+                        handleDragStart(e, techRoute.jobs, tech.id);
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                      style={{
+                        display: 'flex',
+                        gap: '3px',
+                        flexWrap: 'wrap',
+                        cursor: 'grab'
+                      }}
+                    >
+                      {techRoute.jobs.map((job) => (
+                        <div
+                          key={job.id}
+                          style={{
+                            width: '8px',
+                            height: '8px',
+                            borderRadius: '50%',
+                            backgroundColor: getJobTypeColor(job.jobType),
+                            border: job.requiresTwoTechs ? '1px solid #f59e0b' : 'none'
+                          }}
+                          title={`${job.jobType} - ${job.duration}h`}
+                        />
+                      ))}
+                    </div>
+                  )}
+
+                  {(!techRoute || !techRoute.jobs || techRoute.jobs.length === 0) && (
+                    <div style={{
+                      fontSize: '10px',
+                      color: '#9ca3af',
+                      fontStyle: 'italic',
+                      textAlign: 'center',
+                      marginTop: '4px'
+                    }}>
+                      Drop here
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
     </div>
