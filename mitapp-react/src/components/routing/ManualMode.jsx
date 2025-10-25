@@ -25,6 +25,7 @@ const ManualMode = ({
   const [selectedJobOnMap, setSelectedJobOnMap] = useState(null);
   const [selectedTech, setSelectedTech] = useState(null);
   const [pushingToCalendar, setPushingToCalendar] = useState(false);
+  const hoverTimeoutRef = useRef(null);
   const [googleClientId, setGoogleClientId] = useState(
     localStorage.getItem('googleClientId') || ''
   );
@@ -38,6 +39,15 @@ const ManualMode = ({
   useEffect(() => {
     setRoutes(initialRoutes);
   }, [initialRoutes]);
+
+  // Cleanup hover timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (hoverTimeoutRef.current) {
+        clearTimeout(hoverTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
@@ -176,13 +186,21 @@ const ManualMode = ({
 
         // Show centered popup on hover
         el.addEventListener('mouseenter', () => {
+          // Clear any pending hide timeout
+          if (hoverTimeoutRef.current) {
+            clearTimeout(hoverTimeoutRef.current);
+            hoverTimeoutRef.current = null;
+          }
           el.querySelector('.job-marker').style.transform = 'scale(1.2)';
           setHoveredJob(job);
         });
 
         el.addEventListener('mouseleave', () => {
           el.querySelector('.job-marker').style.transform = 'scale(1)';
-          setHoveredJob(null);
+          // Delay hiding to allow mouse to move to popup
+          hoverTimeoutRef.current = setTimeout(() => {
+            setHoveredJob(null);
+          }, 100);
         });
 
         // Click to add to building route
@@ -872,19 +890,32 @@ const ManualMode = ({
 
           {/* Centered Job Hover Popup */}
           {hoveredJob && !selectedTech && (
-            <div style={{
-              position: 'absolute',
-              top: '50%',
-              left: '50%',
-              transform: 'translate(-50%, -50%)',
-              backgroundColor: 'white',
-              padding: '16px',
-              borderRadius: '8px',
-              boxShadow: '0 8px 24px rgba(0,0,0,0.25)',
-              maxWidth: '400px',
-              zIndex: 1000,
-              border: '2px solid #3b82f6'
-            }}>
+            <div
+              onMouseEnter={() => {
+                // Clear hide timeout when hovering over popup
+                if (hoverTimeoutRef.current) {
+                  clearTimeout(hoverTimeoutRef.current);
+                  hoverTimeoutRef.current = null;
+                }
+              }}
+              onMouseLeave={() => {
+                // Hide popup when leaving popup area
+                setHoveredJob(null);
+              }}
+              style={{
+                position: 'absolute',
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -50%)',
+                backgroundColor: 'white',
+                padding: '16px',
+                borderRadius: '8px',
+                boxShadow: '0 8px 24px rgba(0,0,0,0.25)',
+                maxWidth: '400px',
+                zIndex: 1000,
+                border: '2px solid #3b82f6'
+              }}
+            >
               <div style={{ marginBottom: '12px' }}>
                 <strong style={{ fontSize: '16px', color: '#1f2937' }}>{hoveredJob.customerName}</strong>
               </div>
