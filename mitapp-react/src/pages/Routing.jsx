@@ -319,11 +319,19 @@ const Routing = () => {
         return;
       }
 
-      // Step 1: Balance workload across techs
-      const balancedAssignments = balanceWorkload(unassignedJobs, leadTechs);
-
-      // Step 2: Optimize each tech's route with Mapbox
+      // Step 2: Geocode all job addresses
       const mapbox = getMapboxService();
+      const geocodedJobs = await Promise.all(
+        unassignedJobs.map(async (job) => {
+          const coords = await mapbox.geocodeAddress(job.address);
+          return { ...job, coordinates: coords };
+        })
+      );
+
+      // Step 3: Balance workload across techs with geocoded jobs
+      const balancedAssignments = balanceWorkload(geocodedJobs, leadTechs);
+
+      // Step 4: Optimize each tech's route with Mapbox
       const optimizedRoutes = {};
 
       for (const [techId, assignment] of Object.entries(balancedAssignments)) {
@@ -370,7 +378,7 @@ const Routing = () => {
         };
       }
 
-      // Step 3: Auto-assign demo techs
+      // Step 5: Auto-assign demo techs (keep them with same tech all day)
       const { routes: finalRoutes } = assignDemoTechs(optimizedRoutes, demoTechs);
 
       // Update state
@@ -752,53 +760,108 @@ const Routing = () => {
     };
   }, [activeView, mapboxToken]);
 
-  // Update markers when selected tech changes
+  // Update markers and routes when selected tech changes
   useEffect(() => {
     if (!mapInstanceRef.current || activeView !== 'map') return;
 
-    // Clear existing markers
-    markersRef.current.forEach(marker => marker.remove());
-    markersRef.current = [];
+    const renderRouteOnMap = async () => {
+      // Clear existing markers
+      markersRef.current.forEach(marker => marker.remove());
+      markersRef.current = [];
 
-    const map = mapInstanceRef.current;
+      const map = mapInstanceRef.current;
 
-    // Add office markers
-    const officeLocations = {
-      office_1: { lng: -95.4559, lat: 30.3119, name: 'Conroe' },
-      office_2: { lng: -95.6508, lat: 29.7858, name: 'Katy' }
-    };
+      // Remove existing route layer and source if they exist
+      if (map.getLayer('route')) map.removeLayer('route');
+      if (map.getSource('route')) map.removeSource('route');
 
-    Object.values(officeLocations).forEach(office => {
-      const el = document.createElement('div');
-      el.innerHTML = `<div style="background-color: #3b82f6; color: white; padding: 6px 10px; border-radius: 4px; font-weight: bold; font-size: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.2);"><i class="fas fa-building"></i> ${office.name}</div>`;
+      // Add office markers
+      const officeLocations = {
+        office_1: { lng: -95.4559, lat: 30.3119, name: 'Conroe' },
+        office_2: { lng: -95.6508, lat: 29.7858, name: 'Katy' }
+      };
 
-      const marker = new mapboxgl.Marker(el)
-        .setLngLat([office.lng, office.lat])
-        .addTo(map);
-
-      markersRef.current.push(marker);
-    });
-
-    // Add job markers if tech is selected
-    if (selectedTech && routes[selectedTech]) {
-      const techRoute = routes[selectedTech];
-      techRoute.jobs?.forEach((job, idx) => {
-        // Spread markers around Houston area for demo
-        const lat = 30.1945 + (Math.random() - 0.5) * 0.3;
-        const lng = -95.5698 + (Math.random() - 0.5) * 0.3;
-
+      Object.values(officeLocations).forEach(office => {
         const el = document.createElement('div');
-        el.innerHTML = `<div style="background-color: #10b981; color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 12px; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3); cursor: pointer;">${idx + 1}</div>`;
+        el.innerHTML = `<div style="background-color: #3b82f6; color: white; padding: 6px 10px; border-radius: 4px; font-weight: bold; font-size: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.2);"><i class="fas fa-building"></i> ${office.name}</div>`;
 
         const marker = new mapboxgl.Marker(el)
-          .setLngLat([lng, lat])
-          .setPopup(new mapboxgl.Popup({ offset: 25 })
-            .setHTML(`<div style="padding: 8px;"><strong>${job.customerName}</strong><br/>${job.duration}h job</div>`))
+          .setLngLat([office.lng, office.lat])
           .addTo(map);
 
         markersRef.current.push(marker);
       });
-    }
+
+      // Add job markers and route lines if tech is selected
+      if (selectedTech && routes[selectedTech]) {
+        const techRoute = routes[selectedTech];
+        const officeCoords = officeLocations[techRoute.tech.office];
+        const coordinates = [[officeCoords.lng, officeCoords.lat]];
+
+        // Add job markers with real coordinates
+        for (let idx = 0; idx < (techRoute.jobs?.length || 0); idx++) {
+          const job = techRoute.jobs[idx];
+
+          // Use stored coordinates or skip if not available
+          if (job.coordinates && job.coordinates.lng && job.coordinates.lat) {
+            coordinates.push([job.coordinates.lng, job.coordinates.lat]);
+
+            const el = document.createElement('div');
+            el.innerHTML = `<div style="background-color: #10b981; color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 12px; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3); cursor: pointer;">${idx + 1}</div>`;
+
+            const marker = new mapboxgl.Marker(el)
+              .setLngLat([job.coordinates.lng, job.coordinates.lat])
+              .setPopup(new mapboxgl.Popup({ offset: 25 })
+                .setHTML(`<div style="padding: 8px;"><strong>${idx + 1}. ${job.customerName}</strong><br/>${job.address}<br/>${job.duration}h job${job.travelTime ? `<br/>${job.travelTime}min drive` : ''}</div>`))
+              .addTo(map);
+
+            markersRef.current.push(marker);
+          }
+        }
+
+        // Return to office at end
+        coordinates.push([officeCoords.lng, officeCoords.lat]);
+
+        // Draw route line if we have coordinates
+        if (coordinates.length > 2) {
+          map.addSource('route', {
+            type: 'geojson',
+            data: {
+              type: 'Feature',
+              properties: {},
+              geometry: {
+                type: 'LineString',
+                coordinates: coordinates
+              }
+            }
+          });
+
+          map.addLayer({
+            id: 'route',
+            type: 'line',
+            source: 'route',
+            layout: {
+              'line-join': 'round',
+              'line-cap': 'round'
+            },
+            paint: {
+              'line-color': '#3b82f6',
+              'line-width': 4,
+              'line-opacity': 0.75
+            }
+          });
+
+          // Fit map to show entire route
+          const bounds = coordinates.reduce(
+            (bounds, coord) => bounds.extend(coord),
+            new mapboxgl.LngLatBounds(coordinates[0], coordinates[0])
+          );
+          map.fitBounds(bounds, { padding: 50 });
+        }
+      }
+    };
+
+    renderRouteOnMap();
   }, [selectedTech, routes, activeView]);
 
   const renderMapView = () => {

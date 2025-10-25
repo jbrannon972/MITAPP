@@ -208,59 +208,74 @@ export const balanceWorkload = (jobs, techs, distanceMatrix) => {
 
 /**
  * Auto-assign demo techs to jobs requiring 2 people
+ * Keeps demo techs with same lead tech all day when possible
  */
 export const assignDemoTechs = (routes, demoTechs) => {
   const enhancedRoutes = {};
-  const demoTechAvailability = {};
+  const demoTechAssignments = {}; // Track which demo tech is assigned to which lead tech
 
-  // Initialize demo tech availability tracking
+  // Initialize demo tech tracking
   demoTechs.forEach(dt => {
-    demoTechAvailability[dt.id] = {
+    demoTechAssignments[dt.id] = {
       tech: dt,
-      schedule: [], // Array of {start, end, job} time blocks
-      totalHours: 0
+      assignedToLeadTech: null, // Which lead tech they're with for the day
+      totalHours: 0,
+      jobs: []
     };
   });
 
-  // Process each tech's route
+  // First pass: Calculate how many 2-tech jobs each lead has
+  const leadTechScores = {};
+  for (const [techId, route] of Object.entries(routes)) {
+    const twoTechJobs = route.jobs.filter(j => j.requiresTwoTechs);
+    leadTechScores[techId] = {
+      tech: route.tech,
+      twoTechJobCount: twoTechJobs.length,
+      totalTwoTechHours: twoTechJobs.reduce((sum, j) => sum + j.duration, 0)
+    };
+  }
+
+  // Sort lead techs by number of 2-tech jobs (prefer demo-heavy routes)
+  const sortedLeadTechs = Object.entries(leadTechScores)
+    .sort((a, b) => b[1].twoTechJobCount - a[1].twoTechJobCount);
+
+  // Assign demo techs to lead techs (one demo tech per lead tech for the day)
+  for (const [techId, score] of sortedLeadTechs) {
+    if (score.twoTechJobCount === 0) continue;
+
+    // Find an available demo tech from the same office
+    const availableDemoTech = demoTechs.find(dt => {
+      return dt.office === score.tech.office &&
+             !demoTechAssignments[dt.id].assignedToLeadTech;
+    });
+
+    if (availableDemoTech) {
+      demoTechAssignments[availableDemoTech.id].assignedToLeadTech = techId;
+    }
+  }
+
+  // Second pass: Apply demo tech assignments to jobs
   for (const [techId, route] of Object.entries(routes)) {
     const enhancedJobs = [];
+
+    // Find if this lead tech has a demo tech assigned for the day
+    const assignedDemoTech = demoTechs.find(dt =>
+      demoTechAssignments[dt.id].assignedToLeadTech === techId
+    );
 
     for (const job of route.jobs) {
       const enhancedJob = { ...job };
 
-      // If job requires 2 techs, find available demo tech
+      // If job requires 2 techs and we have an assigned demo tech, use them
       if (job.requiresTwoTechs) {
-        const jobStart = timeToMinutes(job.startTime || job.timeframeStart);
-        const jobEnd = jobStart + (job.duration * 60);
-
-        // Find demo tech from same office with availability
-        const availableDemoTech = demoTechs.find(dt => {
-          // Must be from same office
-          if (dt.office !== route.tech.office) return false;
-
-          // Check if demo tech is available during this time
-          const schedule = demoTechAvailability[dt.id].schedule;
-          const hasConflict = schedule.some(block => {
-            return (jobStart < block.end && jobEnd > block.start);
-          });
-
-          return !hasConflict;
-        });
-
-        if (availableDemoTech) {
-          enhancedJob.demoTech = availableDemoTech.name;
-          enhancedJob.demoTechId = availableDemoTech.id;
-
-          // Block this time for the demo tech
-          demoTechAvailability[availableDemoTech.id].schedule.push({
-            start: jobStart,
-            end: jobEnd,
-            job: job.id
-          });
-          demoTechAvailability[availableDemoTech.id].totalHours += job.duration;
+        if (assignedDemoTech) {
+          enhancedJob.demoTech = assignedDemoTech.name;
+          enhancedJob.demoTechId = assignedDemoTech.id;
+          demoTechAssignments[assignedDemoTech.id].totalHours += job.duration;
+          demoTechAssignments[assignedDemoTech.id].jobs.push(job.id);
         } else {
-          enhancedJob.demoTechWarning = 'No demo tech available';
+          // No demo tech assigned for this route
+          enhancedJob.demoTechWarning = 'No demo tech available - may need to assign manually';
         }
       }
 
@@ -269,13 +284,14 @@ export const assignDemoTechs = (routes, demoTechs) => {
 
     enhancedRoutes[techId] = {
       ...route,
-      jobs: enhancedJobs
+      jobs: enhancedJobs,
+      assignedDemoTech: assignedDemoTech ? assignedDemoTech.name : null
     };
   }
 
   return {
     routes: enhancedRoutes,
-    demoTechUtilization: demoTechAvailability
+    demoTechUtilization: demoTechAssignments
   };
 };
 
