@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { getMapboxService } from '../../services/mapboxService';
+import { optimizeRoute } from '../../utils/routeOptimizer';
 
 const ManualMode = ({
   jobs,
@@ -10,7 +11,8 @@ const ManualMode = ({
   offices,
   mapboxToken,
   onUpdateRoutes,
-  onUpdateJobs
+  onUpdateJobs,
+  onRefresh
 }) => {
   const [buildingRoute, setBuildingRoute] = useState([]);
   const [showAllJobs, setShowAllJobs] = useState(false);
@@ -168,14 +170,18 @@ const ManualMode = ({
 
         const popup = new mapboxgl.Popup({ offset: 25, closeButton: false })
           .setHTML(`
-            <div style="padding: 8px; min-width: 200px;">
-              <strong style="font-size: 14px;">${job.customerName}</strong>
-              <div style="margin-top: 6px; font-size: 12px; color: #6b7280;">
-                <div><i class="fas fa-map-marker-alt"></i> ${job.address}</div>
-                <div style="margin-top: 4px;"><i class="fas fa-wrench"></i> ${job.jobType}</div>
-                <div style="margin-top: 4px;"><i class="fas fa-clock"></i> ${job.duration}h</div>
-                ${job.requiresTwoTechs ? '<div style="margin-top: 4px; color: #f59e0b;"><i class="fas fa-users"></i> Requires 2 Techs</div>' : ''}
-                <div style="margin-top: 4px;"><i class="fas fa-calendar-alt"></i> ${job.timeframeStart} - ${job.timeframeEnd}</div>
+            <div style="padding: 10px; min-width: 220px;">
+              <strong style="font-size: 14px; display: block; margin-bottom: 8px;">${job.customerName}</strong>
+              <div style="font-size: 12px; color: #374151;">
+                <div style="margin-bottom: 4px;"><i class="fas fa-map-marker-alt" style="width: 16px;"></i> ${job.address}</div>
+                <div style="margin-bottom: 4px;"><i class="fas fa-wrench" style="width: 16px;"></i> ${job.jobType}</div>
+                <div style="margin-bottom: 4px; font-weight: 600; color: #1f2937;">
+                  <i class="fas fa-hourglass-half" style="width: 16px;"></i> Duration: ${job.duration}h
+                </div>
+                <div style="margin-bottom: 4px; font-weight: 600; color: #1f2937;">
+                  <i class="fas fa-clock" style="width: 16px;"></i> Timeframe: ${job.timeframeStart} - ${job.timeframeEnd}
+                </div>
+                ${job.requiresTwoTechs ? '<div style="margin-top: 6px; padding: 4px; background-color: #fef3c7; color: #92400e; border-radius: 4px; font-weight: 600;"><i class="fas fa-users"></i> Requires 2 Techs</div>' : ''}
               </div>
             </div>
           `);
@@ -320,51 +326,159 @@ const ManualMode = ({
 
     const { jobs: routeJobs, fromTechId } = draggedRoute;
 
-    // Update routes
-    const updatedRoutes = { ...routes };
+    try {
+      // Get target tech info
+      const targetTech = techs.find(t => t.id === targetTechId);
+      const isSecondShift = targetTech.name?.toLowerCase().includes('second shift') ||
+                           targetTech.name?.toLowerCase().includes('2nd shift');
+      const shift = isSecondShift ? 'second' : 'first';
+      const startLocation = offices[targetTech.office].address;
 
-    // Remove from source tech if applicable
-    if (fromTechId) {
-      updatedRoutes[fromTechId] = {
-        ...updatedRoutes[fromTechId],
-        jobs: updatedRoutes[fromTechId].jobs.filter(
+      // Geocode jobs that need coordinates
+      const mapbox = getMapboxService();
+      const geocodedJobs = await Promise.all(
+        routeJobs.map(async (job) => {
+          if (job.coordinates) return job;
+          const coords = await mapbox.geocodeAddress(job.address);
+          return { ...job, coordinates: coords };
+        })
+      );
+
+      // Get existing jobs for this tech (if moving between techs, don't include the ones we're moving)
+      let existingJobs = [];
+      if (routes[targetTechId] && routes[targetTechId].jobs) {
+        existingJobs = routes[targetTechId].jobs.filter(
           j => !routeJobs.some(rj => rj.id === j.id)
-        )
-      };
-    }
-
-    // Add to target tech
-    const targetTech = techs.find(t => t.id === targetTechId);
-    if (!updatedRoutes[targetTechId]) {
-      updatedRoutes[targetTechId] = {
-        tech: targetTech,
-        jobs: []
-      };
-    }
-
-    updatedRoutes[targetTechId] = {
-      ...updatedRoutes[targetTechId],
-      jobs: [...updatedRoutes[targetTechId].jobs, ...routeJobs]
-    };
-
-    // Update jobs with new assignments
-    const updatedJobs = jobs.map(job => {
-      if (routeJobs.some(rj => rj.id === job.id)) {
-        return { ...job, assignedTech: targetTechId, status: 'assigned' };
+        );
       }
-      return job;
-    });
 
-    // Clear building route if it was dragged
-    if (!fromTechId) {
-      setBuildingRoute([]);
+      // Combine existing and new jobs
+      const allJobsForTech = [...existingJobs, ...geocodedJobs];
+
+      // Build distance matrix for optimization
+      let distanceMatrix = null;
+      if (allJobsForTech.length > 1) {
+        const addresses = [
+          startLocation,
+          ...allJobsForTech.map(j => j.address)
+        ];
+
+        try {
+          distanceMatrix = await mapbox.calculateDistanceMatrix(addresses);
+        } catch (error) {
+          console.error('Distance matrix error:', error);
+        }
+      }
+
+      // Optimize the route with time calculations
+      const optimized = await optimizeRoute(
+        allJobsForTech,
+        startLocation,
+        distanceMatrix,
+        shift
+      );
+
+      // Check for timeframe violations
+      const violations = optimized.optimizedJobs.filter(job => {
+        const startMinutes = parseInt(job.timeframeStart.split(':')[0]) * 60 + parseInt(job.timeframeStart.split(':')[1]);
+        const endMinutes = parseInt(job.timeframeEnd.split(':')[0]) * 60 + parseInt(job.timeframeEnd.split(':')[1]);
+        const arrivalMinutes = parseInt(job.arrivalTime.split(':')[0]) * 60 + parseInt(job.arrivalTime.split(':')[1]);
+        return arrivalMinutes > endMinutes;
+      });
+
+      if (violations.length > 0) {
+        const violationMessages = violations.map(v =>
+          `${v.customerName}: Arrives ${v.arrivalTime} but window closes at ${v.timeframeEnd}`
+        ).join('\n');
+
+        alert(`⚠️ TIMEFRAME VIOLATIONS DETECTED:\n\n${violationMessages}\n\nThese jobs cannot be completed within their timeframe windows. Please adjust the route or reassign jobs.`);
+        setDraggedRoute(null);
+        return;
+      }
+
+      // Update routes
+      const updatedRoutes = { ...routes };
+
+      // Remove from source tech if applicable
+      if (fromTechId) {
+        updatedRoutes[fromTechId] = {
+          ...updatedRoutes[fromTechId],
+          jobs: updatedRoutes[fromTechId].jobs.filter(
+            j => !routeJobs.some(rj => rj.id === j.id)
+          )
+        };
+      }
+
+      // Add optimized jobs to target tech
+      if (!updatedRoutes[targetTechId]) {
+        updatedRoutes[targetTechId] = {
+          tech: targetTech,
+          jobs: []
+        };
+      }
+
+      updatedRoutes[targetTechId] = {
+        ...updatedRoutes[targetTechId],
+        jobs: optimized.optimizedJobs,
+        summary: {
+          totalDuration: optimized.totalDuration,
+          totalDistance: optimized.totalDistance
+        }
+      };
+
+      // Update jobs with new assignments and coordinates
+      const updatedJobs = jobs.map(job => {
+        const optimizedJob = optimized.optimizedJobs.find(oj => oj.id === job.id);
+        if (optimizedJob) {
+          return {
+            ...job,
+            assignedTech: targetTechId,
+            status: 'assigned',
+            coordinates: optimizedJob.coordinates,
+            startTime: optimizedJob.startTime,
+            endTime: optimizedJob.endTime,
+            arrivalTime: optimizedJob.arrivalTime,
+            travelTime: optimizedJob.travelTime
+          };
+        }
+        // Also update jobs that were already assigned to this tech
+        const existingJob = existingJobs.find(ej => ej.id === job.id);
+        if (existingJob) {
+          const reoptimizedJob = optimized.optimizedJobs.find(oj => oj.id === job.id);
+          if (reoptimizedJob) {
+            return {
+              ...job,
+              startTime: reoptimizedJob.startTime,
+              endTime: reoptimizedJob.endTime,
+              arrivalTime: reoptimizedJob.arrivalTime,
+              travelTime: reoptimizedJob.travelTime
+            };
+          }
+        }
+        return job;
+      });
+
+      // Clear building route if it was dragged
+      if (!fromTechId) {
+        setBuildingRoute([]);
+      }
+
+      setDraggedRoute(null);
+
+      // Callback to parent - make sure both are awaited
+      await onUpdateRoutes(updatedRoutes);
+      await onUpdateJobs(updatedJobs);
+
+      // Show success message with timing info
+      const shiftStart = shift === 'second' ? '1:15 PM' : '8:15 AM';
+      const lastJob = optimized.optimizedJobs[optimized.optimizedJobs.length - 1];
+      alert(`✅ Route assigned successfully!\n\n${targetTech.name}\nLeaves office: ${shiftStart}\n${optimized.optimizedJobs.length} jobs\nLast job ends: ${lastJob.endTime}\nTotal work time: ${(optimized.totalDuration / 60).toFixed(1)}h`);
+
+    } catch (error) {
+      console.error('Error assigning route:', error);
+      alert('Error assigning route. Please try again.');
+      setDraggedRoute(null);
     }
-
-    setDraggedRoute(null);
-
-    // Callback to parent
-    await onUpdateRoutes(updatedRoutes);
-    await onUpdateJobs(updatedJobs);
   };
 
   const removeJobFromBuildingRoute = (jobId) => {
@@ -435,26 +549,44 @@ const ManualMode = ({
           </div>
         </div>
 
-        <label style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
-          cursor: 'pointer',
-          padding: '6px 12px',
-          backgroundColor: 'white',
-          borderRadius: '4px',
-          border: '2px solid #e5e7eb',
-          fontSize: '13px',
-          fontWeight: '500'
-        }}>
-          <input
-            type="checkbox"
-            checked={showAllJobs}
-            onChange={(e) => setShowAllJobs(e.target.checked)}
-            style={{ width: '16px', height: '16px', cursor: 'pointer' }}
-          />
-          <span>Show All Jobs</span>
-        </label>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          {onRefresh && (
+            <button
+              onClick={onRefresh}
+              className="btn btn-secondary btn-small"
+              style={{
+                padding: '6px 12px',
+                fontSize: '13px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}
+            >
+              <i className="fas fa-sync-alt"></i> Refresh
+            </button>
+          )}
+
+          <label style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            cursor: 'pointer',
+            padding: '6px 12px',
+            backgroundColor: 'white',
+            borderRadius: '4px',
+            border: '2px solid #e5e7eb',
+            fontSize: '13px',
+            fontWeight: '500'
+          }}>
+            <input
+              type="checkbox"
+              checked={showAllJobs}
+              onChange={(e) => setShowAllJobs(e.target.checked)}
+              style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+            />
+            <span>Show All Jobs</span>
+          </label>
+        </div>
       </div>
 
       {/* Main layout: Map + Compact Tech List */}
@@ -663,11 +795,23 @@ const ManualMode = ({
                     {idx + 1}. {job.customerName}
                   </div>
                   <div style={{ color: '#6b7280', fontSize: '10px' }}>
-                    {job.jobType} • {job.duration}h
-                    {job.requiresTwoTechs && (
-                      <span style={{ color: '#f59e0b', marginLeft: '4px' }}>
-                        <i className="fas fa-users"></i>
-                      </span>
+                    {job.startTime && (
+                      <div style={{ marginBottom: '2px', color: '#059669', fontWeight: '600' }}>
+                        <i className="fas fa-clock"></i> {job.startTime} - {job.endTime}
+                      </div>
+                    )}
+                    <div>
+                      {job.jobType} • {job.duration}h
+                      {job.requiresTwoTechs && (
+                        <span style={{ color: '#f59e0b', marginLeft: '4px' }}>
+                          <i className="fas fa-users"></i>
+                        </span>
+                      )}
+                    </div>
+                    {job.travelTime > 0 && (
+                      <div style={{ color: '#f59e0b', fontSize: '9px', marginTop: '2px' }}>
+                        <i className="fas fa-car"></i> {job.travelTime}min drive
+                      </div>
                     )}
                   </div>
                 </div>

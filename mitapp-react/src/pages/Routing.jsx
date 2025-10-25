@@ -993,6 +993,11 @@ const Routing = () => {
     );
   };
 
+  const handleRefresh = () => {
+    loadJobs();
+    loadRoutes();
+  };
+
   const renderManualView = () => {
     const leadTechs = getLeadTechs();
 
@@ -1005,6 +1010,7 @@ const Routing = () => {
         mapboxToken={mapboxToken}
         onUpdateRoutes={saveRoutes}
         onUpdateJobs={saveJobs}
+        onRefresh={handleRefresh}
       />
     );
   };
