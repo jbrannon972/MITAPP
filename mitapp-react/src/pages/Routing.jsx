@@ -1011,6 +1011,7 @@ const Routing = () => {
         onUpdateRoutes={saveRoutes}
         onUpdateJobs={saveJobs}
         onRefresh={handleRefresh}
+        selectedDate={selectedDate}
       />
     );
   };

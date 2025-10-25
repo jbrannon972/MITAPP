@@ -15,7 +15,7 @@ const Team = () => {
   const [zoneFormData, setZoneFormData] = useState({ name: '', leadName: '' });
   const [showMemberModal, setShowMemberModal] = useState(false);
   const [editingMember, setEditingMember] = useState(null);
-  const [memberFormData, setMemberFormData] = useState({ name: '', role: 'MIT Tech' });
+  const [memberFormData, setMemberFormData] = useState({ name: '', role: 'MIT Tech', email: '' });
 
   const canManage = currentUser && ['Manager', 'Supervisor', 'MIT Lead'].includes(currentUser.role);
 
@@ -176,13 +176,13 @@ const Team = () => {
 
   const openAddMemberModal = (zoneIndex) => {
     setEditingMember({ zoneIndex, memberIndex: null });
-    setMemberFormData({ name: '', role: 'MIT Tech' });
+    setMemberFormData({ name: '', role: 'MIT Tech', email: '' });
     setShowMemberModal(true);
   };
 
   const openEditMemberModal = (zoneIndex, memberIndex, member) => {
     setEditingMember({ zoneIndex, memberIndex });
-    setMemberFormData({ name: member.name, role: member.role });
+    setMemberFormData({ name: member.name, role: member.role, email: member.email || '' });
     setShowMemberModal(true);
   };
 
@@ -209,12 +209,14 @@ const Team = () => {
       const member = updatedZones[editingMember.zoneIndex].members[editingMember.memberIndex];
       member.name = memberFormData.name;
       member.role = memberFormData.role;
+      member.email = memberFormData.email;
     } else {
       // Add new member
       const newMember = {
         id: 'person_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
         name: memberFormData.name,
-        role: memberFormData.role
+        role: memberFormData.role,
+        email: memberFormData.email
       };
       updatedZones[editingMember.zoneIndex].members.push(newMember);
     }
@@ -573,6 +575,26 @@ const Team = () => {
                     <option value="Demo Tech">Demo Tech</option>
                     <option value="MIT Lead">MIT Lead</option>
                   </select>
+                </div>
+                <div className="form-group">
+                  <label htmlFor="memberEmail">
+                    Email (Gmail for Calendar)
+                    <span style={{ marginLeft: '8px', fontSize: '12px', color: '#6b7280' }}>
+                      (Required for route calendar integration)
+                    </span>
+                  </label>
+                  <input
+                    type="email"
+                    id="memberEmail"
+                    name="email"
+                    className="form-control"
+                    value={memberFormData.email}
+                    onChange={handleMemberFormChange}
+                    placeholder="e.g., tech@gmail.com"
+                  />
+                  <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
+                    This email is used to push route assignments to the technician's Google Calendar
+                  </p>
                 </div>
               </div>
               <div className="modal-footer">

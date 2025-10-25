@@ -3,6 +3,7 @@ import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { getMapboxService } from '../../services/mapboxService';
 import { optimizeRoute } from '../../utils/routeOptimizer';
+import googleCalendarService from '../../services/googleCalendarService';
 
 const ManualMode = ({
   jobs,
@@ -12,7 +13,8 @@ const ManualMode = ({
   mapboxToken,
   onUpdateRoutes,
   onUpdateJobs,
-  onRefresh
+  onRefresh,
+  selectedDate
 }) => {
   const [buildingRoute, setBuildingRoute] = useState([]);
   const [showAllJobs, setShowAllJobs] = useState(false);
@@ -20,6 +22,11 @@ const ManualMode = ({
   const [draggedRoute, setDraggedRoute] = useState(null);
   const [selectedJobOnMap, setSelectedJobOnMap] = useState(null);
   const [selectedTech, setSelectedTech] = useState(null);
+  const [pushingToCalendar, setPushingToCalendar] = useState(false);
+  const [googleClientId, setGoogleClientId] = useState(
+    localStorage.getItem('googleClientId') || ''
+  );
+  const [showGoogleSetup, setShowGoogleSetup] = useState(false);
 
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
@@ -528,6 +535,89 @@ const ManualMode = ({
     setSelectedTech(selectedTech === techId ? null : techId);
   };
 
+  const handleSaveGoogleClientId = () => {
+    if (googleClientId) {
+      localStorage.setItem('googleClientId', googleClientId);
+      alert('Google Client ID saved! You can now push routes to calendars.');
+      setShowGoogleSetup(false);
+    }
+  };
+
+  const handlePushToCalendars = async () => {
+    // Check if we have routes to push
+    const routesWithJobs = Object.values(routes).filter(r => r.jobs && r.jobs.length > 0);
+
+    if (routesWithJobs.length === 0) {
+      alert('No routes to push. Please assign jobs to technicians first.');
+      return;
+    }
+
+    // Check if Google Client ID is configured
+    if (!googleClientId) {
+      if (confirm('Google Calendar integration is not set up. Would you like to configure it now?')) {
+        setShowGoogleSetup(true);
+      }
+      return;
+    }
+
+    // Confirm before pushing
+    const totalJobs = routesWithJobs.reduce((sum, r) => sum + r.jobs.length, 0);
+    const confirmMessage = `Push ${totalJobs} jobs to ${routesWithJobs.length} technician calendars?\n\n` +
+      `This will create Google Calendar events for all assigned routes on ${selectedDate}.`;
+
+    if (!confirm(confirmMessage)) {
+      return;
+    }
+
+    setPushingToCalendar(true);
+
+    try {
+      // Initialize Google Calendar service if needed
+      if (!googleCalendarService.isInitialized) {
+        await googleCalendarService.initialize(googleClientId);
+      }
+
+      // Sign in if not already signed in
+      if (!googleCalendarService.isSignedIn()) {
+        await googleCalendarService.signIn();
+      }
+
+      // Push all routes
+      const summary = await googleCalendarService.pushAllRoutes(routes, selectedDate);
+
+      // Show detailed results
+      let resultMessage = `✅ Calendar Push Complete!\n\n`;
+      resultMessage += `Total Techs: ${summary.totalTechs}\n`;
+      resultMessage += `Jobs Pushed: ${summary.successfulJobs} / ${summary.totalJobs}\n`;
+
+      if (summary.failedJobs > 0) {
+        resultMessage += `\n⚠️ Failed: ${summary.failedJobs}\n\n`;
+        resultMessage += `Details:\n`;
+        summary.techResults.forEach(tr => {
+          if (tr.failed > 0) {
+            resultMessage += `\n${tr.techName}:\n`;
+            if (!tr.email) {
+              resultMessage += `  ❌ No email configured\n`;
+            }
+            tr.errors.forEach(err => {
+              resultMessage += `  ❌ ${err.job || 'Error'}: ${err.error}\n`;
+            });
+          }
+        });
+      } else {
+        resultMessage += `\n✨ All routes successfully pushed to Google Calendar!`;
+      }
+
+      alert(resultMessage);
+
+    } catch (error) {
+      console.error('Error pushing to calendars:', error);
+      alert(`Error pushing to calendars: ${error.message}\n\nPlease check your Google Calendar permissions and try again.`);
+    } finally {
+      setPushingToCalendar(false);
+    }
+  };
+
   return (
     <div style={{ height: 'calc(100vh - 200px)', display: 'flex', flexDirection: 'column' }}>
       {/* Compact Header */}
@@ -550,6 +640,37 @@ const ManualMode = ({
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <button
+            onClick={handlePushToCalendars}
+            disabled={pushingToCalendar || Object.values(routes).filter(r => r.jobs?.length > 0).length === 0}
+            className="btn btn-success btn-small"
+            style={{
+              padding: '6px 12px',
+              fontSize: '13px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}
+          >
+            <i className={pushingToCalendar ? "fas fa-spinner fa-spin" : "fas fa-calendar-plus"}></i>
+            {pushingToCalendar ? 'Pushing...' : 'Push to Calendars'}
+          </button>
+
+          <button
+            onClick={() => setShowGoogleSetup(true)}
+            className="btn btn-secondary btn-small"
+            style={{
+              padding: '6px 12px',
+              fontSize: '13px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}
+            title="Configure Google Calendar"
+          >
+            <i className="fas fa-cog"></i>
+          </button>
+
           {onRefresh && (
             <button
               onClick={onRefresh}
@@ -932,6 +1053,79 @@ const ManualMode = ({
           </div>
         </div>
       </div>
+
+      {/* Google Calendar Setup Modal */}
+      {showGoogleSetup && (
+        <div className="modal-overlay active" onClick={() => setShowGoogleSetup(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '600px' }}>
+            <div className="modal-header">
+              <h3><i className="fas fa-calendar"></i> Google Calendar Setup</h3>
+              <button className="modal-close" onClick={() => setShowGoogleSetup(false)}>
+                <i className="fas fa-times"></i>
+              </button>
+            </div>
+            <div className="modal-body">
+              <div style={{ marginBottom: '20px' }}>
+                <h4 style={{ marginTop: 0 }}>Step 1: Get Google Client ID</h4>
+                <ol style={{ paddingLeft: '20px', fontSize: '14px', lineHeight: '1.6' }}>
+                  <li>Go to <a href="https://console.cloud.google.com" target="_blank" rel="noopener noreferrer">Google Cloud Console</a></li>
+                  <li>Create a new project or select an existing one</li>
+                  <li>Enable the Google Calendar API</li>
+                  <li>Go to "Credentials" and create an OAuth 2.0 Client ID</li>
+                  <li>Set application type to "Web application"</li>
+                  <li>Add your app URL to "Authorized JavaScript origins"</li>
+                  <li>Copy the Client ID</li>
+                </ol>
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="googleClientId">
+                  Google OAuth Client ID
+                  <span style={{ marginLeft: '8px', fontSize: '12px', color: '#6b7280' }}>
+                    (Required for calendar integration)
+                  </span>
+                </label>
+                <input
+                  type="text"
+                  id="googleClientId"
+                  className="form-control"
+                  value={googleClientId}
+                  onChange={(e) => setGoogleClientId(e.target.value)}
+                  placeholder="123456789-abcdefg.apps.googleusercontent.com"
+                  style={{ fontFamily: 'monospace', fontSize: '13px' }}
+                />
+              </div>
+
+              <div style={{ padding: '12px', backgroundColor: '#eff6ff', borderRadius: '6px', fontSize: '13px', marginTop: '16px' }}>
+                <strong>Step 2: Configure Tech Emails</strong>
+                <p style={{ margin: '8px 0 0 0', color: '#6b7280' }}>
+                  Make sure each technician in the Team section has their Gmail address configured.
+                  This is used to push events to their Google Calendar.
+                </p>
+              </div>
+
+              <div style={{ padding: '12px', backgroundColor: '#fef3c7', borderRadius: '6px', fontSize: '13px', marginTop: '12px' }}>
+                <strong>⚠️ Important:</strong>
+                <p style={{ margin: '8px 0 0 0', color: '#92400e' }}>
+                  Users will need to authorize access to their Google Calendar the first time you push routes.
+                </p>
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-secondary" onClick={() => setShowGoogleSetup(false)}>
+                Cancel
+              </button>
+              <button
+                className="btn btn-primary"
+                onClick={handleSaveGoogleClientId}
+                disabled={!googleClientId}
+              >
+                <i className="fas fa-save"></i> Save Configuration
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
