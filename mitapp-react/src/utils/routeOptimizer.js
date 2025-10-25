@@ -55,8 +55,12 @@ const calculateJobScore = (currentTime, job, travelTime) => {
 
 /**
  * Greedy nearest-neighbor route optimization
+ * @param {Array} jobs - Jobs to optimize
+ * @param {string} startLocation - Starting location address
+ * @param {Array} distanceMatrix - Matrix of travel times
+ * @param {string} shift - 'first' or 'second' shift
  */
-export const optimizeRoute = async (jobs, startLocation, distanceMatrix) => {
+export const optimizeRoute = async (jobs, startLocation, distanceMatrix, shift = 'first') => {
   if (!jobs || jobs.length === 0) {
     return {
       optimizedJobs: [],
@@ -66,9 +70,14 @@ export const optimizeRoute = async (jobs, startLocation, distanceMatrix) => {
     };
   }
 
+  // Shift start times
+  // First shift: 8:15 AM (495 minutes), goal return 4-6 PM
+  // Second shift: 1:15 PM (795 minutes), goal return 9-11 PM
+  const shiftStartTime = shift === 'second' ? 13 * 60 + 15 : 8 * 60 + 15; // 1:15 PM or 8:15 AM
+
   const unassigned = [...jobs];
   const route = [];
-  let currentTime = 8 * 60; // Start at 8:00 AM
+  let currentTime = shiftStartTime;
   let currentLocationIndex = 0; // Start location index
   const unassignableJobs = [];
 

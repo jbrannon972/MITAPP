@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Layout from '../components/common/Layout';
 import { useData } from '../contexts/DataContext';
 import firebaseService from '../services/firebaseService';
@@ -10,6 +10,8 @@ import {
   getRoutingEligibleTechs,
   calculateRouteSummary
 } from '../utils/routeOptimizer';
+import Map, { Marker, Source, Layer } from 'react-map-gl';
+import 'mapbox-gl/dist/mapbox-gl.css';
 
 const Routing = () => {
   const { staffingData } = useData();
@@ -21,7 +23,14 @@ const Routing = () => {
   const [showImportModal, setShowImportModal] = useState(false);
   const [showOptimizeModal, setShowOptimizeModal] = useState(false);
   const [optimizing, setOptimizing] = useState(false);
-  const [mapboxToken, setMapboxToken] = useState(localStorage.getItem('mapboxToken') || '');
+  const [mapboxToken, setMapboxToken] = useState(localStorage.getItem('mapboxToken') || 'pk.eyJ1IjoiamJyYW5ub245NzIiLCJhIjoiY204NXN2Z2w2Mms4ODJrb2tvemV2ZnlicyJ9.84JYhRSUAF5_-vvdebw-TA');
+  const [selectedTech, setSelectedTech] = useState(null);
+  const [viewport, setViewport] = useState({
+    longitude: -95.5698,
+    latitude: 30.1945,
+    zoom: 10
+  });
+  const mapRef = useRef();
 
   // Houston office locations
   const offices = {
@@ -304,11 +313,17 @@ const Routing = () => {
           }
         }
 
+        // Determine shift based on tech name or role
+        const isSecondShift = assignment.tech.name?.toLowerCase().includes('second shift') ||
+                             assignment.tech.name?.toLowerCase().includes('2nd shift');
+        const shift = isSecondShift ? 'second' : 'first';
+
         // Optimize route order
         const optimized = await optimizeRoute(
           assignment.jobs,
           startLocation,
-          distanceMatrix
+          distanceMatrix,
+          shift
         );
 
         optimizedRoutes[techId] = {
@@ -556,7 +571,7 @@ const Routing = () => {
 
             return (
               <div key={tech.id} className="card">
-                <div className="card-header" style={{ backgroundColor: summary.totalJobs > 0 ? '#eff6ff' : '#f9fafb' }}>
+                <div className="card-header" style={{ backgroundColor: summary.totalJobs > 0 ? '#eff6ff' : '#f9fafb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div>
                     <h3 style={{ margin: 0, marginBottom: '4px' }}>
                       <i className="fas fa-user"></i> {tech.name}
@@ -565,6 +580,15 @@ const Routing = () => {
                       {tech.role} | {tech.zone} | {offices[tech.office]?.shortName}
                     </p>
                   </div>
+                  {summary.totalJobs > 0 && (
+                    <button
+                      className="btn btn-primary btn-small"
+                      onClick={() => handleTechClick(tech.id)}
+                      style={{ padding: '6px 12px', fontSize: '12px' }}
+                    >
+                      <i className="fas fa-map"></i> View on Map
+                    </button>
+                  )}
                 </div>
                 <div style={{ padding: '16px' }}>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', marginBottom: '16px' }}>
@@ -660,6 +684,200 @@ const Routing = () => {
               </div>
             );
           })}
+        </div>
+      </div>
+    );
+  };
+
+  const handleTechClick = (techId) => {
+    setSelectedTech(techId);
+    setActiveView('map');
+  };
+
+  const renderMapView = () => {
+    const techRoute = selectedTech ? routes[selectedTech] : null;
+    const allTechs = getTechList();
+
+    return (
+      <div>
+        <div style={{ marginBottom: '16px', display: 'flex', gap: '12px', alignItems: 'center' }}>
+          <h3 style={{ margin: 0 }}>Route Map</h3>
+          {selectedTech && techRoute && (
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <span style={{ fontSize: '14px', color: '#6b7280' }}>Showing route for:</span>
+              <span style={{ fontSize: '14px', fontWeight: '500', color: '#3b82f6' }}>
+                {techRoute.tech.name}
+              </span>
+              <button
+                className="btn btn-secondary btn-small"
+                onClick={() => setSelectedTech(null)}
+                style={{ padding: '4px 8px', fontSize: '12px' }}
+              >
+                Clear Selection
+              </button>
+            </div>
+          )}
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '300px 1fr', gap: '20px' }}>
+          {/* Tech List */}
+          <div className="card" style={{ maxHeight: '600px', overflow: 'auto' }}>
+            <div className="card-header">
+              <h4><i className="fas fa-users"></i> Select Tech</h4>
+            </div>
+            <div style={{ padding: '12px' }}>
+              {Object.entries(routes).map(([techId, route]) => {
+                const summary = calculateRouteSummary(route);
+                return (
+                  <div
+                    key={techId}
+                    onClick={() => setSelectedTech(techId)}
+                    style={{
+                      padding: '12px',
+                      marginBottom: '8px',
+                      backgroundColor: selectedTech === techId ? '#eff6ff' : '#f9fafb',
+                      border: selectedTech === techId ? '2px solid #3b82f6' : '1px solid #e5e7eb',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    <div style={{ fontWeight: '500', marginBottom: '4px' }}>
+                      {route.tech.name}
+                    </div>
+                    <div style={{ fontSize: '12px', color: '#6b7280' }}>
+                      {summary.totalJobs} jobs • {summary.totalHours}h work
+                    </div>
+                    {summary.totalDriveHours > 0 && (
+                      <div style={{ fontSize: '12px', color: '#f59e0b' }}>
+                        <i className="fas fa-car"></i> {summary.totalDriveHours}h drive
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Map */}
+          <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+            <Map
+              ref={mapRef}
+              {...viewport}
+              onMove={evt => setViewport(evt.viewState)}
+              style={{ width: '100%', height: '600px' }}
+              mapStyle="mapbox://styles/mapbox/streets-v12"
+              mapboxAccessToken={mapboxToken}
+            >
+              {/* Office Markers */}
+              {Object.entries(offices).map(([key, office]) => (
+                <Marker
+                  key={key}
+                  longitude={key === 'office_1' ? -95.4559 : -95.6508}
+                  latitude={key === 'office_1' ? 30.3119 : 29.7858}
+                  anchor="bottom"
+                >
+                  <div style={{
+                    backgroundColor: '#3b82f6',
+                    color: 'white',
+                    padding: '6px 10px',
+                    borderRadius: '4px',
+                    fontWeight: 'bold',
+                    fontSize: '12px',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                  }}>
+                    <i className="fas fa-building"></i> {office.shortName}
+                  </div>
+                </Marker>
+              ))}
+
+              {/* Job Markers for selected tech */}
+              {techRoute?.jobs?.map((job, idx) => {
+                // For demo purposes, we'll need to geocode these addresses
+                // For now, we'll spread them around Houston area
+                const lat = 30.1945 + (Math.random() - 0.5) * 0.3;
+                const lng = -95.5698 + (Math.random() - 0.5) * 0.3;
+
+                return (
+                  <Marker
+                    key={job.id}
+                    longitude={lng}
+                    latitude={lat}
+                    anchor="center"
+                  >
+                    <div style={{
+                      backgroundColor: '#10b981',
+                      color: 'white',
+                      width: '28px',
+                      height: '28px',
+                      borderRadius: '50%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontWeight: 'bold',
+                      fontSize: '12px',
+                      border: '2px solid white',
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
+                      cursor: 'pointer'
+                    }}>
+                      {idx + 1}
+                    </div>
+                  </Marker>
+                );
+              })}
+            </Map>
+
+            {/* Route Details Overlay */}
+            {techRoute && (
+              <div style={{
+                position: 'absolute',
+                top: '16px',
+                left: '16px',
+                backgroundColor: 'white',
+                padding: '16px',
+                borderRadius: '8px',
+                boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+                maxWidth: '300px',
+                maxHeight: '500px',
+                overflow: 'auto'
+              }}>
+                <h4 style={{ margin: '0 0 12px 0' }}>
+                  {techRoute.tech.name}'s Route
+                </h4>
+                <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '12px' }}>
+                  <div><strong>Office:</strong> {offices[techRoute.tech.office]?.shortName}</div>
+                  <div><strong>Zone:</strong> {techRoute.tech.zone}</div>
+                  <div><strong>Shift:</strong> {techRoute.tech.name?.toLowerCase().includes('second') ? '2nd (1:15 PM - 9-11 PM)' : '1st (8:15 AM - 4-6 PM)'}</div>
+                </div>
+                <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '12px' }}>
+                  {techRoute.jobs.map((job, idx) => (
+                    <div
+                      key={job.id}
+                      style={{
+                        marginBottom: '12px',
+                        paddingBottom: '12px',
+                        borderBottom: idx < techRoute.jobs.length - 1 ? '1px solid #f3f4f6' : 'none'
+                      }}
+                    >
+                      <div style={{ fontWeight: '500', fontSize: '13px', marginBottom: '4px' }}>
+                        {idx + 1}. {job.customerName}
+                      </div>
+                      <div style={{ fontSize: '11px', color: '#6b7280' }}>
+                        {job.startTime && `${job.startTime} • `}
+                        {job.duration}h
+                        {job.travelTime > 0 && ` • ${job.travelTime}min drive`}
+                      </div>
+                      {job.demoTech && (
+                        <div style={{ fontSize: '11px', color: '#8b5cf6', marginTop: '2px' }}>
+                          + {job.demoTech}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     );
@@ -809,6 +1027,12 @@ const Routing = () => {
               <i className="fas fa-route"></i> Routes
             </button>
             <button
+              className={`sub-nav-btn ${activeView === 'map' ? 'active' : ''}`}
+              onClick={() => setActiveView('map')}
+            >
+              <i className="fas fa-map"></i> Map View
+            </button>
+            <button
               className={`sub-nav-btn ${activeView === 'techs' ? 'active' : ''}`}
               onClick={() => setActiveView('techs')}
             >
@@ -823,6 +1047,7 @@ const Routing = () => {
           <>
             {activeView === 'jobs' && renderJobsView()}
             {activeView === 'routes' && renderRoutesView()}
+            {activeView === 'map' && renderMapView()}
             {activeView === 'techs' && renderTechsView()}
           </>
         )}
