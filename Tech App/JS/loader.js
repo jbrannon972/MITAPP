@@ -41,7 +41,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             'JS/team-manager.js',
             'JS/fleet-manager.js',
             'JS/report-manager.js',
-            'JS/tool-manager.js', // This is now guaranteed to load before core.js
+            'JS/tool-manager.js',
+            'JS/routing-manager.js',
             'JS/core.js'
         ];
 

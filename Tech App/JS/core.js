@@ -8,7 +8,8 @@ class TechApp {
         this.calendarManager = new CalendarManager(this);
         this.fleetManager = new FleetManager(this);
         this.reportManager = new ReportManager(this);
-        this.toolManager = new ToolManager(this); // Add this line
+        this.toolManager = new ToolManager(this);
+        this.routingManager = new RoutingManager(this);
         this.ui = new TechAppUI(this);
     }
 
@@ -28,12 +29,13 @@ class TechApp {
 
             // Step 2: Pre-load any other necessary data.
             await this.fleetManager.loadFleetData();
-            await this.toolManager.initialize(); // Add this line
+            await this.toolManager.initialize();
 
             // Step 3: Initialize all UI managers now that data is ready.
             await this.ui.buildNavigation();
             await this.calendarManager.initialize();
             await this.teamManager.initialize();
+            await this.routingManager.initialize();
             await this.reportManager.initialize();
             
             // Step 4: Setup event listeners and show the default view.
@@ -71,6 +73,7 @@ class TechAppUI {
         const buttons = [
             { tab: 'calendar', icon: 'fa-calendar-alt', text: 'Calendar' },
             { tab: 'team', icon: 'fa-users', text: 'Team' },
+            { tab: 'routing', icon: 'fa-route', text: 'Routing' },
             { tab: 'report', icon: 'fa-flag', text: 'Report' }
         ];
 
