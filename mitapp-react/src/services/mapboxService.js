@@ -209,9 +209,10 @@ export const initMapboxService = (accessToken) => {
 
 export const getMapboxService = () => {
   if (!mapboxServiceInstance) {
-    // Use a placeholder token if not initialized
-    // In production, this should come from environment variables
-    const token = import.meta.env.VITE_MAPBOX_TOKEN || 'pk.your-token-here';
+    // Get token from localStorage or use default
+    const token = localStorage.getItem('mapboxToken') ||
+                  import.meta.env.VITE_MAPBOX_TOKEN ||
+                  'pk.eyJ1IjoiamJyYW5ub245NzIiLCJhIjoiY204NXN2Z2w2Mms4ODJrb2tvemV2ZnlicyJ9.84JYhRSUAF5_-vvdebw-TA';
     mapboxServiceInstance = new MapboxService(token);
   }
   return mapboxServiceInstance;

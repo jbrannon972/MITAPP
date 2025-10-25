@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import Layout from '../components/common/Layout';
 import { useData } from '../contexts/DataContext';
 import firebaseService from '../services/firebaseService';
-import { getMapboxService } from '../services/mapboxService';
+import { getMapboxService, initMapboxService } from '../services/mapboxService';
 import {
   optimizeRoute,
   balanceWorkload,
@@ -402,6 +402,8 @@ const Routing = () => {
   const handleSaveMapboxToken = () => {
     if (mapboxToken) {
       localStorage.setItem('mapboxToken', mapboxToken);
+      // Reinitialize Mapbox service with new token
+      initMapboxService(mapboxToken);
       alert('Mapbox token saved!');
     }
   };
