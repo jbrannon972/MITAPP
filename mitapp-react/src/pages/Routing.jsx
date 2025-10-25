@@ -85,25 +85,77 @@ const Routing = () => {
     reader.readAsText(file);
   };
 
+  // Proper CSV parser that handles commas inside quoted fields
+  const parseCSVLine = (line) => {
+    const values = [];
+    let currentValue = '';
+    let insideQuotes = false;
+
+    for (let i = 0; i < line.length; i++) {
+      const char = line[i];
+      const nextChar = line[i + 1];
+
+      if (char === '"') {
+        // Handle double quotes ("") as escaped quotes
+        if (insideQuotes && nextChar === '"') {
+          currentValue += '"';
+          i++; // Skip next quote
+        } else {
+          insideQuotes = !insideQuotes;
+        }
+      } else if (char === ',' && !insideQuotes) {
+        // End of field
+        values.push(currentValue.trim());
+        currentValue = '';
+      } else {
+        currentValue += char;
+      }
+    }
+
+    // Add last value
+    values.push(currentValue.trim());
+    return values;
+  };
+
+  const cleanPhoneNumber = (phone) => {
+    if (!phone) return '';
+    // Remove tabs, extra spaces, and normalize
+    return phone.replace(/\t/g, '').trim();
+  };
+
   const parseCSV = (csvText) => {
     const lines = csvText.split('\n');
-    const headers = lines[0].split(',').map(h => h.trim());
+    if (lines.length === 0) return [];
+
+    const headers = parseCSVLine(lines[0]);
 
     const jobs = [];
     for (let i = 1; i < lines.length; i++) {
       if (!lines[i].trim()) continue;
 
-      const values = lines[i].split(',').map(v => v.trim().replace(/^"|"$/g, ''));
+      const values = parseCSVLine(lines[i]);
       const job = {};
 
       headers.forEach((header, index) => {
         job[header] = values[index] || '';
       });
 
-      // Parse job into structured format
+      // Parse route_title: "Customer Name | Job Number | Job Type | Zone"
+      const titleParts = (job.route_title || '').split('|').map(p => p.trim());
+      const customerName = titleParts[0] || '';
+      const jobType = titleParts[2] || 'Other';
+
+      // Parse timeframe from route_description
       const tfMatch = job.route_description?.match(/TF\((\d+:\d+)-(\d+:\d+)\)/);
-      const customerName = job.route_title?.split('|')[0]?.trim() || '';
-      const jobType = extractJobType(job.route_title || '');
+
+      // Clean phone number
+      const cleanPhone = cleanPhoneNumber(job.customer_phone);
+
+      // Determine if 2 techs needed based on job type
+      const requiresTwoTechs =
+        jobType.toLowerCase().includes('install') ||
+        jobType.toLowerCase().includes('demo prep') ||
+        (jobType.toLowerCase().includes('demo') && !jobType.toLowerCase().includes('check'));
 
       jobs.push({
         id: job.text || `job_${Date.now()}_${i}`,
@@ -113,37 +165,22 @@ const Routing = () => {
         duration: parseFloat(job.duration) || 1,
         timeframeStart: tfMatch ? tfMatch[1] : '09:00',
         timeframeEnd: tfMatch ? tfMatch[2] : '17:00',
-        assignedWorkers: job.workers ? parseWorkers(job.workers) : [],
         jobType: jobType,
-        requiresTwoTechs: checkTwoTechsNeeded(job),
+        requiresTwoTechs: requiresTwoTechs,
         description: job.route_description || '',
+        phone: cleanPhone,
         status: 'unassigned',
-        originalData: job
+        originalData: {
+          next_visit_date: job.next_visit_date,
+          route_title: job.route_title,
+          customer_address: job.customer_address,
+          zone: job.Zone,
+          text: job.text
+        }
       });
     }
 
     return jobs;
-  };
-
-  const extractJobType = (title) => {
-    if (title.includes('Install')) return 'Install';
-    if (title.includes('Pull')) return 'Pull';
-    if (title.includes('Check Service')) return 'Check Service';
-    if (title.includes('Moisture Check')) return 'Moisture Check';
-    return 'Other';
-  };
-
-  const parseWorkers = (workersStr) => {
-    try {
-      return JSON.parse(workersStr.replace(/'/g, '"'));
-    } catch {
-      return [];
-    }
-  };
-
-  const checkTwoTechsNeeded = (job) => {
-    const workers = job.workers ? parseWorkers(job.workers) : [];
-    return workers.length > 1 || job.route_title?.includes('Install');
   };
 
   const saveJobs = async (jobsData) => {
