@@ -17,6 +17,7 @@ import SlackMentions from './pages/SlackMentions';
 import Admin from './pages/Admin';
 import Reports from './pages/Reports';
 import Settings from './pages/Settings';
+import Routing from './pages/Routing';
 import './styles/styles.css';
 
 function App() {
@@ -108,6 +109,12 @@ function App() {
           <Route path="/settings" element={
             <ProtectedRoute>
               <Settings />
+            </ProtectedRoute>
+          } />
+
+          <Route path="/routing" element={
+            <ProtectedRoute>
+              <Routing />
             </ProtectedRoute>
           } />
 

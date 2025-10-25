@@ -60,6 +60,11 @@ const Navigation = () => {
       navItems.push({ path: '/calendar', label: 'Calendar', icon: 'fa-calendar' });
     }
 
+    // Routing - everyone except Fleet Safety
+    if (role !== 'Fleet Safety') {
+      navItems.push({ path: '/routing', label: 'Routing', icon: 'fa-route' });
+    }
+
     // Analyzer - everyone except Fleet and Fleet Safety
     if (role !== 'Fleet' && role !== 'Fleet Safety') {
       navItems.push({ path: '/analyzer', label: 'Analyzer', icon: 'fa-chart-bar' });
