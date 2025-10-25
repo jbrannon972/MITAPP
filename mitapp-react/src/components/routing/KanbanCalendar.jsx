@@ -1,4 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
+import mapboxgl from 'mapbox-gl';
+import 'mapbox-gl/dist/mapbox-gl.css';
+import { getMapboxService } from '../../services/mapboxService';
 
 const KanbanCalendar = ({
   jobs: initialJobs,
@@ -15,7 +18,12 @@ const KanbanCalendar = ({
   const [draggedJob, setDraggedJob] = useState(null);
   const [draggedTech, setDraggedTech] = useState(null);
   const [dragOverTech, setDragOverTech] = useState(null);
+  const [showMapModal, setShowMapModal] = useState(false);
+  const [selectedTechForMap, setSelectedTechForMap] = useState(null);
+  const [isCalculatingDrive, setIsCalculatingDrive] = useState(false);
   const columnRefs = useRef({});
+  const mapContainerRef = useRef(null);
+  const mapInstanceRef = useRef(null);
 
   // Sync with parent when props change
   useEffect(() => {
@@ -25,6 +33,111 @@ const KanbanCalendar = ({
   useEffect(() => {
     setLocalRoutes(initialRoutes);
   }, [initialRoutes]);
+
+  // Initialize map when modal opens
+  useEffect(() => {
+    if (!showMapModal || !mapContainerRef.current || mapInstanceRef.current) return;
+
+    const mapboxToken = localStorage.getItem('mapboxToken') ||
+                        'pk.eyJ1IjoiamJyYW5ub245NzIiLCJhIjoiY204NXN2Z2w2Mms4ODJrb2tvemV2ZnlicyJ9.84JYhRSUAF5_-vvdebw-TA';
+
+    mapboxgl.accessToken = mapboxToken;
+
+    const map = new mapboxgl.Map({
+      container: mapContainerRef.current,
+      style: 'mapbox://styles/mapbox/streets-v12',
+      center: [-95.5698, 30.1945], // Houston
+      zoom: 10
+    });
+
+    map.addControl(new mapboxgl.NavigationControl(), 'top-right');
+    mapInstanceRef.current = map;
+
+    return () => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove();
+        mapInstanceRef.current = null;
+      }
+    };
+  }, [showMapModal]);
+
+  // Render route on map when tech is selected
+  useEffect(() => {
+    if (!mapInstanceRef.current || !selectedTechForMap) return;
+
+    const map = mapInstanceRef.current;
+    const techRoute = localRoutes[selectedTechForMap];
+    if (!techRoute || !techRoute.jobs || techRoute.jobs.length === 0) return;
+
+    // Clear existing layers
+    if (map.getLayer('route')) map.removeLayer('route');
+    if (map.getSource('route')) map.removeSource('route');
+
+    // Get office coordinates
+    const officeKey = techRoute.tech.office;
+    const officeCoords = officeKey === 'office_1'
+      ? { lng: -95.4559, lat: 30.3119 } // Conroe
+      : { lng: -95.6508, lat: 29.7858 }; // Katy
+
+    const coordinates = [[officeCoords.lng, officeCoords.lat]];
+
+    // Add job markers and build route
+    techRoute.jobs.forEach((job, idx) => {
+      if (job.coordinates && job.coordinates.lng && job.coordinates.lat) {
+        coordinates.push([job.coordinates.lng, job.coordinates.lat]);
+
+        // Add marker
+        const el = document.createElement('div');
+        el.innerHTML = `<div style="background-color: #3b82f6; color: white; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 14px; border: 3px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.3); cursor: pointer;">${idx + 1}</div>`;
+
+        new mapboxgl.Marker(el)
+          .setLngLat([job.coordinates.lng, job.coordinates.lat])
+          .setPopup(new mapboxgl.Popup({ offset: 25 })
+            .setHTML(`<div style="padding: 8px;"><strong>${idx + 1}. ${job.customerName}</strong><br/>${job.startTime || job.timeframeStart} - ${job.endTime || job.timeframeEnd}<br/>${job.duration}h</div>`))
+          .addTo(map);
+      }
+    });
+
+    // Return to office
+    coordinates.push([officeCoords.lng, officeCoords.lat]);
+
+    // Draw route line
+    if (coordinates.length > 2) {
+      map.addSource('route', {
+        type: 'geojson',
+        data: {
+          type: 'Feature',
+          properties: {},
+          geometry: {
+            type: 'LineString',
+            coordinates: coordinates
+          }
+        }
+      });
+
+      map.addLayer({
+        id: 'route',
+        type: 'line',
+        source: 'route',
+        layout: {
+          'line-join': 'round',
+          'line-cap': 'round'
+        },
+        paint: {
+          'line-color': '#3b82f6',
+          'line-width': 4,
+          'line-opacity': 0.75
+        }
+      });
+
+      // Fit map to route
+      const bounds = coordinates.reduce(
+        (bounds, coord) => bounds.extend(coord),
+        new mapboxgl.LngLatBounds(coordinates[0], coordinates[0])
+      );
+      map.fitBounds(bounds, { padding: 50 });
+    }
+  }, [selectedTechForMap, localRoutes]);
 
   // Time configuration (7 AM to 8 PM, each hour = 80px)
   const startHour = 7;
@@ -79,6 +192,76 @@ const KanbanCalendar = ({
     return minutesToTime(roundedMinutes);
   };
 
+  // Calculate optimal start time based on previous job + drive time
+  const calculateOptimalStartTime = async (job, targetTechId, droppedYPos) => {
+    const techRoute = localRoutes[targetTechId];
+    const techJobs = techRoute?.jobs || [];
+
+    if (techJobs.length === 0) {
+      // First job - use office location and start at shift start or dropped time
+      const officeKey = techs.find(t => t.id === targetTechId)?.office;
+      const shiftStart = '08:15'; // Default shift start
+      const droppedTime = getTimeFromY(droppedYPos);
+
+      // Use whichever is later
+      const shiftMinutes = timeToMinutes(shiftStart);
+      const droppedMinutes = timeToMinutes(droppedTime);
+      return minutesToTime(Math.max(shiftMinutes, droppedMinutes));
+    }
+
+    // Find where this job should go in the sequence
+    const droppedTime = getTimeFromY(droppedYPos);
+    const droppedMinutes = timeToMinutes(droppedTime);
+
+    // Sort jobs by start time
+    const sortedJobs = [...techJobs].sort((a, b) => {
+      const aTime = timeToMinutes(a.startTime || a.timeframeStart);
+      const bTime = timeToMinutes(b.startTime || b.timeframeStart);
+      return aTime - bTime;
+    });
+
+    // Find the job that should come before this one
+    let previousJob = null;
+    for (let i = sortedJobs.length - 1; i >= 0; i--) {
+      const jobEndMinutes = timeToMinutes(sortedJobs[i].endTime || sortedJobs[i].timeframeEnd);
+      if (jobEndMinutes <= droppedMinutes) {
+        previousJob = sortedJobs[i];
+        break;
+      }
+    }
+
+    if (!previousJob) {
+      // No previous job, use shift start
+      return minutesToTime(Math.max(timeToMinutes('08:15'), droppedMinutes));
+    }
+
+    // Calculate drive time from previous job
+    setIsCalculatingDrive(true);
+    try {
+      const mapboxService = getMapboxService();
+      const prevAddress = previousJob.address;
+      const newAddress = job.address;
+
+      const result = await mapboxService.getDrivingDistance(prevAddress, newAddress);
+      const driveMinutes = result.durationMinutes || 20; // Default 20 min
+
+      // Start time = previous job end + drive time
+      const prevEndMinutes = timeToMinutes(previousJob.endTime);
+      const calculatedStartMinutes = prevEndMinutes + driveMinutes;
+
+      // Use the later of calculated time or dropped time
+      const finalStartMinutes = Math.max(calculatedStartMinutes, droppedMinutes);
+
+      setIsCalculatingDrive(false);
+      return minutesToTime(finalStartMinutes);
+    } catch (error) {
+      console.error('Drive time calculation error:', error);
+      setIsCalculatingDrive(false);
+      // Fallback to dropped time + default buffer
+      return minutesToTime(droppedMinutes);
+    }
+  };
+
   const handleJobDragStart = (e, job, sourceTechId) => {
     setDraggedJob({ job, sourceTechId });
     e.dataTransfer.effectAllowed = 'move';
@@ -118,15 +301,18 @@ const KanbanCalendar = ({
       return;
     }
 
-    // Calculate drop time based on Y position
-    let startTime = job.startTime || job.timeframeStart;
-
+    // Calculate drop position
+    let yPos = 0;
     if (targetTechId && columnRefs.current[targetTechId]) {
       const column = columnRefs.current[targetTechId];
       const rect = column.getBoundingClientRect();
-      const yPos = e.clientY - rect.top + column.scrollTop;
-      startTime = getTimeFromY(yPos);
+      yPos = e.clientY - rect.top + column.scrollTop;
     }
+
+    // Calculate optimal start time with drive time
+    const startTime = targetTechId
+      ? await calculateOptimalStartTime(job, targetTechId, yPos)
+      : (job.startTime || job.timeframeStart);
 
     // Calculate end time
     const startMinutes = timeToMinutes(startTime);
@@ -230,6 +416,11 @@ const KanbanCalendar = ({
     await onUpdateJobs(updatedJobs);
   };
 
+  const handleTechClick = (techId) => {
+    setSelectedTechForMap(techId);
+    setShowMapModal(true);
+  };
+
   const unassignedJobs = localJobs.filter(j => !j.assignedTech);
 
   return (
@@ -243,39 +434,51 @@ const KanbanCalendar = ({
         border: '1px solid #e5e7eb',
         display: 'flex',
         justifyContent: 'space-between',
-        alignItems: 'center'
+        alignItems: 'center',
+        flexShrink: 0
       }}>
         <div>
           <h3 style={{ margin: 0, marginBottom: '2px', fontSize: '14px', fontWeight: '600' }}>
             <i className="fas fa-calendar-day"></i> Timeline - {selectedDate}
           </h3>
           <p style={{ margin: 0, fontSize: '11px', color: '#6b7280' }}>
-            Drop jobs on timeline to schedule • Drag tech name to swap routes
+            Drop jobs to auto-schedule • Click tech name for route map
           </p>
         </div>
-        <div style={{ fontSize: '12px', fontWeight: '500', color: '#3b82f6' }}>
-          {localJobs.filter(j => j.assignedTech).length} / {localJobs.length} assigned
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          {isCalculatingDrive && (
+            <span style={{ fontSize: '11px', color: '#f59e0b' }}>
+              <i className="fas fa-spinner fa-spin"></i> Calculating drive time...
+            </span>
+          )}
+          <div style={{ fontSize: '12px', fontWeight: '500', color: '#3b82f6' }}>
+            {localJobs.filter(j => j.assignedTech).length} / {localJobs.length} assigned
+          </div>
         </div>
       </div>
 
-      {/* Calendar Grid */}
+      {/* Calendar Grid - Single Scroll Container */}
       <div style={{
         display: 'flex',
         gap: '6px',
         flex: 1,
         minHeight: 0,
-        overflow: 'hidden'
+        overflow: 'auto', // Single scroll for entire container
+        position: 'relative'
       }}>
-        {/* Time Column */}
+        {/* Time Column - Sticky */}
         <div style={{
           width: '50px',
           flexShrink: 0,
+          position: 'sticky',
+          left: 0,
+          zIndex: 10,
           backgroundColor: '#ffffff',
           borderRadius: '6px',
           border: '1px solid #e5e7eb',
-          overflow: 'hidden',
           display: 'flex',
-          flexDirection: 'column'
+          flexDirection: 'column',
+          height: 'fit-content'
         }}>
           <div style={{
             height: '60px',
@@ -285,11 +488,15 @@ const KanbanCalendar = ({
             borderBottom: '2px solid #e5e7eb',
             fontSize: '10px',
             fontWeight: '600',
-            color: '#6b7280'
+            color: '#6b7280',
+            position: 'sticky',
+            top: 0,
+            backgroundColor: '#ffffff',
+            zIndex: 1
           }}>
             TIME
           </div>
-          <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden' }}>
+          <div>
             {timeSlots.map((time, idx) => (
               <div key={time} style={{
                 height: `${pixelsPerHour}px`,
@@ -308,11 +515,14 @@ const KanbanCalendar = ({
           </div>
         </div>
 
-        {/* Unassigned Jobs Column */}
+        {/* Unassigned Jobs Column - Sticky */}
         <div
           style={{
             width: '140px',
             flexShrink: 0,
+            position: 'sticky',
+            left: '56px',
+            zIndex: 9,
             backgroundColor: dragOverTech === 'unassigned' ? '#fef3c7' : '#ffffff',
             border: dragOverTech === 'unassigned' ? '2px solid #f59e0b' : '1px solid #e5e7eb',
             borderRadius: '8px',
@@ -320,7 +530,8 @@ const KanbanCalendar = ({
             flexDirection: 'column',
             transition: 'all 0.15s ease',
             boxShadow: dragOverTech === 'unassigned' ? '0 4px 12px rgba(245, 158, 11, 0.2)' : 'none',
-            overflow: 'hidden'
+            height: 'fit-content',
+            maxHeight: '100%'
           }}
           onDragOver={handleDragOver}
           onDragEnter={() => handleDragEnter('unassigned')}
@@ -330,7 +541,10 @@ const KanbanCalendar = ({
           <div style={{
             padding: '8px',
             borderBottom: '2px solid #e5e7eb',
-            backgroundColor: '#f9fafb'
+            backgroundColor: '#f9fafb',
+            position: 'sticky',
+            top: 0,
+            zIndex: 1
           }}>
             <h4 style={{ margin: 0, fontSize: '12px', fontWeight: '600', marginBottom: '2px' }}>
               <i className="fas fa-inbox"></i> Unassigned
@@ -340,7 +554,7 @@ const KanbanCalendar = ({
             </p>
           </div>
 
-          <div style={{ flex: 1, overflowY: 'auto', padding: '6px' }}>
+          <div style={{ padding: '6px' }}>
             {unassignedJobs.map(job => (
               <div
                 key={job.id}
@@ -393,14 +607,8 @@ const KanbanCalendar = ({
           </div>
         </div>
 
-        {/* Tech Columns Container - Scrollable */}
-        <div style={{
-          flex: 1,
-          overflowX: 'auto',
-          overflowY: 'hidden',
-          display: 'flex',
-          gap: '6px'
-        }}>
+        {/* Tech Columns */}
+        <div style={{ display: 'flex', gap: '6px', height: 'fit-content' }}>
           {techs.map(tech => {
             const techRoute = localRoutes[tech.id];
             const techJobs = techRoute?.jobs || [];
@@ -422,7 +630,7 @@ const KanbanCalendar = ({
                   opacity: isDragging ? 0.5 : 1,
                   transition: 'all 0.15s ease',
                   boxShadow: isDragOver ? '0 4px 12px rgba(59, 130, 246, 0.2)' : 'none',
-                  overflow: 'hidden'
+                  height: 'fit-content'
                 }}
                 onDragOver={handleDragOver}
                 onDragEnter={() => handleDragEnter(tech.id)}
@@ -435,22 +643,28 @@ const KanbanCalendar = ({
                   }
                 }}
               >
-                {/* Tech Header - Draggable */}
+                {/* Tech Header - Draggable & Clickable */}
                 <div
                   draggable
                   onDragStart={(e) => handleTechDragStart(e, tech.id)}
+                  onClick={() => handleTechClick(tech.id)}
                   style={{
                     padding: '8px',
                     borderBottom: '2px solid #e5e7eb',
-                    cursor: 'grab',
-                    backgroundColor: '#f9fafb'
+                    cursor: 'pointer',
+                    backgroundColor: '#f9fafb',
+                    position: 'sticky',
+                    top: 0,
+                    zIndex: 1
                   }}
+                  title="Click to view route map"
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '2px' }}>
                     <i className="fas fa-grip-vertical" style={{ color: '#9ca3af', fontSize: '9px' }}></i>
                     <h4 style={{ margin: 0, fontSize: '11px', fontWeight: '600', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {tech.name}
                     </h4>
+                    <i className="fas fa-map-marked-alt" style={{ color: '#3b82f6', fontSize: '10px' }}></i>
                   </div>
                   <p style={{ margin: '2px 0 0 0', fontSize: '9px', color: '#6b7280' }}>
                     {offices[tech.office]?.shortName}
@@ -469,10 +683,8 @@ const KanbanCalendar = ({
                 <div
                   ref={el => columnRefs.current[tech.id] = el}
                   style={{
-                    flex: 1,
-                    overflowY: 'auto',
                     position: 'relative',
-                    minHeight: `${totalHours * pixelsPerHour}px`
+                    minHeight: `${(totalHours + 1) * pixelsPerHour}px`
                   }}
                 >
                   {/* Time grid lines */}
@@ -497,7 +709,8 @@ const KanbanCalendar = ({
                       textAlign: 'center',
                       color: '#9ca3af',
                       fontSize: '10px',
-                      fontStyle: 'italic'
+                      fontStyle: 'italic',
+                      position: 'relative'
                     }}>
                       Drop here
                     </div>
@@ -548,7 +761,7 @@ const KanbanCalendar = ({
                               <i className="fas fa-clock"></i> {job.startTime} - {job.endTime}
                             </div>
                           )}
-                          <div>{job.duration}h{job.travelTime > 0 && ` • ${job.travelTime}m`}</div>
+                          <div>{job.duration}h{job.travelTime > 0 && ` • ${job.travelTime}m drive`}</div>
                           {job.requiresTwoTechs && (
                             <div style={{ color: '#f59e0b', marginTop: '2px', fontWeight: '500' }}>
                               <i className="fas fa-users"></i> 2
@@ -564,6 +777,36 @@ const KanbanCalendar = ({
           })}
         </div>
       </div>
+
+      {/* Route Map Modal */}
+      {showMapModal && (
+        <div
+          className="modal-overlay active"
+          onClick={() => setShowMapModal(false)}
+          style={{ zIndex: 1000 }}
+        >
+          <div
+            className="modal modal-lg"
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: '900px', height: '80vh' }}
+          >
+            <div className="modal-header">
+              <h3>
+                <i className="fas fa-map-marked-alt"></i> {selectedTechForMap && localRoutes[selectedTechForMap]?.tech?.name}'s Route
+              </h3>
+              <button className="modal-close" onClick={() => setShowMapModal(false)}>
+                <i className="fas fa-times"></i>
+              </button>
+            </div>
+            <div className="modal-body" style={{ padding: 0, height: 'calc(100% - 60px)' }}>
+              <div
+                ref={mapContainerRef}
+                style={{ width: '100%', height: '100%', borderRadius: '0 0 8px 8px' }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
