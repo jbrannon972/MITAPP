@@ -21,6 +21,7 @@ const KanbanCalendar = ({
   const [showMapModal, setShowMapModal] = useState(false);
   const [selectedTechForMap, setSelectedTechForMap] = useState(null);
   const [isCalculatingDrive, setIsCalculatingDrive] = useState(false);
+  const [returnToOfficeTimes, setReturnToOfficeTimes] = useState({});
   const columnRefs = useRef({});
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
@@ -33,6 +34,75 @@ const KanbanCalendar = ({
   useEffect(() => {
     setLocalRoutes(initialRoutes);
   }, [initialRoutes]);
+
+  // Calculate return to office times whenever routes change
+  useEffect(() => {
+    const calculateReturnTimes = async () => {
+      const newReturnTimes = {};
+
+      for (const tech of techs) {
+        const techRoute = localRoutes[tech.id];
+        const techJobs = techRoute?.jobs || [];
+
+        if (techJobs.length === 0) {
+          newReturnTimes[tech.id] = null;
+          continue;
+        }
+
+        // Sort jobs by start time to find the actual last job
+        const sortedJobs = [...techJobs].sort((a, b) => {
+          const aTime = timeToMinutes(a.startTime || a.timeframeStart);
+          const bTime = timeToMinutes(b.startTime || b.timeframeStart);
+          return aTime - bTime;
+        });
+
+        const lastJob = sortedJobs[sortedJobs.length - 1];
+        const lastJobEndTime = lastJob.endTime || lastJob.timeframeEnd;
+
+        // Get office address
+        const officeKey = tech.office;
+        const officeAddress = offices[officeKey]?.address;
+
+        if (!officeAddress || !lastJob.address) {
+          // Fallback: add 30 min to last job end time
+          const endMinutes = timeToMinutes(lastJobEndTime);
+          newReturnTimes[tech.id] = {
+            time: minutesToTime(endMinutes + 30),
+            driveTime: 30,
+            isEstimate: true
+          };
+          continue;
+        }
+
+        try {
+          const mapboxService = getMapboxService();
+          const result = await mapboxService.getDrivingDistance(lastJob.address, officeAddress);
+          const driveMinutes = result.durationMinutes || 30;
+
+          const endMinutes = timeToMinutes(lastJobEndTime);
+          const returnTime = minutesToTime(endMinutes + driveMinutes);
+
+          newReturnTimes[tech.id] = {
+            time: returnTime,
+            driveTime: driveMinutes,
+            isEstimate: false
+          };
+        } catch (error) {
+          console.error('Error calculating return time:', error);
+          const endMinutes = timeToMinutes(lastJobEndTime);
+          newReturnTimes[tech.id] = {
+            time: minutesToTime(endMinutes + 30),
+            driveTime: 30,
+            isEstimate: true
+          };
+        }
+      }
+
+      setReturnToOfficeTimes(newReturnTimes);
+    };
+
+    calculateReturnTimes();
+  }, [localRoutes, techs, offices]);
 
   // Initialize map when modal opens
   useEffect(() => {
@@ -771,6 +841,46 @@ const KanbanCalendar = ({
                       </div>
                     );
                   })}
+
+                  {/* Return to Office Card */}
+                  {returnToOfficeTimes[tech.id] && (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        top: `${getYPosition(returnToOfficeTimes[tech.id].time)}px`,
+                        left: '4px',
+                        right: '4px',
+                        minHeight: '50px',
+                        padding: '8px',
+                        backgroundColor: '#f0fdf4',
+                        border: '2px solid #10b981',
+                        borderLeft: '4px solid #10b981',
+                        borderRadius: '4px',
+                        boxShadow: '0 2px 4px rgba(16, 185, 129, 0.2)',
+                        pointerEvents: 'none'
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '3px' }}>
+                        <i className="fas fa-home" style={{ color: '#10b981', fontSize: '10px' }}></i>
+                        <div style={{ fontWeight: '600', fontSize: '10px', color: '#065f46' }}>
+                          Return to Office
+                        </div>
+                      </div>
+                      <div style={{ fontSize: '9px', color: '#065f46' }}>
+                        <div style={{ fontWeight: '600', marginBottom: '2px' }}>
+                          <i className="fas fa-clock"></i> {returnToOfficeTimes[tech.id].time}
+                        </div>
+                        <div>
+                          <i className="fas fa-car"></i> {returnToOfficeTimes[tech.id].driveTime}m from last job
+                        </div>
+                        {returnToOfficeTimes[tech.id].isEstimate && (
+                          <div style={{ fontSize: '8px', color: '#6b7280', marginTop: '2px' }}>
+                            (estimated)
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             );
