@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import Layout from '../components/common/Layout';
+import ManualMode from '../components/routing/ManualMode';
 import { useData } from '../contexts/DataContext';
 import firebaseService from '../services/firebaseService';
 import { getMapboxService, initMapboxService } from '../services/mapboxService';
@@ -992,6 +993,22 @@ const Routing = () => {
     );
   };
 
+  const renderManualView = () => {
+    const leadTechs = getLeadTechs();
+
+    return (
+      <ManualMode
+        jobs={jobs}
+        routes={routes}
+        techs={leadTechs}
+        offices={offices}
+        mapboxToken={mapboxToken}
+        onUpdateRoutes={saveRoutes}
+        onUpdateJobs={saveJobs}
+      />
+    );
+  };
+
   const renderTechsView = () => {
     const allTechs = getTechList();
     const leadTechs = getLeadTechs();
@@ -1136,6 +1153,12 @@ const Routing = () => {
               <i className="fas fa-route"></i> Routes
             </button>
             <button
+              className={`sub-nav-btn ${activeView === 'manual' ? 'active' : ''}`}
+              onClick={() => setActiveView('manual')}
+            >
+              <i className="fas fa-hand-pointer"></i> Manual Mode
+            </button>
+            <button
               className={`sub-nav-btn ${activeView === 'map' ? 'active' : ''}`}
               onClick={() => setActiveView('map')}
             >
@@ -1156,6 +1179,7 @@ const Routing = () => {
           <>
             {activeView === 'jobs' && renderJobsView()}
             {activeView === 'routes' && renderRoutesView()}
+            {activeView === 'manual' && renderManualView()}
             {activeView === 'map' && renderMapView()}
             {activeView === 'techs' && renderTechsView()}
           </>
