@@ -23,8 +23,15 @@ const Settings = () => {
     compactView: false
   });
 
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
+
   const sections = [
     { id: 'profile', name: 'Profile', icon: 'fa-user' },
+    { id: 'password', name: 'Change Password', icon: 'fa-key' },
     { id: 'app', name: 'App Preferences', icon: 'fa-cog' },
     { id: 'data', name: 'Data Management', icon: 'fa-database' },
     { id: 'about', name: 'About', icon: 'fa-info-circle' }
@@ -67,6 +74,109 @@ const Settings = () => {
       setSaving(false);
     }
   };
+
+  const handleChangePassword = async () => {
+    if (!passwordData.currentPassword || !passwordData.newPassword || !passwordData.confirmPassword) {
+      alert('Please fill in all password fields');
+      return;
+    }
+
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      alert('New passwords do not match');
+      return;
+    }
+
+    if (passwordData.newPassword.length < 6) {
+      alert('Password must be at least 6 characters');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const { updateUserPassword } = await import('../contexts/AuthContext');
+      const { getAuth, EmailAuthProvider, reauthenticateWithCredential, updatePassword } = await import('firebase/auth');
+
+      const auth = getAuth();
+      const user = auth.currentUser;
+
+      if (!user || !user.email) {
+        throw new Error('No authenticated user found');
+      }
+
+      // Re-authenticate user
+      const credential = EmailAuthProvider.credential(user.email, passwordData.currentPassword);
+      await reauthenticateWithCredential(user, credential);
+
+      // Update password
+      await updatePassword(user, passwordData.newPassword);
+
+      alert('Password changed successfully!');
+      setPasswordData({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: ''
+      });
+    } catch (error) {
+      console.error('Error changing password:', error);
+      if (error.code === 'auth/wrong-password') {
+        alert('Current password is incorrect');
+      } else if (error.code === 'auth/requires-recent-login') {
+        alert('Please log out and log in again before changing your password');
+      } else {
+        alert('Error changing password. Please try again.');
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const renderPasswordSection = () => (
+    <div>
+      <h3 style={{ marginBottom: '24px', fontSize: '20px' }}>Change Password</h3>
+      <div style={{ maxWidth: '600px' }}>
+        <div style={{ marginBottom: '20px' }}>
+          <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>Current Password</label>
+          <input
+            type="password"
+            className="form-control"
+            value={passwordData.currentPassword}
+            onChange={(e) => setPasswordData(prev => ({ ...prev, currentPassword: e.target.value }))}
+            placeholder="Enter current password"
+          />
+        </div>
+
+        <div style={{ marginBottom: '20px' }}>
+          <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>New Password</label>
+          <input
+            type="password"
+            className="form-control"
+            value={passwordData.newPassword}
+            onChange={(e) => setPasswordData(prev => ({ ...prev, newPassword: e.target.value }))}
+            placeholder="Enter new password (min 6 characters)"
+          />
+        </div>
+
+        <div style={{ marginBottom: '20px' }}>
+          <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>Confirm New Password</label>
+          <input
+            type="password"
+            className="form-control"
+            value={passwordData.confirmPassword}
+            onChange={(e) => setPasswordData(prev => ({ ...prev, confirmPassword: e.target.value }))}
+            placeholder="Confirm new password"
+          />
+        </div>
+
+        <button
+          className="btn btn-primary"
+          onClick={handleChangePassword}
+          disabled={saving}
+        >
+          {saving ? 'Changing Password...' : 'Change Password'}
+        </button>
+      </div>
+    </div>
+  );
 
   const renderProfileSection = () => (
     <div>
@@ -380,6 +490,8 @@ const Settings = () => {
     switch (activeSection) {
       case 'profile':
         return renderProfileSection();
+      case 'password':
+        return renderPasswordSection();
       case 'app':
         return renderAppPreferencesSection();
       case 'data':

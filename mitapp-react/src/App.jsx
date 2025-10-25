@@ -18,6 +18,8 @@ import Admin from './pages/Admin';
 import Reports from './pages/Reports';
 import Settings from './pages/Settings';
 import Routing from './pages/Routing';
+import TechApp from './pages/tech-app/TechApp';
+import WarehouseApp from './pages/warehouse-app/WarehouseApp';
 import './styles/styles.css';
 
 function App() {
@@ -115,6 +117,18 @@ function App() {
           <Route path="/routing" element={
             <ProtectedRoute>
               <Routing />
+            </ProtectedRoute>
+          } />
+
+          <Route path="/tech-app" element={
+            <ProtectedRoute requiredRoles={['Tech', 'MIT Tech', 'Demo Tech']}>
+              <TechApp />
+            </ProtectedRoute>
+          } />
+
+          <Route path="/warehouse-app" element={
+            <ProtectedRoute requiredRoles={['Warehouse']}>
+              <WarehouseApp />
             </ProtectedRoute>
           } />
 

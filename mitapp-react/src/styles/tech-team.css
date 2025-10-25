@@ -1,0 +1,108 @@
+/* Tech Team Styles */
+
+.tech-team-container {
+  padding: 16px;
+}
+
+.tech-team-container h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 20px;
+}
+
+.tech-team-section {
+  margin-bottom: 28px;
+}
+
+.tech-team-section h3 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.tech-team-lead {
+  margin-bottom: 16px;
+}
+
+.tech-team-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+}
+
+.tech-team-card {
+  background: white;
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  transition: all 0.2s ease;
+}
+
+.tech-team-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.tech-team-card.lead {
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  border: 2px solid #f59e0b;
+}
+
+.tech-team-member-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: #f87b4d;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.tech-team-card.lead .tech-team-member-icon {
+  background: #f59e0b;
+}
+
+.tech-team-member-info {
+  flex: 1;
+}
+
+.tech-team-member-name {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 4px;
+}
+
+.tech-team-member-role {
+  font-size: 0.875rem;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+/* Mobile adjustments */
+@media (max-width: 640px) {
+  .tech-team-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .tech-team-card {
+    padding: 12px;
+  }
+
+  .tech-team-member-icon {
+    width: 40px;
+    height: 40px;
+    font-size: 1.25rem;
+  }
+}

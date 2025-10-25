@@ -14,9 +14,13 @@ const Login = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // If already logged in, redirect to dashboard
+    // If already logged in, redirect based on role
     if (currentUser) {
-      if (currentUser.role === 'Fleet Safety') {
+      if (['Tech', 'MIT Tech', 'Demo Tech'].includes(currentUser.role)) {
+        navigate('/tech-app');
+      } else if (currentUser.role === 'Warehouse') {
+        navigate('/warehouse-app');
+      } else if (currentUser.role === 'Fleet Safety') {
         navigate('/team');
       } else {
         navigate('/');
@@ -39,7 +43,11 @@ const Login = () => {
       const user = await login(email, password, rememberMe);
 
       // Navigate based on role
-      if (user.role === 'Fleet Safety') {
+      if (['Tech', 'MIT Tech', 'Demo Tech'].includes(user.role)) {
+        navigate('/tech-app');
+      } else if (user.role === 'Warehouse') {
+        navigate('/warehouse-app');
+      } else if (user.role === 'Fleet Safety') {
         navigate('/team');
       } else {
         navigate('/');
