@@ -10,7 +10,7 @@ import {
   getRoutingEligibleTechs,
   calculateRouteSummary
 } from '../utils/routeOptimizer';
-import Map, { Marker, Source, Layer } from 'react-map-gl';
+import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 
 const Routing = () => {
@@ -25,12 +25,9 @@ const Routing = () => {
   const [optimizing, setOptimizing] = useState(false);
   const [mapboxToken, setMapboxToken] = useState(localStorage.getItem('mapboxToken') || 'pk.eyJ1IjoiamJyYW5ub245NzIiLCJhIjoiY204NXN2Z2w2Mms4ODJrb2tvemV2ZnlicyJ9.84JYhRSUAF5_-vvdebw-TA');
   const [selectedTech, setSelectedTech] = useState(null);
-  const [viewport, setViewport] = useState({
-    longitude: -95.5698,
-    latitude: 30.1945,
-    zoom: 10
-  });
-  const mapRef = useRef();
+  const mapContainerRef = useRef(null);
+  const mapInstanceRef = useRef(null);
+  const markersRef = useRef([]);
 
   // Houston office locations
   const offices = {
@@ -694,9 +691,79 @@ const Routing = () => {
     setActiveView('map');
   };
 
+  // Initialize map when map view is active
+  useEffect(() => {
+    if (activeView !== 'map' || !mapContainerRef.current || mapInstanceRef.current) return;
+
+    mapboxgl.accessToken = mapboxToken;
+
+    const map = new mapboxgl.Map({
+      container: mapContainerRef.current,
+      style: 'mapbox://styles/mapbox/streets-v12',
+      center: [-95.5698, 30.1945], // Houston center
+      zoom: 10
+    });
+
+    map.addControl(new mapboxgl.NavigationControl(), 'top-right');
+    mapInstanceRef.current = map;
+
+    return () => {
+      map.remove();
+      mapInstanceRef.current = null;
+    };
+  }, [activeView, mapboxToken]);
+
+  // Update markers when selected tech changes
+  useEffect(() => {
+    if (!mapInstanceRef.current || activeView !== 'map') return;
+
+    // Clear existing markers
+    markersRef.current.forEach(marker => marker.remove());
+    markersRef.current = [];
+
+    const map = mapInstanceRef.current;
+
+    // Add office markers
+    const officeLocations = {
+      office_1: { lng: -95.4559, lat: 30.3119, name: 'Conroe' },
+      office_2: { lng: -95.6508, lat: 29.7858, name: 'Katy' }
+    };
+
+    Object.values(officeLocations).forEach(office => {
+      const el = document.createElement('div');
+      el.innerHTML = `<div style="background-color: #3b82f6; color: white; padding: 6px 10px; border-radius: 4px; font-weight: bold; font-size: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.2);"><i class="fas fa-building"></i> ${office.name}</div>`;
+
+      const marker = new mapboxgl.Marker(el)
+        .setLngLat([office.lng, office.lat])
+        .addTo(map);
+
+      markersRef.current.push(marker);
+    });
+
+    // Add job markers if tech is selected
+    if (selectedTech && routes[selectedTech]) {
+      const techRoute = routes[selectedTech];
+      techRoute.jobs?.forEach((job, idx) => {
+        // Spread markers around Houston area for demo
+        const lat = 30.1945 + (Math.random() - 0.5) * 0.3;
+        const lng = -95.5698 + (Math.random() - 0.5) * 0.3;
+
+        const el = document.createElement('div');
+        el.innerHTML = `<div style="background-color: #10b981; color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 12px; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3); cursor: pointer;">${idx + 1}</div>`;
+
+        const marker = new mapboxgl.Marker(el)
+          .setLngLat([lng, lat])
+          .setPopup(new mapboxgl.Popup({ offset: 25 })
+            .setHTML(`<div style="padding: 8px;"><strong>${job.customerName}</strong><br/>${job.duration}h job</div>`))
+          .addTo(map);
+
+        markersRef.current.push(marker);
+      });
+    }
+  }, [selectedTech, routes, activeView]);
+
   const renderMapView = () => {
     const techRoute = selectedTech ? routes[selectedTech] : null;
-    const allTechs = getTechList();
 
     return (
       <div>
@@ -760,72 +827,11 @@ const Routing = () => {
           </div>
 
           {/* Map */}
-          <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-            <Map
-              ref={mapRef}
-              {...viewport}
-              onMove={evt => setViewport(evt.viewState)}
+          <div className="card" style={{ padding: 0, overflow: 'hidden', position: 'relative' }}>
+            <div
+              ref={mapContainerRef}
               style={{ width: '100%', height: '600px' }}
-              mapStyle="mapbox://styles/mapbox/streets-v12"
-              mapboxAccessToken={mapboxToken}
-            >
-              {/* Office Markers */}
-              {Object.entries(offices).map(([key, office]) => (
-                <Marker
-                  key={key}
-                  longitude={key === 'office_1' ? -95.4559 : -95.6508}
-                  latitude={key === 'office_1' ? 30.3119 : 29.7858}
-                  anchor="bottom"
-                >
-                  <div style={{
-                    backgroundColor: '#3b82f6',
-                    color: 'white',
-                    padding: '6px 10px',
-                    borderRadius: '4px',
-                    fontWeight: 'bold',
-                    fontSize: '12px',
-                    boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
-                  }}>
-                    <i className="fas fa-building"></i> {office.shortName}
-                  </div>
-                </Marker>
-              ))}
-
-              {/* Job Markers for selected tech */}
-              {techRoute?.jobs?.map((job, idx) => {
-                // For demo purposes, we'll need to geocode these addresses
-                // For now, we'll spread them around Houston area
-                const lat = 30.1945 + (Math.random() - 0.5) * 0.3;
-                const lng = -95.5698 + (Math.random() - 0.5) * 0.3;
-
-                return (
-                  <Marker
-                    key={job.id}
-                    longitude={lng}
-                    latitude={lat}
-                    anchor="center"
-                  >
-                    <div style={{
-                      backgroundColor: '#10b981',
-                      color: 'white',
-                      width: '28px',
-                      height: '28px',
-                      borderRadius: '50%',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontWeight: 'bold',
-                      fontSize: '12px',
-                      border: '2px solid white',
-                      boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
-                      cursor: 'pointer'
-                    }}>
-                      {idx + 1}
-                    </div>
-                  </Marker>
-                );
-              })}
-            </Map>
+            />
 
             {/* Route Details Overlay */}
             {techRoute && (
@@ -839,7 +845,8 @@ const Routing = () => {
                 boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
                 maxWidth: '300px',
                 maxHeight: '500px',
-                overflow: 'auto'
+                overflow: 'auto',
+                zIndex: 1
               }}>
                 <h4 style={{ margin: '0 0 12px 0' }}>
                   {techRoute.tech.name}'s Route
