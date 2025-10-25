@@ -390,6 +390,30 @@ class FirebaseService {
       throw error;
     }
   }
+
+  // Get daily stats (from job analyzer)
+  async getDailyStats(dateString) {
+    try {
+      const docRef = doc(db, 'hou_daily_stats', dateString);
+      const docSnap = await getDoc(docRef);
+      return docSnap.exists() ? docSnap.data() : null;
+    } catch (error) {
+      console.error('Error getting daily stats:', error);
+      return null;
+    }
+  }
+
+  // Load damage reports
+  async loadDamageReports() {
+    try {
+      const collectionRef = collection(db, 'hou_damages');
+      const snapshot = await getDocs(collectionRef);
+      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    } catch (error) {
+      console.error('Error loading damage reports:', error);
+      return [];
+    }
+  }
 }
 
 export default new FirebaseService();
