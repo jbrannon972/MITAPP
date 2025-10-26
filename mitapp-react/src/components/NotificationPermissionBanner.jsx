@@ -6,11 +6,11 @@ const NotificationPermissionBanner = () => {
   const [isDismissed, setIsDismissed] = useState(false);
   const [isRequesting, setIsRequesting] = useState(false);
 
-  // Only show for MIT Lead or Second Shift Lead who haven't granted permission
+  // Only show for MIT Lead, Second Shift Lead, or Manager who haven't granted permission
   const shouldShow =
     !isDismissed &&
     currentUser &&
-    (currentUser.role === 'MIT Lead' || currentUser.role === 'Second Shift Lead') &&
+    (currentUser.role === 'MIT Lead' || currentUser.role === 'Second Shift Lead' || currentUser.role === 'Manager') &&
     notificationPermission !== 'granted' &&
     notificationPermission !== 'denied';
 
@@ -38,6 +38,13 @@ const NotificationPermissionBanner = () => {
     return '';
   };
 
+  const getBannerMessage = () => {
+    if (currentUser.role === 'Manager') {
+      return 'Get notified when damage reports are submitted';
+    }
+    return `Get notified at ${getReminderTime()} each day to submit your daily report`;
+  };
+
   return (
     <div style={{
       position: 'fixed',
@@ -57,10 +64,10 @@ const NotificationPermissionBanner = () => {
     }}>
       <div style={{ flex: 1, minWidth: '250px' }}>
         <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>
-          Enable Daily Report Reminders
+          {currentUser.role === 'Manager' ? 'Enable Damage Notifications' : 'Enable Daily Report Reminders'}
         </div>
         <div style={{ fontSize: '14px', opacity: 0.95 }}>
-          Get notified at {getReminderTime()} each day to submit your daily report
+          {getBannerMessage()}
         </div>
       </div>
 

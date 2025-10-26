@@ -197,6 +197,89 @@ class NotificationService {
   }
 
   /**
+   * Send damage report notification to managers
+   * @param {Object} damageData - The damage report data
+   * @param {string} reportedBy - Name of person who reported the damage
+   */
+  async notifyManagersOfDamage(damageData, reportedBy) {
+    try {
+      // Show local notification if permission is granted
+      if (Notification.permission === 'granted') {
+        const damageType = damageData.vehicle_number ? 'Vehicle' : 'Equipment';
+        const damageItem = damageData.vehicle_number || damageData.equipment_id || 'Item';
+
+        const notification = new Notification('New Damage Report', {
+          body: `${reportedBy || 'A user'} reported damage to ${damageType}: ${damageItem}`,
+          icon: '/Elogo.png',
+          badge: '/Elogo.png',
+          tag: 'damage-report',
+          requireInteraction: true,
+          vibrate: [200, 100, 200],
+          data: {
+            type: 'damage',
+            damageId: damageData.id,
+            url: '/damages'
+          }
+        });
+
+        notification.onclick = () => {
+          window.focus();
+          // Navigate to damages page if not already there
+          if (window.location.pathname !== '/damages') {
+            window.location.href = '/damages';
+          }
+          notification.close();
+        };
+      }
+
+      // Store notification in Firestore for managers to see later
+      const notificationData = {
+        type: 'damage_report',
+        title: 'New Damage Report',
+        message: `${reportedBy || 'A user'} reported damage: ${damageData.damage_description}`,
+        damageId: damageData.id,
+        reportedBy: reportedBy,
+        reportedAt: new Date().toISOString(),
+        read: false,
+        targetRoles: ['Manager']
+      };
+
+      await setDoc(doc(db, 'notifications', `damage_${Date.now()}`), notificationData);
+
+      console.log('Damage notification sent to managers');
+    } catch (error) {
+      console.error('Error sending damage notification:', error);
+    }
+  }
+
+  /**
+   * Show an immediate notification about a damage report
+   * @param {string} title - Notification title
+   * @param {string} message - Notification message
+   * @param {string} url - URL to navigate to when clicked
+   */
+  showDamageNotification(title, message, url = '/damages') {
+    if (Notification.permission === 'granted') {
+      const notification = new Notification(title, {
+        body: message,
+        icon: '/Elogo.png',
+        badge: '/Elogo.png',
+        tag: 'damage-report',
+        requireInteraction: true,
+        vibrate: [200, 100, 200]
+      });
+
+      notification.onclick = () => {
+        window.focus();
+        if (url && window.location.pathname !== url) {
+          window.location.href = url;
+        }
+        notification.close();
+      };
+    }
+  }
+
+  /**
    * Cancel all scheduled notifications
    */
   cancelAllNotifications() {

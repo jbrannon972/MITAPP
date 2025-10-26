@@ -1,9 +1,12 @@
 import { useState, useEffect } from 'react';
 import Layout from '../components/common/Layout';
 import firebaseService from '../services/firebaseService';
+import notificationService from '../services/notificationService';
+import { useAuth } from '../contexts/AuthContext';
 import { exportToCSV, prepareDamagesDataForExport } from '../utils/exportUtils';
 
 const Damages = () => {
+  const { currentUser } = useAuth();
   const [damages, setDamages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -98,7 +101,14 @@ const Damages = () => {
         await firebaseService.updateDocument('hou_damages', editingDamage.id, damageData);
       } else {
         // Add new damage
-        await firebaseService.addDocument('hou_damages', damageData);
+        const newDamageId = await firebaseService.addDocument('hou_damages', damageData);
+
+        // Notify managers of new damage report
+        const damageWithId = { ...damageData, id: newDamageId };
+        await notificationService.notifyManagersOfDamage(
+          damageWithId,
+          currentUser?.username || 'A user'
+        );
       }
 
       alert(editingDamage ? 'Damage report updated successfully!' : 'Damage report added successfully!');
