@@ -21,10 +21,13 @@
     --secondary-color: #a4a4a5; /* Entrusted Gray */
     --background-color: #fafbfc; /* Lighter, more airy */
     --surface-color: #ffffff;
+    --surface-secondary: #f9fafb; /* Light gray surfaces */
+    --surface-tertiary: #f3f4f6; /* Lighter gray surfaces */
     --border-color: #e5e7eb; /* Softer border */
     --text-primary: #1f2937; /* Darker, better contrast */
     --text-secondary: #6b7280;
     --text-muted: #9ca3af;
+    --header-bg: rgba(255, 255, 255, 0.95);
 
     /* Modern Shadows - Softer and more subtle */
     --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.03);
@@ -45,6 +48,14 @@
     --warning-color: #f59e0b;
     --danger-color: #ef4444;
     --info-color: #3b82f6;
+
+    /* Status Backgrounds */
+    --warning-bg: #fffbeb;
+    --info-bg: #eff6ff;
+    --danger-bg: #fef2f2;
+    --orange-bg: #fff7ed;
+    --peach-bg: #fffaf7;
+    --light-peach-bg: #fffaf5;
 }
 
 /* Dark Mode - Matches Claude's Dark Theme */
@@ -58,7 +69,10 @@ body.dark-mode {
     /* Dark backgrounds matching Claude */
     --background-color: #1a1a1a;
     --surface-color: #2d2d2d;
+    --surface-secondary: #262626; /* Slightly darker than surface */
+    --surface-tertiary: #333333; /* Slightly lighter than surface */
     --border-color: #404040;
+    --header-bg: rgba(45, 45, 45, 0.95);
 
     /* Light text on dark background */
     --text-primary: #e5e5e5;
@@ -77,6 +91,14 @@ body.dark-mode {
     --warning-color: #fbbf24;
     --danger-color: #f87171;
     --info-color: #60a5fa;
+
+    /* Status Backgrounds for Dark Mode */
+    --warning-bg: #3d2f1f;
+    --info-bg: #1e293b;
+    --danger-bg: #3d1f1f;
+    --orange-bg: #3d2a1f;
+    --peach-bg: #3d2619;
+    --light-peach-bg: #3d2819;
 }
 
 body {
@@ -103,7 +125,7 @@ body {
 
 /* ==================== HEADER ==================== */
 .header {
-    background: rgba(255, 255, 255, 0.95);
+    background: var(--header-bg);
     backdrop-filter: blur(10px);
     color: var(--text-primary);
     padding: 14px 0;
@@ -238,13 +260,13 @@ body {
 }
 
 .btn-secondary {
-    background: #f3f4f6;
+    background: var(--surface-tertiary);
     color: var(--text-secondary);
     border: 1px solid var(--border-color);
 }
 
 .btn-secondary:hover {
-    background: #e5e7eb;
+    background: var(--border-color);
     color: var(--text-primary);
 }
 
@@ -421,14 +443,14 @@ body {
 .stat {
     text-align: center;
     padding: 12px;
-    background: #f9fafb;
+    background: var(--surface-secondary);
     border-radius: var(--radius-md);
     transition: all 0.2s ease;
     border: 1px solid transparent;
 }
 
 .stat:hover {
-    background: #f3f4f6;
+    background: var(--surface-tertiary);
     border-color: var(--border-color);
     transform: scale(1.03);
 }
@@ -495,7 +517,7 @@ body {
 }
 
 .control-panel-section {
-    background: #f9fafb;
+    background: var(--surface-secondary);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-md);
     padding: 16px;
@@ -518,7 +540,7 @@ body {
 }
 
 .input-header {
-    background: #f9fafb;
+    background: var(--surface-secondary);
     padding: 16px 20px;
     border-bottom: 1px solid var(--border-color);
 }
@@ -564,7 +586,7 @@ body {
 }
 
 .form-group.highlight {
-    background: #fff7ed;
+    background: var(--orange-bg);
     padding: 14px;
     border-radius: var(--radius-md);
     border: 1.5px solid var(--primary-color);
@@ -732,7 +754,7 @@ body {
     align-items: center;
     gap: 10px;
     padding: 10px;
-    background: #f9fafb;
+    background: var(--surface-secondary);
     border-radius: var(--radius-md);
     margin-bottom: 7px;
     transition: all 0.2s ease;
@@ -741,7 +763,7 @@ body {
 }
 
 .member-card:hover {
-    background: #f3f4f6;
+    background: var(--surface-tertiary);
     border-color: var(--border-color);
     transform: translateX(3px);
 }
@@ -825,7 +847,7 @@ body {
 }
 
 .data-table th {
-    background: #f9fafb;
+    background: var(--surface-secondary);
     padding: 12px 14px;
     text-align: left;
     font-weight: 600;
@@ -844,7 +866,7 @@ body {
 }
 
 .data-table tr:hover {
-    background: #fffaf7;
+    background: var(--peach-bg);
 }
 
 .data-table tr:last-child td {
@@ -910,7 +932,7 @@ body {
     align-items: center;
     padding: 18px 20px;
     border-bottom: 1px solid var(--border-color);
-    background: #f9fafb;
+    background: var(--surface-secondary);
     flex-shrink: 0;
 }
 
@@ -976,7 +998,7 @@ body {
 }
 
 .modal-tab-btn:hover {
-    background-color: #f3f4f6;
+    background-color: var(--surface-tertiary);
     color: var(--primary-color);
 }
 
@@ -990,7 +1012,7 @@ body {
 .modal-tab-btn:disabled {
     color: var(--text-muted);
     cursor: not-allowed;
-    background: #f9fafb;
+    background: var(--surface-secondary);
 }
 
 .modal-tab-content {
@@ -1153,7 +1175,7 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background: #f9fafb;
+    background: var(--surface-secondary);
     padding: 10px 12px;
     border-radius: var(--radius-md);
     border-left: 3px solid var(--primary-color);
@@ -1259,7 +1281,7 @@ body {
     align-items: center;
     padding: 8px 12px;
     border-radius: var(--radius-md);
-    background-color: #f9fafb;
+    background-color: var(--surface-secondary);
 }
 
 .staff-off-item .staff-name {
@@ -1342,7 +1364,7 @@ body {
     border: 1px solid var(--border-color);
     border-radius: var(--radius-md);
     padding: 4px;
-    background-color: #f9fafb;
+    background-color: var(--surface-secondary);
 }
 
 .sub-nav-btn {
@@ -1416,7 +1438,7 @@ body {
 }
 
 .staffing-alert.text-warning {
-    background-color: #fffbeb;
+    background-color: var(--warning-bg);
 }
 
 .staffing-alert.text-success {
@@ -1443,7 +1465,7 @@ body {
     color: var(--text-secondary);
     border-left: 3px solid var(--primary-color);
     padding: 10px 14px;
-    background-color: #fffaf5;
+    background-color: var(--light-peach-bg);
     border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
     line-height: 1.5;
     font-size: 13px;
@@ -1471,7 +1493,7 @@ body {
     align-items: center;
     padding: 8px 12px;
     border-radius: var(--radius-md);
-    background-color: #f9fafb;
+    background-color: var(--surface-secondary);
 }
 
 .vehicle-list-item .name {
@@ -1526,7 +1548,7 @@ body {
   width: 16px;
   left: 3px;
   bottom: 3px;
-  background-color: white;
+  background-color: var(--surface-color);
   transition: .3s;
 }
 
@@ -1680,7 +1702,7 @@ input:checked + .slider:before {
     }
 
     .data-table tr.retired-row {
-        background-color: #f3f4f6;
+        background-color: var(--surface-tertiary);
         opacity: 0.7;
     }
 
@@ -1987,7 +2009,7 @@ input:checked + .slider:before {
 }
 
 .tech-tool-request-item {
-    background: #f9fafb;
+    background: var(--surface-secondary);
     padding: 14px;
     border-radius: var(--radius-md);
     margin-bottom: 14px;
@@ -2006,7 +2028,7 @@ input:checked + .slider:before {
 .tech-add-btn {
     width: 100%;
     padding: 9px;
-    background: #f3f4f6;
+    background: var(--surface-tertiary);
     color: var(--text-secondary);
     border: 1.5px dashed var(--border-color);
     border-radius: var(--radius-md);
