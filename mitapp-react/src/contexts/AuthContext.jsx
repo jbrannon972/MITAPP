@@ -10,6 +10,7 @@ import {
 } from 'firebase/auth';
 import { auth } from '../config/firebase';
 import firebaseService from '../services/firebaseService';
+import notificationService from '../services/notificationService';
 
 const AuthContext = createContext({});
 
@@ -25,6 +26,58 @@ export const AuthProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [notificationPermission, setNotificationPermission] = useState('default');
+
+  // Initialize notifications for user
+  const initializeNotifications = async (user) => {
+    try {
+      // Initialize notification service
+      const initialized = await notificationService.initialize();
+      if (!initialized) {
+        console.warn('Notification service not available');
+        return;
+      }
+
+      // Setup foreground message listener
+      notificationService.setupForegroundListener();
+
+      // Check if we should request permission
+      const permission = notificationService.getPermissionStatus();
+      setNotificationPermission(permission);
+
+      if (permission === 'granted') {
+        // Get and save FCM token
+        await notificationService.getAndSaveFCMToken(user.userId);
+
+        // Setup role-based notifications
+        notificationService.setupRoleBasedNotifications(user.role);
+      }
+    } catch (error) {
+      console.error('Error initializing notifications:', error);
+    }
+  };
+
+  // Request notification permission
+  const requestNotificationPermission = async () => {
+    try {
+      const granted = await notificationService.requestPermission();
+      const permission = notificationService.getPermissionStatus();
+      setNotificationPermission(permission);
+
+      if (granted && currentUser) {
+        // Get and save FCM token
+        await notificationService.getAndSaveFCMToken(currentUser.userId);
+
+        // Setup role-based notifications
+        notificationService.setupRoleBasedNotifications(currentUser.role);
+      }
+
+      return granted;
+    } catch (error) {
+      console.error('Error requesting notification permission:', error);
+      return false;
+    }
+  };
 
   // Get staff member from staffing data
   const getStaffMemberFromStaffingData = async (email) => {
@@ -94,6 +147,9 @@ export const AuthProvider = ({ children }) => {
       localStorage.setItem('loggedInUser', JSON.stringify(sessionData));
       setCurrentUser(sessionData);
 
+      // Initialize notifications for this user
+      await initializeNotifications(sessionData);
+
       return sessionData;
     } catch (error) {
       const errorMessage = getFriendlyErrorMessage(error);
@@ -105,6 +161,9 @@ export const AuthProvider = ({ children }) => {
   // Logout function
   const logout = async () => {
     try {
+      // Cancel all scheduled notifications
+      notificationService.cancelAllNotifications();
+
       await signOut(auth);
       localStorage.removeItem('loggedInUser');
       setCurrentUser(null);
@@ -158,7 +217,10 @@ export const AuthProvider = ({ children }) => {
         // Try to get user from localStorage first
         const localUser = localStorage.getItem('loggedInUser');
         if (localUser) {
-          setCurrentUser(JSON.parse(localUser));
+          const userData = JSON.parse(localUser);
+          setCurrentUser(userData);
+          // Initialize notifications for returning user
+          await initializeNotifications(userData);
         } else {
           // Fetch staff member data
           const staffMember = await getStaffMemberFromStaffingData(user.email);
@@ -172,6 +234,8 @@ export const AuthProvider = ({ children }) => {
             };
             localStorage.setItem('loggedInUser', JSON.stringify(sessionData));
             setCurrentUser(sessionData);
+            // Initialize notifications for new session
+            await initializeNotifications(sessionData);
           } else {
             setCurrentUser(null);
           }
@@ -192,7 +256,9 @@ export const AuthProvider = ({ children }) => {
     logout,
     resetPassword,
     loading,
-    error
+    error,
+    notificationPermission,
+    requestNotificationPermission
   };
 
   return (

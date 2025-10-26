@@ -8,7 +8,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['Elogo.png', 'vite.svg'],
+      includeAssets: ['Elogo.png', 'vite.svg', 'firebase-messaging-sw.js'],
       manifest: {
         name: 'HOU Mitigation - Labor Tool',
         short_name: 'Labor Tool',
@@ -19,6 +19,7 @@ export default defineConfig({
         scope: '/',
         start_url: '/',
         orientation: 'portrait-primary',
+        permissions: ['notifications'],
         icons: [
           {
             src: 'Elogo.png',
