@@ -214,31 +214,30 @@ export const AuthProvider = ({ children }) => {
 
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
-        // Try to get user from localStorage first
-        const localUser = localStorage.getItem('loggedInUser');
-        if (localUser) {
-          const userData = JSON.parse(localUser);
-          setCurrentUser(userData);
-          // Initialize notifications for returning user
-          await initializeNotifications(userData);
+        // SECURITY FIX: Always re-validate user role from staffing data
+        // Never blindly trust localStorage as it could be outdated or tampered with
+        // This prevents techs from accessing the supervisor app after re-opening the browser
+        const staffMember = await getStaffMemberFromStaffingData(user.email);
+
+        // Check if user has supervisor permissions (not Tech or Warehouse)
+        if (staffMember && staffMember.role && staffMember.role !== 'Tech' && staffMember.role !== 'Warehouse') {
+          const sessionData = {
+            email: user.email,
+            uid: user.uid,
+            role: staffMember.role,
+            username: staffMember.name,
+            userId: staffMember.id
+          };
+          localStorage.setItem('loggedInUser', JSON.stringify(sessionData));
+          setCurrentUser(sessionData);
+          // Initialize notifications for user with supervisor permissions
+          await initializeNotifications(sessionData);
         } else {
-          // Fetch staff member data
-          const staffMember = await getStaffMemberFromStaffingData(user.email);
-          if (staffMember && staffMember.role && staffMember.role !== 'Tech' && staffMember.role !== 'Warehouse') {
-            const sessionData = {
-              email: user.email,
-              uid: user.uid,
-              role: staffMember.role,
-              username: staffMember.name,
-              userId: staffMember.id
-            };
-            localStorage.setItem('loggedInUser', JSON.stringify(sessionData));
-            setCurrentUser(sessionData);
-            // Initialize notifications for new session
-            await initializeNotifications(sessionData);
-          } else {
-            setCurrentUser(null);
-          }
+          // User is Tech or Warehouse - they should NOT have access to supervisor app
+          console.warn('Tech or Warehouse user attempted to access supervisor app, signing out');
+          await signOut(auth);
+          localStorage.removeItem('loggedInUser');
+          setCurrentUser(null);
         }
       } else {
         setCurrentUser(null);
