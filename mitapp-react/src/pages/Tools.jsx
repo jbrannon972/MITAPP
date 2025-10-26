@@ -384,7 +384,7 @@ const Tools = () => {
                     />
                   </div>
                   <div className="form-group">
-                    <label htmlFor="name">Name <span style={{ color: 'red' }}>*</span></label>
+                    <label htmlFor="name">Name <span style={{ color: 'var(--danger-color)' }}>*</span></label>
                     <input
                       type="text"
                       id="name"

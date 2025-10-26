@@ -406,7 +406,7 @@ const Fleet = () => {
               <div className="modal-body">
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                   <div className="form-group">
-                    <label htmlFor="truckNumber">Truck Number <span style={{ color: 'red' }}>*</span></label>
+                    <label htmlFor="truckNumber">Truck Number <span style={{ color: 'var(--danger-color)' }}>*</span></label>
                     <input
                       type="text"
                       id="truckNumber"

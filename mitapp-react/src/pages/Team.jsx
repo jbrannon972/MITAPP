@@ -559,7 +559,7 @@ const Team = () => {
               </div>
               <div className="modal-body">
                 <div className="form-group">
-                  <label htmlFor="zoneName">Zone Name <span style={{ color: 'red' }}>*</span></label>
+                  <label htmlFor="zoneName">Zone Name <span style={{ color: 'var(--danger-color)' }}>*</span></label>
                   <input
                     type="text"
                     id="zoneName"
@@ -612,7 +612,7 @@ const Team = () => {
               </div>
               <div className="modal-body">
                 <div className="form-group">
-                  <label htmlFor="memberName">Name <span style={{ color: 'red' }}>*</span></label>
+                  <label htmlFor="memberName">Name <span style={{ color: 'var(--danger-color)' }}>*</span></label>
                   <input
                     type="text"
                     id="memberName"
@@ -625,7 +625,7 @@ const Team = () => {
                   />
                 </div>
                 <div className="form-group">
-                  <label htmlFor="memberRole">Role <span style={{ color: 'red' }}>*</span></label>
+                  <label htmlFor="memberRole">Role <span style={{ color: 'var(--danger-color)' }}>*</span></label>
                   <select
                     id="memberRole"
                     name="role"

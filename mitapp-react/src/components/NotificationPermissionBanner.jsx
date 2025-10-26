@@ -51,8 +51,8 @@ const NotificationPermissionBanner = () => {
       top: 0,
       left: 0,
       right: 0,
-      backgroundColor: '#3b82f6',
-      color: 'white',
+      backgroundColor: 'var(--info-color)',
+      color: 'var(--surface-color)',
       padding: '12px 16px',
       zIndex: 1000,
       boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
@@ -76,8 +76,8 @@ const NotificationPermissionBanner = () => {
           onClick={handleEnableNotifications}
           disabled={isRequesting}
           style={{
-            backgroundColor: 'white',
-            color: '#3b82f6',
+            backgroundColor: 'var(--surface-color)',
+            color: 'var(--info-color)',
             border: 'none',
             padding: '8px 16px',
             borderRadius: '4px',
@@ -95,7 +95,7 @@ const NotificationPermissionBanner = () => {
           disabled={isRequesting}
           style={{
             backgroundColor: 'transparent',
-            color: 'white',
+            color: 'var(--surface-color)',
             border: '1px solid white',
             padding: '8px 16px',
             borderRadius: '4px',

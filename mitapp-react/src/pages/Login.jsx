@@ -211,12 +211,12 @@ const Login = () => {
         }
         #error-message {
           color: var(--danger-color);
-          background-color: #fef2f2;
+          background-color: var(--danger-bg);
           border: 1px solid var(--danger-color);
         }
         #success-message {
           color: var(--success-color);
-          background-color: #f0fdf4;
+          background-color: var(--success-bg);
           border: 1px solid var(--success-color);
         }
         .forgot-password {

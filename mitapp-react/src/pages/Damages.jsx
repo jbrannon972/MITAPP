@@ -300,7 +300,7 @@ const Damages = () => {
               <div className="modal-body">
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                   <div className="form-group">
-                    <label htmlFor="date">Date <span style={{ color: 'red' }}>*</span></label>
+                    <label htmlFor="date">Date <span style={{ color: 'var(--danger-color)' }}>*</span></label>
                     <input
                       type="date"
                       id="date"
@@ -377,7 +377,7 @@ const Damages = () => {
                     />
                   </div>
                   <div className="form-group" style={{ gridColumn: '1 / -1' }}>
-                    <label htmlFor="description">Description <span style={{ color: 'red' }}>*</span></label>
+                    <label htmlFor="description">Description <span style={{ color: 'var(--danger-color)' }}>*</span></label>
                     <textarea
                       id="description"
                       name="description"

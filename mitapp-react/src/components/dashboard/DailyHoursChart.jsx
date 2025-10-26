@@ -154,7 +154,7 @@ const DailyHoursChart = ({ dailyHoursData }) => {
 
   if (!dailyHoursData) {
     return (
-      <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
+      <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
         <p>No data available</p>
       </div>
     );

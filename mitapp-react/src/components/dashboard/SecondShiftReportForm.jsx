@@ -185,7 +185,7 @@ const SecondShiftReportForm = ({ onClose, onSubmitSuccess }) => {
             <>
               {/* Second Shift / MIT Lead Questions */}
               {/* Install Windows Left */}
-          <div className="question-section" style={{ marginTop: '24px', padding: '16px', backgroundColor: '#f9fafb', borderRadius: '8px' }}>
+          <div className="question-section" style={{ marginTop: '24px', padding: '16px', backgroundColor: 'var(--surface-secondary)', borderRadius: '8px' }}>
             <div className="form-group">
               <label>Any Install windows left?</label>
               <div className="radio-group" style={{ display: 'flex', gap: '16px', marginTop: '8px' }}>
@@ -214,7 +214,7 @@ const SecondShiftReportForm = ({ onClose, onSubmitSuccess }) => {
               </div>
             </div>
             {formData.installWindowsLeft && (
-              <div style={{ marginTop: '16px', padding: '16px', backgroundColor: 'white', borderRadius: '8px' }}>
+              <div style={{ marginTop: '16px', padding: '16px', backgroundColor: 'var(--surface-color)', borderRadius: '8px' }}>
                 <p style={{ marginBottom: '12px' }}>Enter the number of windows available for each time slot:</p>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }}>
                   <div className="form-group">
@@ -256,7 +256,7 @@ const SecondShiftReportForm = ({ onClose, onSubmitSuccess }) => {
           </div>
 
           {/* Demo Requested */}
-          <div className="question-section" style={{ marginTop: '16px', padding: '16px', backgroundColor: '#f9fafb', borderRadius: '8px' }}>
+          <div className="question-section" style={{ marginTop: '16px', padding: '16px', backgroundColor: 'var(--surface-secondary)', borderRadius: '8px' }}>
             <div className="form-group">
               <label>Was demo requested on any installs?</label>
               <div className="radio-group" style={{ display: 'flex', gap: '16px', marginTop: '8px' }}>
@@ -285,9 +285,9 @@ const SecondShiftReportForm = ({ onClose, onSubmitSuccess }) => {
               </div>
             </div>
             {formData.demoRequested && (
-              <div style={{ marginTop: '16px', padding: '16px', backgroundColor: 'white', borderRadius: '8px' }}>
+              <div style={{ marginTop: '16px', padding: '16px', backgroundColor: 'var(--surface-color)', borderRadius: '8px' }}>
                 {formData.demoJobs.map((job, idx) => (
-                  <div key={idx} style={{ marginBottom: '12px', padding: '12px', backgroundColor: '#f9fafb', borderRadius: '6px' }}>
+                  <div key={idx} style={{ marginBottom: '12px', padding: '12px', backgroundColor: 'var(--surface-secondary)', borderRadius: '6px' }}>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr auto', gap: '8px', marginBottom: '8px' }}>
                       <input
                         type="text"
@@ -326,7 +326,7 @@ const SecondShiftReportForm = ({ onClose, onSubmitSuccess }) => {
           </div>
 
           {/* Jobs Pushed */}
-          <div className="question-section" style={{ marginTop: '16px', padding: '16px', backgroundColor: '#f9fafb', borderRadius: '8px' }}>
+          <div className="question-section" style={{ marginTop: '16px', padding: '16px', backgroundColor: 'var(--surface-secondary)', borderRadius: '8px' }}>
             <div className="form-group">
               <label>Were any jobs pushed to the next day?</label>
               <div className="radio-group" style={{ display: 'flex', gap: '16px', marginTop: '8px' }}>
@@ -370,7 +370,7 @@ const SecondShiftReportForm = ({ onClose, onSubmitSuccess }) => {
           </div>
 
           {/* Jobs to Know About (Nuances) */}
-          <div className="question-section" style={{ marginTop: '16px', padding: '16px', backgroundColor: '#f9fafb', borderRadius: '8px' }}>
+          <div className="question-section" style={{ marginTop: '16px', padding: '16px', backgroundColor: 'var(--surface-secondary)', borderRadius: '8px' }}>
             <h4>Jobs to Know About</h4>
             {formData.nuances.map((job, idx) => (
               <div key={idx} style={{ display: 'grid', gridTemplateColumns: '1fr 2fr auto', gap: '8px', marginTop: '8px' }}>
@@ -399,7 +399,7 @@ const SecondShiftReportForm = ({ onClose, onSubmitSuccess }) => {
           </div>
 
           {/* Cancelled/Rescheduled Jobs */}
-          <div className="question-section" style={{ marginTop: '16px', padding: '16px', backgroundColor: '#f9fafb', borderRadius: '8px' }}>
+          <div className="question-section" style={{ marginTop: '16px', padding: '16px', backgroundColor: 'var(--surface-secondary)', borderRadius: '8px' }}>
             <h4>Cancelled/Rescheduled Jobs</h4>
             {formData.cancelledJobs.map((job, idx) => (
               <div key={idx} style={{ display: 'grid', gridTemplateColumns: '1fr 2fr auto', gap: '8px', marginTop: '8px' }}>
@@ -428,10 +428,10 @@ const SecondShiftReportForm = ({ onClose, onSubmitSuccess }) => {
           </div>
 
           {/* After Hours Jobs */}
-          <div className="question-section" style={{ marginTop: '16px', padding: '16px', backgroundColor: '#f9fafb', borderRadius: '8px' }}>
+          <div className="question-section" style={{ marginTop: '16px', padding: '16px', backgroundColor: 'var(--surface-secondary)', borderRadius: '8px' }}>
             <h4>After Hours Jobs</h4>
             {formData.afterHoursJobs.map((job, idx) => (
-              <div key={idx} style={{ marginTop: '8px', padding: '12px', backgroundColor: 'white', borderRadius: '6px' }}>
+              <div key={idx} style={{ marginTop: '8px', padding: '12px', backgroundColor: 'var(--surface-color)', borderRadius: '6px' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: '8px', marginBottom: '8px' }}>
                   <input
                     type="text"
@@ -466,7 +466,7 @@ const SecondShiftReportForm = ({ onClose, onSubmitSuccess }) => {
           </div>
 
           {/* Shoutouts and Concerns */}
-          <div className="question-section" style={{ marginTop: '16px', padding: '16px', backgroundColor: '#f9fafb', borderRadius: '8px' }}>
+          <div className="question-section" style={{ marginTop: '16px', padding: '16px', backgroundColor: 'var(--surface-secondary)', borderRadius: '8px' }}>
             <div className="form-group">
               <label htmlFor="techShoutouts">Tech Shoutouts</label>
               <textarea
@@ -517,7 +517,7 @@ const SecondShiftReportForm = ({ onClose, onSubmitSuccess }) => {
             <>
               {/* Supervisor Questions */}
               {/* Equipment Deployed */}
-              <div className="question-section" style={{ marginTop: '24px', padding: '16px', backgroundColor: '#f9fafb', borderRadius: '8px' }}>
+              <div className="question-section" style={{ marginTop: '24px', padding: '16px', backgroundColor: 'var(--surface-secondary)', borderRadius: '8px' }}>
                 <div className="form-group">
                   <label>Did I ensure all equipment is properly deployed at day 2 visits?</label>
                   <div className="radio-group" style={{ display: 'flex', gap: '16px', marginTop: '8px' }}>
@@ -561,7 +561,7 @@ const SecondShiftReportForm = ({ onClose, onSubmitSuccess }) => {
               </div>
 
               {/* MIT Lead Forms Submitted */}
-              <div className="question-section" style={{ marginTop: '16px', padding: '16px', backgroundColor: '#f9fafb', borderRadius: '8px' }}>
+              <div className="question-section" style={{ marginTop: '16px', padding: '16px', backgroundColor: 'var(--surface-secondary)', borderRadius: '8px' }}>
                 <div className="form-group">
                   <label>Did I submit all MIT Lead visit forms?</label>
                   <div className="radio-group" style={{ display: 'flex', gap: '16px', marginTop: '8px' }}>
@@ -605,7 +605,7 @@ const SecondShiftReportForm = ({ onClose, onSubmitSuccess }) => {
               </div>
 
               {/* DPT Notes Updated */}
-              <div className="question-section" style={{ marginTop: '16px', padding: '16px', backgroundColor: '#f9fafb', borderRadius: '8px' }}>
+              <div className="question-section" style={{ marginTop: '16px', padding: '16px', backgroundColor: 'var(--surface-secondary)', borderRadius: '8px' }}>
                 <div className="form-group">
                   <label>Did I fully update all DPT notes and WOs?</label>
                   <div className="radio-group" style={{ display: 'flex', gap: '16px', marginTop: '8px' }}>
@@ -649,7 +649,7 @@ const SecondShiftReportForm = ({ onClose, onSubmitSuccess }) => {
               </div>
 
               {/* Talked to Techs */}
-              <div className="question-section" style={{ marginTop: '16px', padding: '16px', backgroundColor: '#f9fafb', borderRadius: '8px' }}>
+              <div className="question-section" style={{ marginTop: '16px', padding: '16px', backgroundColor: 'var(--surface-secondary)', borderRadius: '8px' }}>
                 <div className="form-group">
                   <label>Did I talk to all my techs that are working near the end of the day?</label>
                   <div className="radio-group" style={{ display: 'flex', gap: '16px', marginTop: '8px' }}>
@@ -693,7 +693,7 @@ const SecondShiftReportForm = ({ onClose, onSubmitSuccess }) => {
               </div>
 
               {/* Today's Win */}
-              <div className="question-section" style={{ marginTop: '16px', padding: '16px', backgroundColor: '#f9fafb', borderRadius: '8px' }}>
+              <div className="question-section" style={{ marginTop: '16px', padding: '16px', backgroundColor: 'var(--surface-secondary)', borderRadius: '8px' }}>
                 <div className="form-group">
                   <label htmlFor="todayWin">What was one win I had today?</label>
                   <textarea
@@ -708,7 +708,7 @@ const SecondShiftReportForm = ({ onClose, onSubmitSuccess }) => {
               </div>
 
               {/* Need Support */}
-              <div className="question-section" style={{ marginTop: '16px', padding: '16px', backgroundColor: '#f9fafb', borderRadius: '8px' }}>
+              <div className="question-section" style={{ marginTop: '16px', padding: '16px', backgroundColor: 'var(--surface-secondary)', borderRadius: '8px' }}>
                 <div className="form-group">
                   <label htmlFor="needSupport">What is something you could use support on?</label>
                   <textarea

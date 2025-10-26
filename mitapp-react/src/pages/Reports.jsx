@@ -369,7 +369,7 @@ const Reports = () => {
                             <span style={{ fontWeight: '500' }}>{status}</span>
                             <span style={{
                               backgroundColor: 'var(--info-color)',
-                              color: 'white',
+                              color: 'var(--surface-color)',
                               padding: '4px 12px',
                               borderRadius: '12px',
                               fontSize: '14px',
@@ -398,7 +398,7 @@ const Reports = () => {
                             <span style={{ fontWeight: '500' }}>{category}</span>
                             <span style={{
                               backgroundColor: 'var(--success-color)',
-                              color: 'white',
+                              color: 'var(--surface-color)',
                               padding: '4px 12px',
                               borderRadius: '12px',
                               fontSize: '14px',
@@ -427,7 +427,7 @@ const Reports = () => {
                             <span style={{ fontWeight: '500' }}>{role}</span>
                             <span style={{
                               backgroundColor: 'var(--purple-color)',
-                              color: 'white',
+                              color: 'var(--surface-color)',
                               padding: '4px 12px',
                               borderRadius: '12px',
                               fontSize: '14px',
@@ -456,7 +456,7 @@ const Reports = () => {
                             <span style={{ fontWeight: '500' }}>{status}</span>
                             <span style={{
                               backgroundColor: 'var(--danger-color)',
-                              color: 'white',
+                              color: 'var(--surface-color)',
                               padding: '4px 12px',
                               borderRadius: '12px',
                               fontSize: '14px',

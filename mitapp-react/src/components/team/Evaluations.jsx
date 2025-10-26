@@ -354,35 +354,35 @@ const Evaluations = () => {
         <table class="data-table" style="width: 100%; border-collapse: collapse; margin-bottom: 30px;">
           <thead>
             <tr>
-              <th style="border: 1px solid #ddd; padding: 8px; background-color: #f2f2f2;">Employee</th>
-              <th style="border: 1px solid #ddd; padding: 8px; background-color: #f2f2f2;">Category</th>
-              <th style="border: 1px solid #ddd; padding: 8px; background-color: #f2f2f2;">Avg. Score</th>
-              <th style="border: 1px solid #ddd; padding: 8px; background-color: #f2f2f2;">Leadership</th>
-              <th style="border: 1px solid #ddd; padding: 8px; background-color: #f2f2f2;">Culture</th>
-              <th style="border: 1px solid #ddd; padding: 8px; background-color: #f2f2f2;">Jobfit</th>
-              <th style="border: 1px solid #ddd; padding: 8px; background-color: #f2f2f2;">Integrity</th>
-              <th style="border: 1px solid #ddd; padding: 8px; background-color: #f2f2f2;">People</th>
-              <th style="border: 1px solid #ddd; padding: 8px; background-color: #f2f2f2;">Workethic</th>
-              <th style="border: 1px solid #ddd; padding: 8px; background-color: #f2f2f2;">Excellence</th>
-              <th style="border: 1px solid #ddd; padding: 8px; background-color: #f2f2f2;">Longevity</th>
-              <th style="border: 1px solid #ddd; padding: 8px; background-color: #f2f2f2;">Last Evaluated</th>
+              <th style="border: 1px solid var(--border-color); padding: 8px; background-color: var(--surface-tertiary);">Employee</th>
+              <th style="border: 1px solid var(--border-color); padding: 8px; background-color: var(--surface-tertiary);">Category</th>
+              <th style="border: 1px solid var(--border-color); padding: 8px; background-color: var(--surface-tertiary);">Avg. Score</th>
+              <th style="border: 1px solid var(--border-color); padding: 8px; background-color: var(--surface-tertiary);">Leadership</th>
+              <th style="border: 1px solid var(--border-color); padding: 8px; background-color: var(--surface-tertiary);">Culture</th>
+              <th style="border: 1px solid var(--border-color); padding: 8px; background-color: var(--surface-tertiary);">Jobfit</th>
+              <th style="border: 1px solid var(--border-color); padding: 8px; background-color: var(--surface-tertiary);">Integrity</th>
+              <th style="border: 1px solid var(--border-color); padding: 8px; background-color: var(--surface-tertiary);">People</th>
+              <th style="border: 1px solid var(--border-color); padding: 8px; background-color: var(--surface-tertiary);">Workethic</th>
+              <th style="border: 1px solid var(--border-color); padding: 8px; background-color: var(--surface-tertiary);">Excellence</th>
+              <th style="border: 1px solid var(--border-color); padding: 8px; background-color: var(--surface-tertiary);">Longevity</th>
+              <th style="border: 1px solid var(--border-color); padding: 8px; background-color: var(--surface-tertiary);">Last Evaluated</th>
             </tr>
           </thead>
           <tbody>
             ${rankedEmployees.map(tech => `
               <tr>
-                <td style="border: 1px solid #ddd; padding: 8px;">${tech.name}</td>
-                <td style="border: 1px solid #ddd; padding: 8px; text-align: center; font-weight: bold;">${tech.category}</td>
-                <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">${tech.averageScore.toFixed(2)}</td>
-                <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">${tech.latestEval.ratings.leadership || 'N/A'}</td>
-                <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">${tech.latestEval.ratings.culture || 'N/A'}</td>
-                <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">${tech.latestEval.ratings.jobfit || 'N/A'}</td>
-                <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">${tech.latestEval.ratings.integrity || 'N/A'}</td>
-                <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">${tech.latestEval.ratings.people || 'N/A'}</td>
-                <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">${tech.latestEval.ratings.workethic || 'N/A'}</td>
-                <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">${tech.latestEval.ratings.excellence || 'N/A'}</td>
-                <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">${tech.latestEval.ratings.longevity || 'N/A'}</td>
-                <td style="border: 1px solid #ddd; padding: 8px;">${formatDate(tech.latestEval?.createdAt)}</td>
+                <td style="border: 1px solid var(--border-color); padding: 8px;">${tech.name}</td>
+                <td style="border: 1px solid var(--border-color); padding: 8px; text-align: center; font-weight: bold;">${tech.category}</td>
+                <td style="border: 1px solid var(--border-color); padding: 8px; text-align: center;">${tech.averageScore.toFixed(2)}</td>
+                <td style="border: 1px solid var(--border-color); padding: 8px; text-align: center;">${tech.latestEval.ratings.leadership || 'N/A'}</td>
+                <td style="border: 1px solid var(--border-color); padding: 8px; text-align: center;">${tech.latestEval.ratings.culture || 'N/A'}</td>
+                <td style="border: 1px solid var(--border-color); padding: 8px; text-align: center;">${tech.latestEval.ratings.jobfit || 'N/A'}</td>
+                <td style="border: 1px solid var(--border-color); padding: 8px; text-align: center;">${tech.latestEval.ratings.integrity || 'N/A'}</td>
+                <td style="border: 1px solid var(--border-color); padding: 8px; text-align: center;">${tech.latestEval.ratings.people || 'N/A'}</td>
+                <td style="border: 1px solid var(--border-color); padding: 8px; text-align: center;">${tech.latestEval.ratings.workethic || 'N/A'}</td>
+                <td style="border: 1px solid var(--border-color); padding: 8px; text-align: center;">${tech.latestEval.ratings.excellence || 'N/A'}</td>
+                <td style="border: 1px solid var(--border-color); padding: 8px; text-align: center;">${tech.latestEval.ratings.longevity || 'N/A'}</td>
+                <td style="border: 1px solid var(--border-color); padding: 8px;">${formatDate(tech.latestEval?.createdAt)}</td>
               </tr>
             `).join('')}
           </tbody>
@@ -400,10 +400,10 @@ const Evaluations = () => {
           <title>20/70/10 Report - ${reportDate}</title>
           <style>
             body {
-              background-color: white;
+              background-color: var(--surface-color);
               font-family: Arial, sans-serif;
               padding: 20px;
-              color: #000;
+              color: var(--text-primary);
             }
             .print-page {
               page-break-after: always;
@@ -415,13 +415,13 @@ const Evaluations = () => {
             h1 {
               font-size: 24px;
               margin-bottom: 10px;
-              color: #000;
+              color: var(--text-primary);
             }
             h2 {
               font-size: 20px;
               margin-bottom: 20px;
-              color: #333;
-              border-bottom: 2px solid #333;
+              color: var(--text-primary);
+              border-bottom: 2px solid var(--text-primary);
               padding-bottom: 10px;
             }
             table {
@@ -430,12 +430,12 @@ const Evaluations = () => {
               margin-bottom: 30px;
             }
             th, td {
-              border: 1px solid #ddd;
+              border: 1px solid var(--border-color);
               padding: 8px;
               text-align: left;
             }
             th {
-              background-color: #f2f2f2;
+              background-color: var(--surface-tertiary);
               font-weight: bold;
             }
             .report-header {
