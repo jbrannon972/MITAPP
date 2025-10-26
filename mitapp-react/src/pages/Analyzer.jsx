@@ -17,10 +17,15 @@ const Analyzer = () => {
 
   const loadHistoricalData = async () => {
     try {
-      const data = await firebaseService.getDocument('hou_analyzer', 'daily_stats');
-      if (data && data.stats) {
-        setHistoricalData(data.stats || []);
-      }
+      // Load all daily stats from collection
+      const stats = await firebaseService.getCollection('hou_daily_stats');
+      // Sort by date descending
+      const sortedStats = stats.sort((a, b) => {
+        const dateA = a.id || '';
+        const dateB = b.id || '';
+        return dateB.localeCompare(dateA);
+      });
+      setHistoricalData(sortedStats);
     } catch (error) {
       console.error('Error loading historical data:', error);
     }
@@ -238,24 +243,110 @@ const Analyzer = () => {
     </div>
   );
 
-  const renderDashboardView = () => (
-    <div className="card">
-      <div className="card-header">
-        <h3><i className="fas fa-tachometer-alt"></i> Global Dashboard</h3>
+  const renderDashboardView = () => {
+    // Calculate aggregated statistics
+    const totalDays = historicalData.length;
+    const totalJobsAllTime = historicalData.reduce((sum, stat) => sum + (stat.totalJobs || 0), 0);
+    const totalTechHoursAllTime = historicalData.reduce((sum, stat) => sum + (stat.totalTechHours || 0), 0);
+    const avgJobsPerDay = totalDays > 0 ? (totalJobsAllTime / totalDays).toFixed(1) : 0;
+    const avgTechHoursPerDay = totalDays > 0 ? (totalTechHoursAllTime / totalDays).toFixed(1) : 0;
+
+    // Get recent 7 days stats
+    const recent7Days = historicalData.slice(0, 7);
+
+    return (
+      <div>
+        <div className="card">
+          <div className="card-header">
+            <h3><i className="fas fa-tachometer-alt"></i> Global Dashboard</h3>
+          </div>
+          <div style={{ padding: '20px' }}>
+            <div className="dashboard-grid">
+              <div className="metric-card">
+                <div className="metric-header">
+                  <h3><i className="fas fa-calendar-check"></i> Total Days Tracked</h3>
+                </div>
+                <div className="metric-value">{totalDays}</div>
+                <div className="metric-label">Days with saved stats</div>
+              </div>
+
+              <div className="metric-card">
+                <div className="metric-header">
+                  <h3><i className="fas fa-clipboard-list"></i> Total Jobs</h3>
+                </div>
+                <div className="metric-value">{totalJobsAllTime}</div>
+                <div className="metric-label">Across all tracked days</div>
+              </div>
+
+              <div className="metric-card">
+                <div className="metric-header">
+                  <h3><i className="fas fa-clock"></i> Total Tech Hours</h3>
+                </div>
+                <div className="metric-value">{totalTechHoursAllTime.toFixed(0)}</div>
+                <div className="metric-label">Across all tracked days</div>
+              </div>
+
+              <div className="metric-card">
+                <div className="metric-header">
+                  <h3><i className="fas fa-chart-line"></i> Avg Jobs/Day</h3>
+                </div>
+                <div className="metric-value">{avgJobsPerDay}</div>
+                <div className="metric-label">Average per day</div>
+              </div>
+
+              <div className="metric-card">
+                <div className="metric-header">
+                  <h3><i className="fas fa-user-clock"></i> Avg Hours/Day</h3>
+                </div>
+                <div className="metric-value">{avgTechHoursPerDay}</div>
+                <div className="metric-label">Tech hours per day</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {recent7Days.length > 0 && (
+          <div className="card" style={{ marginTop: '24px' }}>
+            <div className="card-header">
+              <h3><i className="fas fa-calendar-week"></i> Last 7 Days</h3>
+            </div>
+            <div className="table-container">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Total Jobs</th>
+                    <th>Tech Hours</th>
+                    <th>Labor Hours</th>
+                    <th>DT Hours</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {recent7Days.map((stat, index) => (
+                    <tr key={index}>
+                      <td><strong>{stat.id || stat.date || 'N/A'}</strong></td>
+                      <td>{(stat.totalJobs || 0) + (stat.sameDayInstallCount || 0)}</td>
+                      <td>{stat.totalTechHours || 0}</td>
+                      <td>{stat.totalLaborHours || 0}</td>
+                      <td>{stat.dtLaborHours || 0}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
       </div>
-      <div style={{ padding: '20px' }}>
-        <p>Global dashboard with charts and analytics coming soon.</p>
-        <p style={{ marginTop: '12px', color: '#6b7280' }}>
-          This will show comprehensive analytics across all job data, trends, and performance metrics.
-        </p>
-      </div>
-    </div>
-  );
+    );
+  };
 
   const renderHistoryView = () => (
     <div className="card">
       <div className="card-header">
         <h3><i className="fas fa-history"></i> Historical Data</h3>
+        <span style={{ fontSize: '14px', color: '#6b7280' }}>
+          {historicalData.length} days of data
+        </span>
       </div>
       <div className="table-container">
         {historicalData.length > 0 ? (
@@ -264,26 +355,46 @@ const Analyzer = () => {
               <tr>
                 <th>Date</th>
                 <th>Total Jobs</th>
+                <th>Tech Hours</th>
+                <th>Labor Hours</th>
+                <th>DT Hours</th>
                 <th>Job Types</th>
-                <th>Cities</th>
-                <th>File Name</th>
+                <th>Time Frames</th>
               </tr>
             </thead>
             <tbody>
               {historicalData.map((stat, index) => (
                 <tr key={index}>
-                  <td><strong>{stat.date}</strong></td>
-                  <td>{stat.totalJobs}</td>
-                  <td>{Object.keys(stat.jobsByType || {}).length}</td>
-                  <td>{Object.keys(stat.jobsByCity || {}).length}</td>
-                  <td>{stat.fileName || 'N/A'}</td>
+                  <td><strong>{stat.id || stat.date || 'N/A'}</strong></td>
+                  <td>{(stat.totalJobs || 0) + (stat.sameDayInstallCount || 0)}</td>
+                  <td>{stat.totalTechHours || 0}</td>
+                  <td>{stat.totalLaborHours || 0}</td>
+                  <td>{stat.dtLaborHours || 0}</td>
+                  <td>
+                    {stat.jobTypeCounts ? (
+                      <div style={{ fontSize: '12px' }}>
+                        {Object.entries(stat.jobTypeCounts).map(([type, count]) => (
+                          <div key={type}>{type}: {count}</div>
+                        ))}
+                      </div>
+                    ) : 'N/A'}
+                  </td>
+                  <td>
+                    {stat.timeFrameCounts ? (
+                      <div style={{ fontSize: '12px' }}>
+                        {Object.entries(stat.timeFrameCounts).map(([frame, count]) => (
+                          <div key={frame}>{frame}: {count}</div>
+                        ))}
+                      </div>
+                    ) : 'N/A'}
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         ) : (
           <p style={{ padding: '20px', textAlign: 'center' }}>
-            No historical data available. Analyze and save some daily stats to see history here.
+            No historical data available. Job stats are automatically saved when you use the job analyzer on the Dashboard.
           </p>
         )}
       </div>
