@@ -5,6 +5,7 @@ import { useData } from '../contexts/DataContext';
 import ZoneCard from '../components/team/ZoneCard';
 import EditProfileModal from '../components/team/EditProfileModal';
 import DriverLeaderboard from '../components/team/DriverLeaderboard';
+import Evaluations from '../components/team/Evaluations';
 import { getTotalStaff, getMITTechCount, getDemoTechCount } from '../utils/calculations';
 import { exportToCSV, prepareTeamDataForExport } from '../utils/exportUtils';
 import firebaseService from '../services/firebaseService';
@@ -305,6 +306,12 @@ const Team = () => {
                 <i className="fas fa-trophy"></i> Driver Leaderboard
               </button>
               <button
+                className={'sub-nav-btn ' + (activeView === 'evaluation' ? 'active' : '')}
+                onClick={() => setActiveView('evaluation')}
+              >
+                <i className="fas fa-clipboard-check"></i> 20/70/10
+              </button>
+              <button
                 className={'sub-nav-btn ' + (activeView === 'roster' ? 'active' : '')}
                 onClick={() => setActiveView('roster')}
               >
@@ -413,6 +420,12 @@ const Team = () => {
         {activeView === 'leaderboard' && (
           <div className="team-view active">
             <DriverLeaderboard />
+          </div>
+        )}
+
+        {activeView === 'evaluation' && (
+          <div className="team-view active">
+            <Evaluations />
           </div>
         )}
 
