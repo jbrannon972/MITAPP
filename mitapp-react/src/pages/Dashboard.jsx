@@ -305,26 +305,26 @@ const Dashboard = () => {
                       <>
                         {/* Install Windows Left Section */}
                         {dashboardData.secondShiftReport.report.installWindowsLeft && dashboardData.secondShiftReport.report.installWindows && (
-                          <div style={{ padding: '16px', borderBottom: '1px solid var(--border-color)' }}>
+                          <div style={{ padding: '12px', borderBottom: '1px solid var(--border-color)' }}>
                             <h4><i className="fas fa-calendar-alt"></i> Install Windows Left</h4>
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginTop: '12px' }}>
-                              <div style={{ padding: '12px', backgroundColor: 'var(--background-color)', borderRadius: 'var(--radius-md)', textAlign: 'center' }}>
-                                <div style={{ fontSize: '24px', fontWeight: 'bold', color: 'var(--primary-color)' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', marginTop: '8px' }}>
+                              <div style={{ padding: '8px', backgroundColor: 'var(--background-color)', borderRadius: 'var(--radius-md)', textAlign: 'center' }}>
+                                <div style={{ fontSize: '20px', fontWeight: 'bold', color: 'var(--primary-color)' }}>
                                   {dashboardData.secondShiftReport.report.installWindows['2-5'] || 0}
                                 </div>
-                                <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>2-5 PM</div>
+                                <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>2-5 PM</div>
                               </div>
-                              <div style={{ padding: '12px', backgroundColor: 'var(--background-color)', borderRadius: 'var(--radius-md)', textAlign: 'center' }}>
-                                <div style={{ fontSize: '24px', fontWeight: 'bold', color: 'var(--primary-color)' }}>
+                              <div style={{ padding: '8px', backgroundColor: 'var(--background-color)', borderRadius: 'var(--radius-md)', textAlign: 'center' }}>
+                                <div style={{ fontSize: '20px', fontWeight: 'bold', color: 'var(--primary-color)' }}>
                                   {dashboardData.secondShiftReport.report.installWindows['5-8'] || 0}
                                 </div>
-                                <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>5-8 PM</div>
+                                <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>5-8 PM</div>
                               </div>
-                              <div style={{ padding: '12px', backgroundColor: 'var(--background-color)', borderRadius: 'var(--radius-md)', textAlign: 'center' }}>
-                                <div style={{ fontSize: '24px', fontWeight: 'bold', color: 'var(--primary-color)' }}>
+                              <div style={{ padding: '8px', backgroundColor: 'var(--background-color)', borderRadius: 'var(--radius-md)', textAlign: 'center' }}>
+                                <div style={{ fontSize: '20px', fontWeight: 'bold', color: 'var(--primary-color)' }}>
                                   {dashboardData.secondShiftReport.report.installWindows['6-9'] || 0}
                                 </div>
-                                <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>6-9 PM</div>
+                                <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>6-9 PM</div>
                               </div>
                             </div>
                           </div>
@@ -332,13 +332,13 @@ const Dashboard = () => {
 
                         {/* Demo Requested Section */}
                         {dashboardData.secondShiftReport.report.demoRequested && dashboardData.secondShiftReport.report.demoJobs && dashboardData.secondShiftReport.report.demoJobs.length > 0 && (
-                          <div style={{ padding: '16px', borderBottom: '1px solid var(--border-color)' }}>
+                          <div style={{ padding: '12px', borderBottom: '1px solid var(--border-color)' }}>
                             <h4><i className="fas fa-hammer"></i> Demo Requested</h4>
-                            <ul style={{ marginTop: '8px' }}>
+                            <ul style={{ marginTop: '6px', fontSize: '12px' }}>
                               {dashboardData.secondShiftReport.report.demoJobs.map((job, idx) => (
                                 <li key={idx}>
                                   <strong>{job.jobName}:</strong> {job.notes}
-                                  {job.damageReported && <span style={{ color: 'var(--danger-color)', marginLeft: '8px' }}>(Damage Reported)</span>}
+                                  {job.damageReported && <span style={{ color: 'var(--danger-color)', marginLeft: '6px' }}>(Damage Reported)</span>}
                                 </li>
                               ))}
                             </ul>
@@ -347,9 +347,9 @@ const Dashboard = () => {
 
                         {/* Jobs Pushed Section */}
                         {dashboardData.secondShiftReport.report.jobsPushed && (
-                          <div style={{ padding: '16px', borderBottom: '1px solid var(--border-color)' }}>
+                          <div style={{ padding: '12px', borderBottom: '1px solid var(--border-color)' }}>
                             <h4><i className="fas fa-arrow-right"></i> Jobs Pushed to Next Day</h4>
-                            <p style={{ fontSize: '18px', fontWeight: 'bold', marginTop: '8px' }}>
+                            <p style={{ fontSize: '16px', fontWeight: 'bold', marginTop: '6px' }}>
                               {dashboardData.secondShiftReport.report.pushedJobsCount || 0} job(s)
                             </p>
                           </div>
@@ -465,8 +465,8 @@ const Dashboard = () => {
           className="dashboard-view"
           style={{ display: activeView === 'warehouse-dashboard' ? 'block' : 'none' }}
         >
-          <div className="dashboard-main-grid" style={{ gridTemplateColumns: '1fr', gap: '24px' }}>
-            <div className="dashboard-top-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)', gap: '24px' }}>
+          <div className="dashboard-main-grid" style={{ gridTemplateColumns: '1fr', gap: '16px' }}>
+            <div className="dashboard-top-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }}>
               <div className="card list-card">
                 <div className="card-header">
                   <h3><i className="fas fa-tools"></i> Vehicles in Repair</h3>
@@ -527,7 +527,7 @@ const Dashboard = () => {
               </div>
             </div>
 
-            <div className="dashboard-main-grid" style={{ gridTemplateColumns: '2fr 1fr', gap: '24px' }}>
+            <div className="dashboard-main-grid" style={{ gridTemplateColumns: '2fr 1fr', gap: '16px' }}>
               <div className="card full-width-card">
                 <div className="card-header">
                   <h3><i className="fas fa-clipboard-check"></i> At a Glance</h3>

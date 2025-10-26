@@ -1195,10 +1195,24 @@ body {
 .status-closed { background: var(--status-closed-bg); color: var(--status-closed-text); }
 
 /* ==================== DASHBOARD SPECIFIC ==================== */
+/* Compact dashboard cards */
+#dashboard-tab .card {
+    padding: 12px;
+}
+
+#dashboard-tab .card-header {
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+}
+
+#dashboard-tab .card-header h3 {
+    font-size: 14px;
+}
+
 .dashboard-main-grid {
     display: grid;
     grid-template-columns: 1fr;
-    gap: 20px;
+    gap: 16px;
 }
 
 .dashboard-header {
@@ -1247,19 +1261,19 @@ body {
 .dashboard-main-content, .dashboard-sidebar {
     display: flex;
     flex-direction: column;
-    gap: 20px;
+    gap: 16px;
 }
 
 .dashboard-top-grid {
     display: grid;
     grid-template-columns: 1fr;
-    gap: 20px;
+    gap: 16px;
 }
 
 .glance-grid {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 8px;
 }
 
 .glance-item {
@@ -1267,13 +1281,13 @@ body {
     justify-content: space-between;
     align-items: center;
     background: var(--surface-secondary);
-    padding: 10px 12px;
+    padding: 8px 10px;
     border-radius: var(--radius-md);
     border-left: 3px solid var(--primary-color);
 }
 
 .glance-value {
-    font-size: 20px;
+    font-size: 18px;
     font-weight: 700;
     font-family: 'Outfit', sans-serif;
 }
@@ -1282,20 +1296,20 @@ body {
     font-weight: 500;
     text-align: right;
     color: var(--text-secondary);
-    font-size: 13px;
+    font-size: 12px;
 }
 
 .glance-grid-two-col {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 10px;
+    gap: 8px;
 }
 
 #todays-stats-content .stats-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 10px;
-    margin-bottom: 14px;
+    gap: 8px;
+    margin-bottom: 12px;
     text-align: center;
 }
 
@@ -1307,38 +1321,38 @@ body {
 }
 
 #todays-stats-content .stat-item .stat-value {
-    font-size: 22px;
+    font-size: 20px;
     font-weight: 700;
     font-family: 'Outfit', sans-serif;
 }
 
 #todays-stats-content .stat-item .stat-value small {
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 400;
     color: var(--text-muted);
 }
 
 #todays-stats-content .breakdown-section {
-    margin-top: 10px;
+    margin-top: 8px;
 }
 
 #todays-stats-content .breakdown-section h4 {
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 600;
-    margin-bottom: 6px;
+    margin-bottom: 5px;
 }
 
 #todays-stats-content .breakdown-list {
     list-style: none;
     padding: 0;
     margin: 0;
-    font-size: 13px;
+    font-size: 12px;
 }
 
 #todays-stats-content .breakdown-item {
     display: flex;
     justify-content: space-between;
-    padding: 4px 0;
+    padding: 3px 0;
     border-bottom: 1px solid var(--border-color);
 }
 
@@ -1357,33 +1371,33 @@ body {
 .breakdown-grid {
     display: grid;
     grid-template-columns: 1fr;
-    gap: 20px;
+    gap: 12px;
 }
 
 .staffing-info-list {
     display: flex;
     flex-direction: column;
-    gap: 7px;
+    gap: 6px;
 }
 
 .staff-off-item {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 8px 12px;
+    padding: 6px 10px;
     border-radius: var(--radius-md);
     background-color: var(--surface-secondary);
 }
 
 .staff-off-item .staff-name {
     font-weight: 500;
-    font-size: 13px;
+    font-size: 12px;
 }
 
 .staff-status-badge {
     font-size: 10px;
     font-weight: 600;
-    padding: 4px 8px;
+    padding: 3px 7px;
     border-radius: var(--radius-full);
     color: white;
 }
@@ -1395,31 +1409,31 @@ body {
 .status-no-call-no-show .staff-status-badge { background-color: var(--text-primary); }
 
 .second-shift-summary .card-header span {
-    font-size: 13px;
+    font-size: 12px;
     color: var(--text-secondary);
     font-weight: 500;
 }
 
 .second-shift-summary .summary-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: 14px;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 10px;
 }
 
 .second-shift-summary h4 {
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 600;
     color: var(--text-primary);
-    margin-bottom: 7px;
+    margin-bottom: 6px;
     border-bottom: 1px solid var(--border-color);
-    padding-bottom: 4px;
+    padding-bottom: 3px;
 }
 
 .second-shift-summary p, .second-shift-summary ul {
     margin: 0;
     padding: 0;
     color: var(--text-secondary);
-    font-size: 13px;
+    font-size: 12px;
 }
 
 .second-shift-summary ul {
@@ -1444,9 +1458,9 @@ body {
 .no-entries {
     color: var(--text-muted);
     font-style: italic;
-    padding: 14px;
+    padding: 10px;
     text-align: center;
-    font-size: 13px;
+    font-size: 12px;
 }
 
 .sub-nav {
@@ -1555,11 +1569,11 @@ body {
     font-style: italic;
     color: var(--text-secondary);
     border-left: 3px solid var(--primary-color);
-    padding: 10px 14px;
+    padding: 8px 12px;
     background-color: var(--light-peach-bg);
     border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
-    line-height: 1.5;
-    font-size: 13px;
+    line-height: 1.4;
+    font-size: 12px;
 }
 
 .dashboard-notes strong {
@@ -1575,21 +1589,22 @@ body {
 .vehicle-list {
     display: flex;
     flex-direction: column;
-    gap: 7px;
+    gap: 6px;
 }
 
-.vehicle-list-item {
+.vehicle-list-item, .vehicle-item {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 8px 12px;
+    padding: 6px 10px;
     border-radius: var(--radius-md);
     background-color: var(--surface-secondary);
+    font-size: 12px;
 }
 
 .vehicle-list-item .name {
     font-weight: 500;
-    font-size: 13px;
+    font-size: 12px;
 }
 
 .vehicle-list-item .detail {
@@ -1970,6 +1985,27 @@ input:checked + .slider:before {
         box-shadow: none;
         max-height: none;
     }
+
+    /* Tablet dashboard improvements */
+    #dashboard-tab .card {
+        padding: 11px;
+    }
+
+    .glance-grid-two-col {
+        gap: 7px;
+    }
+
+    .dashboard-main-grid {
+        gap: 14px;
+    }
+
+    .dashboard-top-grid {
+        gap: 14px;
+    }
+
+    .dashboard-main-content, .dashboard-sidebar {
+        gap: 14px;
+    }
 }
 
 @media (max-width: 480px) {
@@ -1987,6 +2023,91 @@ input:checked + .slider:before {
 
     .team-stats {
         grid-template-columns: 1fr;
+    }
+
+    /* Mobile-specific dashboard improvements */
+    #dashboard-tab .card {
+        padding: 10px;
+    }
+
+    #dashboard-tab .card-header {
+        margin-bottom: 8px;
+        padding-bottom: 6px;
+    }
+
+    #dashboard-tab .card-header h3 {
+        font-size: 13px;
+    }
+
+    .glance-grid-two-col {
+        grid-template-columns: 1fr;
+        gap: 6px;
+    }
+
+    .glance-item {
+        padding: 6px 8px;
+    }
+
+    .glance-value {
+        font-size: 16px;
+    }
+
+    .glance-label {
+        font-size: 11px;
+    }
+
+    #todays-stats-content .stat-item .stat-value {
+        font-size: 18px;
+    }
+
+    #todays-stats-content .stat-item .stat-value small {
+        font-size: 9px;
+    }
+
+    .staff-off-item {
+        padding: 5px 8px;
+    }
+
+    .staff-off-item .staff-name {
+        font-size: 11px;
+    }
+
+    .staff-status-badge {
+        font-size: 9px;
+        padding: 2px 6px;
+    }
+
+    .second-shift-summary .summary-grid {
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+
+    .second-shift-summary h4 {
+        font-size: 12px;
+    }
+
+    .second-shift-summary p, .second-shift-summary ul {
+        font-size: 11px;
+    }
+
+    .breakdown-grid {
+        gap: 10px;
+    }
+
+    #todays-stats-content .breakdown-list {
+        font-size: 11px;
+    }
+
+    .dashboard-main-grid {
+        gap: 12px;
+    }
+
+    .dashboard-top-grid {
+        gap: 12px;
+    }
+
+    .dashboard-main-content, .dashboard-sidebar {
+        gap: 12px;
     }
 }
 
