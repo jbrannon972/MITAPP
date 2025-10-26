@@ -102,13 +102,13 @@ const SecondShiftReportForm = ({ onClose, onSubmitSuccess }) => {
   };
 
   return (
-    <div className="modal-overlay" style={{ display: 'flex', zIndex: 1000 }} onClick={onClose}>
-      <div className="modal-dialog" style={{ maxWidth: '900px', maxHeight: '90vh', overflow: 'auto' }} onClick={(e) => e.stopPropagation()}>
+    <div className="modal-overlay active" onClick={onClose}>
+      <div className="modal-dialog" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h2><i className="fas fa-moon"></i> Second Shift Report</h2>
+          <h3><i className="fas fa-moon"></i> Second Shift Report</h3>
           <button className="close-btn" onClick={onClose}>&times;</button>
         </div>
-        <div className="modal-body">
+        <div className="modal-body" style={{ maxHeight: '60vh', overflowY: 'auto' }}>
           <div className="form-group">
             <label htmlFor="reportDate">Report Date</label>
             <input

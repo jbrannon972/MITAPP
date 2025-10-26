@@ -34,7 +34,9 @@ const Dashboard = () => {
   const loadDashboardData = async () => {
     try {
       setLoading(true);
-      const date = new Date(selectedDate);
+      // Parse the date correctly in local timezone
+      const [yearNum, monthNum, dayNum] = selectedDate.split('-').map(Number);
+      const date = new Date(yearNum, monthNum - 1, dayNum); // month is 0-indexed in JS
       const month = date.getMonth();
       const year = date.getFullYear();
 

@@ -18,7 +18,7 @@ const Analyzer = () => {
   const loadHistoricalData = async () => {
     try {
       // Load all daily stats from collection
-      const stats = await firebaseService.getCollection('hou_daily_stats');
+      const stats = await firebaseService.getCollection('analyzer_daily_stats');
       // Sort by date descending
       const sortedStats = stats.sort((a, b) => {
         const dateA = a.id || '';

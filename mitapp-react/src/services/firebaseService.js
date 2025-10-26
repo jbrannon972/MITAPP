@@ -394,7 +394,7 @@ class FirebaseService {
   // Get daily stats (from job analyzer)
   async getDailyStats(dateString) {
     try {
-      const docRef = doc(db, 'hou_daily_stats', dateString);
+      const docRef = doc(db, 'analyzer_daily_stats', dateString);
       const docSnap = await getDoc(docRef);
       return docSnap.exists() ? docSnap.data() : null;
     } catch (error) {
