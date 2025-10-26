@@ -169,25 +169,21 @@ const Evaluations = () => {
 
   const openEvalModal = (tech = null) => {
     if (tech) {
-      const latestEval = allEvaluations[tech.id];
+      // Pre-select the employee but start with blank form for new evaluation
       setSelectedTech(tech);
       setEvalFormData({
         technicianId: tech.id,
-        evaluationDate: latestEval?.createdAt ?
-          new Date(latestEval.createdAt.seconds * 1000).toISOString().split('T')[0] :
-          new Date().toISOString().split('T')[0],
-        ratings: latestEval?.ratings || {
+        evaluationDate: new Date().toISOString().split('T')[0],
+        ratings: {
           leadership: '', culture: '', jobfit: '', integrity: '',
           people: '', workethic: '', excellence: '', longevity: ''
         },
-        trainingOpportunities: latestEval?.trainingOpportunities || '',
-        observations: latestEval?.observations || '',
-        developmentPlan: latestEval?.developmentPlan || '',
-        planDocumentLink: latestEval?.planDocumentLink || '',
-        planStart: latestEval?.planStart ?
-          new Date(latestEval.planStart.seconds * 1000).toISOString().split('T')[0] : '',
-        planEnd: latestEval?.planEnd ?
-          new Date(latestEval.planEnd.seconds * 1000).toISOString().split('T')[0] : ''
+        trainingOpportunities: '',
+        observations: '',
+        developmentPlan: '',
+        planDocumentLink: '',
+        planStart: '',
+        planEnd: ''
       });
     } else {
       setSelectedTech(null);
@@ -321,7 +317,7 @@ const Evaluations = () => {
                     History
                   </button>
                   <button className="btn btn-primary btn-small" onClick={() => openEvalModal(tech)}>
-                    New/Edit
+                    New Eval
                   </button>
                 </div>
               </div>
@@ -380,7 +376,7 @@ const Evaluations = () => {
                         History
                       </button>
                       <button className="btn btn-primary btn-small" onClick={() => openEvalModal(tech)}>
-                        New/Edit
+                        New Eval
                       </button>
                     </td>
                   </tr>
