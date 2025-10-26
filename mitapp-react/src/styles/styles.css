@@ -47,7 +47,9 @@
     --success-color: #10b981;
     --warning-color: #f59e0b;
     --danger-color: #ef4444;
+    --danger-dark: #dc2626;
     --info-color: #3b82f6;
+    --info-dark: #2563eb;
 
     /* Status Backgrounds */
     --warning-bg: #fffbeb;
@@ -56,6 +58,29 @@
     --orange-bg: #fff7ed;
     --peach-bg: #fffaf7;
     --light-peach-bg: #fffaf5;
+
+    /* Additional UI Colors */
+    --hover-bg: rgba(248, 123, 77, 0.08);
+    --hover-bg-light: rgba(248, 123, 77, 0.05);
+    --focus-ring: rgba(248, 123, 77, 0.1);
+    --active-bg: #eff6ff;
+    --disabled-bg: #f1f5f9;
+    --slider-bg: #cce5ff;
+    --slider-track: #cbd5e1;
+    --border-light: #d1d5db;
+    --success-bg: #f0fdf4;
+    --teal-bg: #e0f2f1;
+    --light-pink-bg: #fef3f0;
+
+    /* Status Badge Colors */
+    --status-pending-bg: #fef3c7;
+    --status-pending-text: #b45309;
+    --status-in-progress-bg: #dbeafe;
+    --status-in-progress-text: #1e40af;
+    --status-resolved-bg: #dcfce7;
+    --status-resolved-text: #15803d;
+    --status-closed-bg: #f1f5f9;
+    --status-closed-text: #64748b;
 }
 
 /* Dark Mode - Matches Claude's Dark Theme */
@@ -99,6 +124,29 @@ body.dark-mode {
     --orange-bg: #3d2a1f;
     --peach-bg: #3d2619;
     --light-peach-bg: #3d2819;
+
+    /* Additional UI Colors for Dark Mode */
+    --hover-bg: rgba(248, 123, 77, 0.12);
+    --hover-bg-light: rgba(248, 123, 77, 0.08);
+    --focus-ring: rgba(248, 123, 77, 0.2);
+    --active-bg: #1e293b;
+    --disabled-bg: #1f2937;
+    --slider-bg: #3b5a7a;
+    --slider-track: #475569;
+    --border-light: #52525b;
+    --success-bg: #1f4d2e;
+    --teal-bg: #1e4d4a;
+    --light-pink-bg: #4a2d29;
+
+    /* Status Badge Colors for Dark Mode */
+    --status-pending-bg: #4a3f1f;
+    --status-pending-text: #fbbf24;
+    --status-in-progress-bg: #1e3a5f;
+    --status-in-progress-text: #60a5fa;
+    --status-resolved-bg: #1f4d2e;
+    --status-resolved-text: #34d399;
+    --status-closed-bg: #2d3748;
+    --status-closed-text: #94a3b8;
 }
 
 body {
@@ -180,7 +228,7 @@ body {
 .year-selector:focus {
     outline: none;
     border-color: var(--primary-color);
-    box-shadow: 0 0 0 3px rgba(248, 123, 77, 0.1);
+    box-shadow: 0 0 0 3px var(--focus-ring);
 }
 
 .nav-btn {
@@ -200,7 +248,7 @@ body {
 }
 
 .nav-btn:hover {
-    background: rgba(248, 123, 77, 0.08);
+    background: var(--hover-bg);
     color: var(--primary-color);
     transform: scale(1.02);
 }
@@ -276,7 +324,7 @@ body {
 }
 
 .btn-danger:hover {
-    background: #dc2626;
+    background: var(--danger-dark);
 }
 
 .btn-info {
@@ -285,7 +333,7 @@ body {
 }
 
 .btn-info:hover {
-    background-color: #2563eb;
+    background-color: var(--info-dark);
 }
 
 .btn-small {
@@ -358,7 +406,7 @@ body {
 
 .card:hover {
     box-shadow: var(--shadow-sm);
-    border-color: #d1d5db;
+    border-color: var(--border-light);
 }
 
 .card-header {
@@ -481,7 +529,7 @@ body {
     height: 280px;
     width: 100%;
     padding: 14px;
-    background: #fafbfc;
+    background: var(--background-color);
     border-radius: var(--radius-md);
     margin-top: 14px;
 }
@@ -613,11 +661,11 @@ body {
 .form-input:focus, .form-control:focus {
     outline: none;
     border-color: var(--primary-color);
-    box-shadow: 0 0 0 3px rgba(248, 123, 77, 0.1);
+    box-shadow: 0 0 0 3px var(--focus-ring);
 }
 
 .calculated-value {
-    background: #fef3f0;
+    background: var(--light-pink-bg);
     border: 1.5px solid var(--primary-color);
     border-radius: var(--radius-md);
     padding: 10px 14px;
@@ -788,7 +836,7 @@ body {
 .member-role {
     font-size: 11px;
     color: var(--text-secondary);
-    background: #e5e7eb;
+    background: var(--border-color);
     padding: 3px 8px;
     border-radius: var(--radius-sm);
 }
@@ -861,7 +909,7 @@ body {
 
 .data-table td {
     padding: 12px 14px;
-    border-bottom: 1px solid #f3f4f6;
+    border-bottom: 1px solid var(--border-color);
     font-size: 13px;
 }
 
@@ -956,7 +1004,7 @@ body {
 }
 
 .modal-close:hover {
-    background: #e5e7eb;
+    background: var(--border-color);
     color: var(--text-primary);
 }
 
@@ -972,7 +1020,7 @@ body {
     display: flex;
     justify-content: flex-end;
     gap: 10px;
-    background: #fafbfc;
+    background: var(--background-color);
     flex-shrink: 0;
 }
 
@@ -1067,7 +1115,7 @@ body {
 }
 
 .hamburger-menu:hover {
-    background: rgba(248, 123, 77, 0.08);
+    background: var(--hover-bg);
 }
 
 #main-nav-container {
@@ -1098,10 +1146,10 @@ body {
     letter-spacing: 0.3px;
 }
 
-.status-pending { background: #fef3c7; color: #b45309; }
-.status-in-progress { background: #dbeafe; color: #1e40af; }
-.status-resolved { background: #dcfce7; color: #15803d; }
-.status-closed { background: #f1f5f9; color: #64748b; }
+.status-pending { background: var(--status-pending-bg); color: var(--status-pending-text); }
+.status-in-progress { background: var(--status-in-progress-bg); color: var(--status-in-progress-text); }
+.status-resolved { background: var(--status-resolved-bg); color: var(--status-resolved-text); }
+.status-closed { background: var(--status-closed-bg); color: var(--status-closed-text); }
 
 /* ==================== DASHBOARD SPECIFIC ==================== */
 .dashboard-main-grid {
@@ -1248,7 +1296,7 @@ body {
     display: flex;
     justify-content: space-between;
     padding: 4px 0;
-    border-bottom: 1px solid #f3f4f6;
+    border-bottom: 1px solid var(--border-color);
 }
 
 #todays-stats-content .breakdown-item:last-child {
@@ -1300,8 +1348,8 @@ body {
 .status-on .staff-status-badge { background-color: var(--success-color); }
 .status-off .staff-status-badge { background-color: var(--secondary-color); }
 .status-sick .staff-status-badge { background-color: var(--danger-color); }
-.status-vacation .staff-status-badge { background-color: #3b82f6; }
-.status-no-call-no-show .staff-status-badge { background-color: #1f2937; }
+.status-vacation .staff-status-badge { background-color: var(--info-color); }
+.status-no-call-no-show .staff-status-badge { background-color: var(--text-primary); }
 
 .second-shift-summary .card-header span {
     font-size: 13px;
@@ -1389,7 +1437,7 @@ body {
 }
 
 .sub-nav-btn:hover:not(.active) {
-    background: rgba(248, 123, 77, 0.08);
+    background: var(--hover-bg);
     color: var(--primary-color);
 }
 
@@ -1434,7 +1482,7 @@ body {
 }
 
 .staffing-alert.text-danger {
-    background-color: #fef2f2;
+    background-color: var(--danger-bg);
 }
 
 .staffing-alert.text-warning {
@@ -1442,7 +1490,7 @@ body {
 }
 
 .staffing-alert.text-success {
-    background-color: #f0fdf4;
+    background-color: var(--success-bg);
 }
 
 #modalOverlay textarea.form-input {
@@ -1509,11 +1557,11 @@ body {
 
 .member-card.dragging, .zone-lead.dragging {
     opacity: 0.5;
-    background: #cce5ff;
+    background: var(--slider-bg);
 }
 
 .zone-card.drag-over {
-    background-color: #e0f2f1;
+    background-color: var(--teal-bg);
     border: 2px dashed var(--primary-color);
 }
 
@@ -1537,7 +1585,7 @@ body {
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: #cbd5e1;
+  background-color: var(--slider-track);
   transition: .3s;
 }
 
@@ -1553,11 +1601,11 @@ body {
 }
 
 input:checked + .slider {
-  background-color: #3b82f6;
+  background-color: var(--info-color);
 }
 
 input:focus + .slider {
-  box-shadow: 0 0 1px #3b82f6;
+  box-shadow: 0 0 1px var(--info-color);
 }
 
 input:checked + .slider:before {
@@ -1612,7 +1660,7 @@ input:checked + .slider:before {
 }
 
 .loader {
-    border: 3px solid #f3f4f6;
+    border: 3px solid var(--surface-tertiary);
     border-top: 3px solid var(--primary-color);
     border-radius: 50%;
     width: 40px;
@@ -1928,7 +1976,7 @@ input:checked + .slider:before {
 
 .tech-report-tab:hover {
     color: var(--primary-color);
-    background: rgba(248, 123, 77, 0.05);
+    background: var(--hover-bg-light);
 }
 
 .tech-report-tab.active {
@@ -1972,7 +2020,7 @@ input:checked + .slider:before {
 .tech-form-group textarea:focus {
     outline: none;
     border-color: var(--primary-color);
-    box-shadow: 0 0 0 3px rgba(248, 123, 77, 0.1);
+    box-shadow: 0 0 0 3px var(--focus-ring);
 }
 
 .tech-submit-btn {
@@ -2040,7 +2088,7 @@ input:checked + .slider:before {
 }
 
 .tech-add-btn:hover {
-    background: #e5e7eb;
+    background: var(--border-color);
     border-color: var(--primary-color);
     color: var(--primary-color);
 }
