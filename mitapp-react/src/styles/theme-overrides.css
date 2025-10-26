@@ -1,0 +1,623 @@
+/*
+ * Theme Overrides - Fix ALL Hard-Coded Backgrounds
+ * Ultra-Compact Design - Maximum Information Density
+ */
+
+/* ============================================
+   FIX ALL HARD-CODED LIGHT BACKGROUNDS
+   ============================================ */
+
+/* Override all hard-coded white/light backgrounds */
+.calendar-view-switcher,
+.recurring-tech-item,
+.rule-header,
+.day-selector,
+.week-day-header,
+.view-staff-item,
+.staff-compact,
+.more-indicator {
+    background-color: var(--surface-color) !important;
+}
+
+.recurring-tech-item:hover,
+.view-staff-item:hover {
+    background-color: var(--surface-hover) !important;
+}
+
+.calendar-table td:hover {
+    background-color: var(--surface-hover) !important;
+}
+
+.modal-content,
+.cal-modal .modal-content,
+.modal {
+    background-color: var(--surface-color) !important;
+}
+
+/* Fix sub-nav backgrounds */
+.sub-nav,
+.tab-header .sub-nav {
+    background-color: var(--surface-color) !important;
+    padding: 6px !important;
+    border-radius: 8px !important;
+    gap: 4px !important;
+}
+
+.sub-nav-btn {
+    background-color: transparent !important;
+    color: var(--text-secondary) !important;
+    padding: 6px 12px !important;
+    font-size: 12px !important;
+    border-radius: 6px !important;
+    transition: all 0.2s ease !important;
+}
+
+.sub-nav-btn.active {
+    background-color: var(--background-color) !important;
+    color: var(--primary-color) !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Fix all card/surface backgrounds */
+.tech-calendar-container,
+.tech-calendar-card,
+.tech-report-container,
+.warehouse-fleet-card,
+.warehouse-equipment-card,
+.warehouse-tool-card,
+.tech-team-card {
+    background: var(--surface-color) !important;
+}
+
+/* Fix status backgrounds to use CSS variables */
+.staff-on,
+.status-on {
+    background-color: rgba(16, 185, 129, 0.1) !important;
+    color: var(--success-color) !important;
+}
+
+.staff-off,
+.status-off {
+    background-color: rgba(248, 123, 77, 0.1) !important;
+    color: var(--primary-color) !important;
+}
+
+.staff-sick,
+.status-sick {
+    background-color: rgba(239, 68, 68, 0.1) !important;
+    color: var(--danger-color) !important;
+}
+
+.staff-vacation,
+.status-vacation {
+    background-color: rgba(59, 130, 246, 0.1) !important;
+    color: #3b82f6 !important;
+}
+
+.staff-no-call-no-show,
+.status-no-call-no-show {
+    background-color: rgba(107, 114, 128, 0.1) !important;
+    color: #6b7280 !important;
+}
+
+.staff-custom-hours {
+    background-color: rgba(245, 158, 11, 0.1) !important;
+    color: var(--warning-color) !important;
+}
+
+/* Fix warehouse status backgrounds */
+.status-in-repair {
+    background-color: rgba(239, 68, 68, 0.1) !important;
+    color: var(--danger-color) !important;
+}
+
+.status-warning {
+    background-color: rgba(245, 158, 11, 0.1) !important;
+    color: var(--warning-color) !important;
+}
+
+.status-available {
+    background-color: rgba(16, 185, 129, 0.1) !important;
+    color: var(--success-color) !important;
+}
+
+/* Fix view-notes background */
+.view-notes {
+    background-color: rgba(248, 123, 77, 0.08) !important;
+}
+
+/* ============================================
+   ULTRA-COMPACT DESIGN - AGGRESSIVE SPACING REDUCTION
+   ============================================ */
+
+/* Reduce card padding globally */
+.card {
+    padding: 0 !important;
+    margin-bottom: 12px !important;
+}
+
+.card-header {
+    padding: 8px 12px !important;
+    min-height: auto !important;
+}
+
+.card-header h3 {
+    font-size: 13px !important;
+    font-weight: 600 !important;
+}
+
+.card-header h3 i {
+    font-size: 12px !important;
+}
+
+/* Compact tab header */
+.tab-header {
+    padding: 8px 12px !important;
+    margin-bottom: 12px !important;
+}
+
+/* Compact tab controls */
+.tab-controls {
+    gap: 8px !important;
+}
+
+.date-picker-container {
+    gap: 6px !important;
+}
+
+.date-picker-container label {
+    font-size: 12px !important;
+    margin: 0 !important;
+}
+
+.date-input,
+.form-input,
+input[type="date"],
+input[type="text"],
+input[type="number"],
+select,
+textarea {
+    padding: 6px 10px !important;
+    font-size: 13px !important;
+}
+
+/* Compact buttons */
+.btn {
+    padding: 6px 12px !important;
+    font-size: 12px !important;
+    min-height: auto !important;
+}
+
+.btn i {
+    font-size: 11px !important;
+}
+
+.btn-small {
+    padding: 4px 8px !important;
+    font-size: 11px !important;
+}
+
+/* ============================================
+   DASHBOARD ULTRA-COMPACT
+   ============================================ */
+
+.dashboard-main-grid {
+    gap: 12px !important;
+}
+
+.dashboard-top-grid {
+    gap: 12px !important;
+}
+
+/* Compact dashboard stats */
+#todays-stats-content .stats-grid {
+    padding: 8px !important;
+    gap: 8px !important;
+}
+
+#todays-stats-content .stat-item {
+    padding: 8px !important;
+}
+
+#todays-stats-content .stat-item .stat-label {
+    font-size: 10px !important;
+    margin-bottom: 4px !important;
+}
+
+#todays-stats-content .stat-item .stat-value {
+    font-size: 18px !important;
+}
+
+#todays-stats-content .stat-item .stat-value small {
+    font-size: 10px !important;
+}
+
+/* Compact breakdowns */
+.breakdown-grid {
+    padding: 8px !important;
+    gap: 8px !important;
+}
+
+#todays-stats-content .breakdown-section {
+    padding: 8px !important;
+}
+
+#todays-stats-content .breakdown-section h4 {
+    font-size: 10px !important;
+    margin-bottom: 6px !important;
+}
+
+#todays-stats-content .breakdown-item {
+    padding: 4px 0 !important;
+}
+
+#todays-stats-content .breakdown-label {
+    font-size: 11px !important;
+}
+
+#todays-stats-content .breakdown-value {
+    font-size: 12px !important;
+    padding: 2px 6px !important;
+}
+
+/* Compact At a Glance */
+.glance-grid-two-col {
+    padding: 8px !important;
+    gap: 8px !important;
+}
+
+.glance-item {
+    padding: 10px 8px !important;
+}
+
+.glance-value {
+    font-size: 24px !important;
+    margin-bottom: 4px !important;
+}
+
+.glance-label {
+    font-size: 9px !important;
+}
+
+/* Compact staffing info */
+.staffing-info-list {
+    padding: 8px !important;
+}
+
+.staff-off-item {
+    padding: 6px 10px !important;
+    margin-bottom: 4px !important;
+}
+
+.staff-name {
+    font-size: 12px !important;
+}
+
+.staff-status-badge {
+    font-size: 10px !important;
+    padding: 3px 8px !important;
+}
+
+/* Compact notes */
+.dashboard-notes {
+    padding: 8px 10px !important;
+    margin: 0 8px 6px 8px !important;
+    font-size: 11px !important;
+}
+
+/* Compact summary grid */
+.summary-grid {
+    padding: 8px !important;
+    gap: 8px !important;
+}
+
+.summary-grid > div {
+    padding: 8px !important;
+}
+
+.summary-grid h4 {
+    font-size: 10px !important;
+    margin-bottom: 6px !important;
+}
+
+.summary-grid li,
+.summary-grid p {
+    font-size: 11px !important;
+    padding: 2px 0 !important;
+}
+
+/* Compact checklist */
+.checklist-item {
+    padding: 8px 10px !important;
+    margin-bottom: 6px !important;
+}
+
+.checklist-item-header strong {
+    font-size: 12px !important;
+}
+
+.checklist-item-header i {
+    font-size: 14px !important;
+}
+
+.checklist-item-reason {
+    font-size: 11px !important;
+    margin-left: 24px !important;
+}
+
+/* Compact win/support */
+.win-section,
+.support-section {
+    padding: 8px !important;
+    margin-bottom: 8px !important;
+}
+
+.win-section h4,
+.support-section h4 {
+    font-size: 11px !important;
+    margin-bottom: 6px !important;
+}
+
+.win-section p,
+.support-section p {
+    font-size: 12px !important;
+}
+
+.compact-section {
+    padding: 8px !important;
+}
+
+/* ============================================
+   TEAM PAGE ULTRA-COMPACT
+   ============================================ */
+
+.team-grid,
+.zones-container {
+    gap: 12px !important;
+}
+
+.zone-card,
+.tech-card {
+    padding: 0 !important;
+}
+
+.zone-header,
+.tech-card-header {
+    padding: 8px 12px !important;
+}
+
+.zone-header h3,
+.tech-card-header h3 {
+    font-size: 13px !important;
+}
+
+.tech-list {
+    padding: 8px !important;
+}
+
+.tech-item {
+    padding: 6px 10px !important;
+    margin-bottom: 4px !important;
+}
+
+.tech-name {
+    font-size: 12px !important;
+}
+
+.tech-role {
+    font-size: 10px !important;
+}
+
+/* ============================================
+   ROUTING PAGE FIXES
+   ============================================ */
+
+.routing-container {
+    padding: 12px !important;
+}
+
+.kanban-board {
+    gap: 12px !important;
+}
+
+.kanban-column {
+    background: var(--surface-color) !important;
+    padding: 0 !important;
+    min-width: 280px !important;
+}
+
+.kanban-column-header {
+    background: var(--surface-hover) !important;
+    padding: 8px 12px !important;
+}
+
+.kanban-column-header h3 {
+    font-size: 13px !important;
+}
+
+.kanban-column-body {
+    padding: 8px !important;
+}
+
+.job-card,
+.route-card {
+    background: var(--background-color) !important;
+    padding: 8px !important;
+    margin-bottom: 8px !important;
+}
+
+.job-card-header {
+    font-size: 12px !important;
+    margin-bottom: 4px !important;
+}
+
+.job-card-body {
+    font-size: 11px !important;
+}
+
+/* ============================================
+   MOBILE HEADER FIX
+   ============================================ */
+
+@media (max-width: 768px) {
+    .app-header,
+    .tech-app-header,
+    .warehouse-header {
+        padding: 8px 12px !important;
+    }
+
+    .app-header h1,
+    .tech-app-header h1 {
+        font-size: 16px !important;
+    }
+
+    .hamburger-menu {
+        width: 36px !important;
+        height: 36px !important;
+    }
+
+    .hamburger-menu i {
+        font-size: 18px !important;
+    }
+
+    /* Make nav more compact on mobile */
+    .main-nav {
+        padding: 8px !important;
+    }
+
+    .nav-btn {
+        padding: 8px 12px !important;
+        font-size: 12px !important;
+    }
+
+    /* Ultra-compact mobile dashboard */
+    .tab-header {
+        padding: 6px 10px !important;
+        flex-direction: column !important;
+        gap: 8px !important;
+    }
+
+    .sub-nav {
+        width: 100% !important;
+        justify-content: stretch !important;
+    }
+
+    .sub-nav-btn {
+        flex: 1 !important;
+        padding: 6px 8px !important;
+        font-size: 11px !important;
+    }
+
+    .tab-controls {
+        width: 100% !important;
+        flex-direction: column !important;
+        gap: 6px !important;
+    }
+
+    .date-picker-container {
+        width: 100% !important;
+    }
+
+    .date-picker-container label {
+        min-width: auto !important;
+    }
+
+    .btn {
+        width: 100% !important;
+        justify-content: center !important;
+    }
+
+    /* Mobile cards even more compact */
+    .card-header {
+        padding: 6px 10px !important;
+    }
+
+    .card-header h3 {
+        font-size: 12px !important;
+    }
+
+    #todays-stats-content .stats-grid,
+    .breakdown-grid,
+    .glance-grid-two-col,
+    .summary-grid,
+    .staffing-info-list {
+        padding: 6px !important;
+    }
+
+    #todays-stats-content .stat-item,
+    #todays-stats-content .breakdown-section,
+    .glance-item,
+    .summary-grid > div {
+        padding: 6px !important;
+    }
+
+    .staff-off-item {
+        padding: 5px 8px !important;
+    }
+}
+
+/* ============================================
+   TABLE COMPACTNESS
+   ============================================ */
+
+.data-table {
+    font-size: 12px !important;
+}
+
+.data-table th {
+    padding: 8px 10px !important;
+    font-size: 11px !important;
+}
+
+.data-table td {
+    padding: 6px 10px !important;
+    font-size: 12px !important;
+}
+
+/* ============================================
+   MODAL COMPACTNESS
+   ============================================ */
+
+.modal-header {
+    padding: 10px 14px !important;
+}
+
+.modal-header h3 {
+    font-size: 14px !important;
+}
+
+.modal-body {
+    padding: 12px 14px !important;
+}
+
+.modal-footer {
+    padding: 10px 14px !important;
+    gap: 8px !important;
+}
+
+.form-group {
+    margin-bottom: 12px !important;
+}
+
+.form-group label {
+    font-size: 12px !important;
+    margin-bottom: 4px !important;
+}
+
+/* ============================================
+   FIX CHART CONTAINER
+   ============================================ */
+
+.chart-container {
+    padding: 8px !important;
+    background: var(--surface-color) !important;
+}
+
+/* ============================================
+   NO ENTRIES STATE
+   ============================================ */
+
+.no-entries {
+    padding: 16px 12px !important;
+    font-size: 12px !important;
+}

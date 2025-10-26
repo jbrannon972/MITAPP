@@ -10,6 +10,11 @@ const SupervisorReportForm = ({ onClose, onSubmitSuccess }) => {
   const isSecondShiftLead = currentUser?.role === 'Second Shift Lead' ||
                             currentUser?.username?.toLowerCase().includes('second shift');
 
+  // Check if user has permission to submit supervisor report
+  const canSubmitSupervisorReport = currentUser?.role === 'Manager' ||
+                                     currentUser?.role === 'Supervisor' ||
+                                     currentUser?.role === 'MIT Lead';
+
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
     equipmentDeployed: true,
@@ -29,6 +34,33 @@ const SupervisorReportForm = ({ onClose, onSubmitSuccess }) => {
   // If Second Shift Lead, show the existing SecondShiftReportForm
   if (isSecondShiftLead) {
     return <SecondShiftReportForm onClose={onClose} onSubmitSuccess={onSubmitSuccess} />;
+  }
+
+  // If not authorized for supervisor report, show error
+  if (!canSubmitSupervisorReport) {
+    return (
+      <div className="modal-overlay active" onClick={onClose}>
+        <div className="modal" onClick={(e) => e.stopPropagation()}>
+          <div className="modal-header">
+            <h3>
+              <i className="fas fa-exclamation-triangle"></i> Access Denied
+            </h3>
+            <button className="modal-close" onClick={onClose}>
+              <i className="fas fa-times"></i>
+            </button>
+          </div>
+          <div className="modal-body">
+            <p>Only Managers, Supervisors, and MIT Leads can submit supervisor reports.</p>
+            <p>Your current role: <strong>{currentUser?.role || 'Unknown'}</strong></p>
+          </div>
+          <div className="modal-footer">
+            <button className="btn btn-secondary" onClick={onClose}>
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   const handleToggleChange = (field) => {
