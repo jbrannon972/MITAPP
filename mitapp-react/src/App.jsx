@@ -20,6 +20,7 @@ import TechApp from './pages/tech-app/TechApp';
 import WarehouseApp from './pages/warehouse-app/WarehouseApp';
 import './styles/styles.css';
 import './styles/theme-overrides.css';
+import './styles/aggressive-theme-fix.css';
 
 function App() {
   // Set dark theme as default on app load

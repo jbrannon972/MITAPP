@@ -4,12 +4,12 @@ import firebaseService from '../../services/firebaseService';
 const EditProfileModal = ({ person, onClose, onSave }) => {
   const [formData, setFormData] = useState({
     name: person.name || '',
+    email: person.email || '',
     role: person.role || 'MIT Tech',
     hireDate: person.hireDate || '',
     endDate: person.endDate || '',
     inTraining: person.inTraining || false,
-    trainingEndDate: person.trainingEndDate || '',
-    slackId: person.slackId || ''
+    trainingEndDate: person.trainingEndDate || ''
   });
   const [evaluation, setEvaluation] = useState(null);
   const [driverScore, setDriverScore] = useState(null);
@@ -178,6 +178,18 @@ const EditProfileModal = ({ person, onClose, onSave }) => {
               />
             </div>
             <div className="form-group">
+              <label htmlFor="email">Email</label>
+              <input
+                type="email"
+                id="email"
+                name="email"
+                className="form-input"
+                value={formData.email}
+                onChange={handleChange}
+                placeholder="email@example.com"
+              />
+            </div>
+            <div className="form-group">
               <label htmlFor="role">Role</label>
               <select
                 id="role"
@@ -242,23 +254,6 @@ const EditProfileModal = ({ person, onClose, onSave }) => {
                 onChange={handleChange}
               />
             </div>
-          </div>
-
-          {/* Slack Integration */}
-          <h4 style={{ fontSize: '16px', marginTop: '20px', marginBottom: '12px', color: 'var(--primary-color)', borderBottom: '1px solid var(--border-color)', paddingBottom: '8px' }}>
-            <i className="fab fa-slack"></i> Slack Integration
-          </h4>
-          <div className="form-group">
-            <label htmlFor="slackId">Slack User ID</label>
-            <input
-              type="text"
-              id="slackId"
-              name="slackId"
-              className="form-input"
-              value={formData.slackId}
-              onChange={handleChange}
-              placeholder="e.g., U040LUK4ZFW"
-            />
           </div>
 
           {/* Assigned Vehicle */}

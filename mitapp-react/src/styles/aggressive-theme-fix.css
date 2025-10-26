@@ -1,0 +1,587 @@
+/*
+ * AGGRESSIVE Theme Fixes - Override EVERYTHING
+ * No more white/light backgrounds ANYWHERE
+ */
+
+/* ============================================
+   NUCLEAR OPTION - Override ALL Backgrounds
+   ============================================ */
+
+/* Override ALL possible light background selectors */
+*[style*="background: #f"],
+*[style*="background: #F"],
+*[style*="background:#f"],
+*[style*="background:#F"],
+*[style*="background-color: #f"],
+*[style*="background-color:#f"],
+*[style*="background: white"],
+*[style*="background: White"],
+*[style*="background-color: white"] {
+    background: var(--surface-color) !important;
+    background-color: var(--surface-color) !important;
+}
+
+/* Fix ALL modal backgrounds */
+.modal,
+.modal-overlay .modal,
+.cal-modal .modal-content,
+.modal-content {
+    background: var(--surface-color) !important;
+    background-color: var(--surface-color) !important;
+}
+
+.modal-header {
+    background: var(--surface-hover) !important;
+    background-color: var(--surface-hover) !important;
+}
+
+.modal-body {
+    background: var(--surface-color) !important;
+    background-color: var(--surface-color) !important;
+}
+
+.modal-footer {
+    background: var(--surface-hover) !important;
+    background-color: var(--surface-hover) !important;
+}
+
+.modal-close:hover,
+.modal-tab-btn:hover {
+    background: var(--surface-color) !important;
+    background-color: var(--surface-color) !important;
+}
+
+.modal-tab-btn:disabled {
+    background: var(--background-color) !important;
+    background-color: var(--background-color) !important;
+}
+
+/* Fix ALL sub-nav and tab backgrounds */
+.sub-nav,
+.tab-header .sub-nav,
+.calendar-view-switcher,
+.tab-controls {
+    background: var(--surface-color) !important;
+    background-color: var(--surface-color) !important;
+}
+
+.sub-nav-btn,
+.calendar-view-switcher .btn {
+    background: transparent !important;
+    background-color: transparent !important;
+}
+
+.sub-nav-btn.active,
+.calendar-view-switcher .btn.active {
+    background: var(--background-color) !important;
+    background-color: var(--background-color) !important;
+}
+
+/* Fix ALL card-related backgrounds */
+.card,
+.metric-card,
+.stat,
+.zone-card,
+.tech-card,
+.job-card,
+.route-card,
+.vehicle-card,
+.tech-calendar-card,
+.warehouse-fleet-card,
+.tech-team-card {
+    background: var(--surface-color) !important;
+    background-color: var(--surface-color) !important;
+}
+
+/* Fix ALL item backgrounds */
+.stat-item,
+.breakdown-section,
+.glance-item,
+.staff-off-item,
+.tech-item,
+.recurring-tech-item,
+.view-staff-item,
+.zone-member,
+.tech-list-item {
+    background: var(--background-color) !important;
+    background-color: var(--background-color) !important;
+}
+
+.stat-item:hover,
+.recurring-tech-item:hover,
+.view-staff-item:hover,
+.tech-item:hover {
+    background: var(--surface-hover) !important;
+    background-color: var(--surface-hover) !important;
+}
+
+/* Fix ALL table hover states */
+.calendar-table td:hover,
+.data-table tr:hover,
+tr:hover {
+    background: var(--surface-hover) !important;
+    background-color: var(--surface-hover) !important;
+}
+
+/* Fix ALL header backgrounds */
+.card-header,
+.zone-header,
+.tech-card-header,
+.modal-header,
+.kanban-column-header,
+.week-day-header,
+.rule-header {
+    background: var(--surface-hover) !important;
+    background-color: var(--surface-hover) !important;
+}
+
+/* Fix calendar status backgrounds to be subtle */
+.staff-on,
+.status-on,
+.staff-compact.staff-on {
+    background: rgba(16, 185, 129, 0.12) !important;
+    background-color: rgba(16, 185, 129, 0.12) !important;
+}
+
+.staff-off,
+.status-off,
+.staff-compact.staff-off {
+    background: rgba(248, 123, 77, 0.12) !important;
+    background-color: rgba(248, 123, 77, 0.12) !important;
+}
+
+.staff-sick,
+.status-sick,
+.staff-compact.staff-sick {
+    background: rgba(239, 68, 68, 0.12) !important;
+    background-color: rgba(239, 68, 68, 0.12) !important;
+}
+
+.staff-vacation,
+.status-vacation,
+.staff-compact.staff-vacation {
+    background: rgba(59, 130, 246, 0.12) !important;
+    background-color: rgba(59, 130, 246, 0.12) !important;
+}
+
+.staff-no-call-no-show,
+.status-no-call-no-show {
+    background: rgba(107, 114, 128, 0.12) !important;
+    background-color: rgba(107, 114, 128, 0.12) !important;
+}
+
+.staff-custom-hours {
+    background: rgba(245, 158, 11, 0.12) !important;
+    background-color: rgba(245, 158, 11, 0.12) !important;
+}
+
+/* Fix day selector and other form backgrounds */
+.day-selector,
+.form-section,
+.form-group-row {
+    background: var(--surface-color) !important;
+    background-color: var(--surface-color) !important;
+}
+
+/* Fix notes backgrounds */
+.view-notes,
+.dashboard-notes {
+    background: rgba(248, 123, 77, 0.08) !important;
+    background-color: rgba(248, 123, 77, 0.08) !important;
+}
+
+/* Fix kanban backgrounds */
+.kanban-column,
+.kanban-board {
+    background: var(--surface-color) !important;
+    background-color: var(--surface-color) !important;
+}
+
+.kanban-column-body {
+    background: var(--background-color) !important;
+    background-color: var(--background-color) !important;
+}
+
+/* Fix more indicator and other misc backgrounds */
+.more-indicator {
+    background: var(--surface-hover) !important;
+    background-color: var(--surface-hover) !important;
+}
+
+/* ============================================
+   SIMPLIFY JOB STATS - Remove Sub-Boxes
+   ============================================ */
+
+/* Make Job Stats a simple list, not grid of boxes */
+#todays-stats-content .stats-grid {
+    display: block !important;
+    padding: 12px !important;
+    background: transparent !important;
+}
+
+#todays-stats-content .stat-item {
+    background: transparent !important;
+    border: none !important;
+    border-bottom: 1px solid var(--border-color) !important;
+    border-radius: 0 !important;
+    padding: 8px 0 !important;
+    margin-bottom: 0 !important;
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+}
+
+#todays-stats-content .stat-item:last-child {
+    border-bottom: none !important;
+}
+
+#todays-stats-content .stat-item:hover {
+    background: rgba(248, 123, 77, 0.05) !important;
+    transform: none !important;
+    border-color: var(--primary-color) !important;
+    padding-left: 4px !important;
+}
+
+#todays-stats-content .stat-label {
+    font-size: 12px !important;
+    font-weight: 500 !important;
+    color: var(--text-primary) !important;
+    text-transform: none !important;
+    letter-spacing: 0 !important;
+    margin-bottom: 0 !important;
+}
+
+#todays-stats-content .stat-value {
+    font-size: 16px !important;
+    font-weight: 700 !important;
+    color: var(--primary-color) !important;
+    display: inline !important;
+}
+
+#todays-stats-content .stat-value small {
+    font-size: 11px !important;
+    font-weight: 400 !important;
+    color: var(--text-secondary) !important;
+    margin-left: 6px !important;
+}
+
+/* Simplify breakdowns - no boxes */
+.breakdown-grid {
+    display: block !important;
+    padding: 0 12px 12px 12px !important;
+    background: transparent !important;
+}
+
+#todays-stats-content .breakdown-section {
+    background: transparent !important;
+    border: none !important;
+    padding: 12px 0 !important;
+    border-bottom: 1px solid var(--border-color) !important;
+}
+
+#todays-stats-content .breakdown-section:last-child {
+    border-bottom: none !important;
+}
+
+#todays-stats-content .breakdown-section h4 {
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    color: var(--text-secondary) !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+    margin: 0 0 8px 0 !important;
+}
+
+#todays-stats-content .breakdown-item {
+    padding: 4px 0 !important;
+    border-bottom: none !important;
+    background: transparent !important;
+}
+
+#todays-stats-content .breakdown-item:hover {
+    padding-left: 4px !important;
+    background: rgba(248, 123, 77, 0.05) !important;
+}
+
+/* ============================================
+   FIX TEAM PAGE - REMOVE EDIT BUTTON STYLING
+   ============================================ */
+
+.tech-card {
+    background: var(--surface-color) !important;
+}
+
+.tech-card-header {
+    background: var(--surface-hover) !important;
+}
+
+.tech-list {
+    background: transparent !important;
+    padding: 0 !important;
+}
+
+.tech-list-item,
+.zone-member {
+    background: var(--background-color) !important;
+    margin: 0 12px 6px 12px !important;
+    padding: 10px 12px !important;
+    border-radius: 6px !important;
+}
+
+.tech-list-item:hover,
+.zone-member:hover {
+    background: var(--surface-hover) !important;
+    cursor: pointer !important;
+}
+
+/* Hide edit button - merged into name click */
+.tech-actions .btn-edit {
+    display: none !important;
+}
+
+/* ============================================
+   ULTRA-COMPACT EVERYTHING
+   ============================================ */
+
+/* Even more aggressive compactness */
+.card {
+    margin-bottom: 10px !important;
+}
+
+.card-header {
+    padding: 6px 10px !important;
+}
+
+.card-header h3 {
+    font-size: 12px !important;
+}
+
+.tab-header {
+    padding: 6px 10px !important;
+    margin-bottom: 10px !important;
+}
+
+.dashboard-main-grid {
+    gap: 10px !important;
+}
+
+.dashboard-top-grid {
+    gap: 10px !important;
+}
+
+/* Compact glance */
+.glance-grid-two-col {
+    padding: 6px !important;
+    gap: 6px !important;
+}
+
+.glance-item {
+    padding: 8px 6px !important;
+}
+
+.glance-value {
+    font-size: 22px !important;
+    margin-bottom: 3px !important;
+}
+
+.glance-label {
+    font-size: 8px !important;
+    line-height: 1.2 !important;
+}
+
+/* Compact staffing */
+.staffing-info-list {
+    padding: 6px !important;
+}
+
+.staff-off-item {
+    padding: 5px 8px !important;
+    margin: 0 6px 4px 6px !important;
+}
+
+.staff-name {
+    font-size: 11px !important;
+}
+
+.staff-status-badge {
+    font-size: 9px !important;
+    padding: 2px 6px !important;
+}
+
+/* Compact notes */
+.dashboard-notes {
+    padding: 6px 8px !important;
+    margin: 0 6px 6px 6px !important;
+    font-size: 10px !important;
+}
+
+/* Compact summary grids */
+.summary-grid {
+    padding: 6px !important;
+    gap: 6px !important;
+    grid-template-columns: 1fr !important;
+}
+
+.summary-grid > div {
+    padding: 6px !important;
+    margin: 0 6px !important;
+}
+
+.summary-grid h4 {
+    font-size: 9px !important;
+    margin-bottom: 4px !important;
+}
+
+.summary-grid li,
+.summary-grid p {
+    font-size: 10px !important;
+}
+
+/* Compact checklists */
+.checklist-item {
+    padding: 6px 8px !important;
+    margin: 0 6px 4px 6px !important;
+}
+
+.checklist-item-header strong {
+    font-size: 11px !important;
+}
+
+.checklist-item-header i {
+    font-size: 12px !important;
+}
+
+/* Compact win/support */
+.win-section,
+.support-section {
+    padding: 6px !important;
+    margin: 0 6px 6px 6px !important;
+}
+
+.win-section h4,
+.support-section h4 {
+    font-size: 10px !important;
+    margin-bottom: 4px !important;
+}
+
+.win-section p,
+.support-section p {
+    font-size: 11px !important;
+}
+
+.compact-section {
+    padding: 6px !important;
+}
+
+/* ============================================
+   MOBILE OVERRIDES
+   ============================================ */
+
+@media (max-width: 768px) {
+    /* Stack sub-nav vertically on mobile */
+    .sub-nav {
+        flex-direction: row !important;
+        width: 100% !important;
+    }
+
+    .sub-nav-btn {
+        flex: 1 !important;
+        font-size: 10px !important;
+        padding: 5px 6px !important;
+    }
+
+    /* Make stats even more compact */
+    #todays-stats-content .stats-grid {
+        padding: 8px !important;
+    }
+
+    #todays-stats-content .stat-item {
+        padding: 6px 0 !important;
+    }
+
+    #todays-stats-content .stat-label {
+        font-size: 11px !important;
+    }
+
+    #todays-stats-content .stat-value {
+        font-size: 14px !important;
+    }
+
+    /* Compact breakdown on mobile */
+    .breakdown-grid {
+        padding: 0 8px 8px 8px !important;
+    }
+
+    #todays-stats-content .breakdown-section {
+        padding: 8px 0 !important;
+    }
+}
+
+/* ============================================
+   FIX APP HEADER ON MOBILE
+   ============================================ */
+
+@media (max-width: 768px) {
+    .app-header,
+    .tech-app-header,
+    .warehouse-header {
+        padding: 6px 10px !important;
+        background: var(--surface-color) !important;
+    }
+
+    .app-header h1,
+    .tech-app-header h1 {
+        font-size: 14px !important;
+    }
+
+    .hamburger-menu {
+        width: 32px !important;
+        height: 32px !important;
+    }
+}
+
+/* ============================================
+   ROUTING PAGE FIXES
+   ============================================ */
+
+.routing-container,
+.routing-page {
+    background: var(--background-color) !important;
+}
+
+.kanban-board {
+    background: var(--background-color) !important;
+}
+
+.kanban-column {
+    background: var(--surface-color) !important;
+    min-width: 260px !important;
+}
+
+.kanban-column-header {
+    background: var(--surface-hover) !important;
+    padding: 6px 10px !important;
+}
+
+.kanban-column-header h3 {
+    font-size: 12px !important;
+}
+
+.kanban-column-body {
+    background: var(--background-color) !important;
+    padding: 6px !important;
+}
+
+.job-card {
+    background: var(--surface-color) !important;
+    padding: 6px !important;
+    margin-bottom: 6px !important;
+}
+
+.job-card-header {
+    font-size: 11px !important;
+}
+
+.job-card-body {
+    font-size: 10px !important;
+}
