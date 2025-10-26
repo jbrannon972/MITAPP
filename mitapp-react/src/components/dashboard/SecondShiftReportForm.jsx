@@ -4,27 +4,59 @@ import firebaseService from '../../services/firebaseService';
 
 const SecondShiftReportForm = ({ onClose, onSubmitSuccess }) => {
   const { currentUser } = useAuth();
-  const [formData, setFormData] = useState({
-    date: new Date().toISOString().split('T')[0],
-    installWindowsLeft: false,
-    windows: { '2-5': 0, '5-8': 0, '6-9': 0 },
-    demoRequested: false,
-    demoJobs: [],
-    jobsPushed: false,
-    pushedJobsCount: 0,
-    nuances: [],
-    cancelledJobs: [],
-    afterHoursJobs: [],
-    techShoutouts: '',
-    techConcerns: '',
-    deptShoutouts: '',
-    deptConcerns: ''
-  });
+
+  // Determine report type based on role
+  const isSecondShiftOrMITLead =
+    currentUser?.role === 'Second Shift Lead' ||
+    currentUser?.role === 'MIT Lead';
+
+  const [formData, setFormData] = useState(
+    isSecondShiftOrMITLead
+      ? {
+          // Second Shift / MIT Lead form data
+          date: new Date().toISOString().split('T')[0],
+          installWindowsLeft: false,
+          windows: { '2-5': 0, '5-8': 0, '6-9': 0 },
+          demoRequested: false,
+          demoJobs: [],
+          jobsPushed: false,
+          pushedJobsCount: 0,
+          nuances: [],
+          cancelledJobs: [],
+          afterHoursJobs: [],
+          techShoutouts: '',
+          techConcerns: '',
+          deptShoutouts: '',
+          deptConcerns: ''
+        }
+      : {
+          // Regular Supervisor/Manager form data
+          date: new Date().toISOString().split('T')[0],
+          equipmentDeployed: true,
+          equipmentDeployedNotes: '',
+          mitLeadFormsSubmitted: true,
+          mitLeadFormsNotes: '',
+          dptNotesUpdated: true,
+          dptNotesNotes: '',
+          talkedToTechs: true,
+          talkedToTechsNotes: '',
+          todayWin: '',
+          needSupport: ''
+        }
+  );
 
   const [submitting, setSubmitting] = useState(false);
 
   const handleRadioChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value === 'yes' }));
+  };
+
+  const handleToggleChange = (field, value) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value === 'yes',
+      [`${field}Notes`]: value === 'yes' ? '' : prev[`${field}Notes`] // Clear notes if Yes
+    }));
   };
 
   const handleWindowChange = (slot, value) => {
@@ -62,25 +94,51 @@ const SecondShiftReportForm = ({ onClose, onSubmitSuccess }) => {
     try {
       setSubmitting(true);
 
-      const reportData = {
-        date: formData.date,
-        installWindowsLeft: formData.installWindowsLeft,
-        installWindows: formData.installWindowsLeft ? formData.windows : null,
-        demoRequested: formData.demoRequested,
-        demoJobs: formData.demoRequested ? formData.demoJobs.filter(j => j.jobName.trim()) : [],
-        jobsPushed: formData.jobsPushed,
-        pushedJobsCount: formData.jobsPushed ? formData.pushedJobsCount : 0,
-        nuances: formData.nuances.filter(j => j.jobName.trim()),
-        cancelledJobs: formData.cancelledJobs.filter(j => j.jobName.trim()),
-        afterHoursJobs: formData.afterHoursJobs.filter(j => j.jobName.trim()),
-        afterHours: formData.afterHoursJobs.filter(j => j.jobName.trim()).length > 0,
-        techShoutouts: formData.techShoutouts.trim(),
-        techConcerns: formData.techConcerns.trim(),
-        deptShoutouts: formData.deptShoutouts.trim(),
-        deptConcerns: formData.deptConcerns.trim(),
-        submittedBy: currentUser?.username || currentUser?.email || 'Unknown',
-        submittedAt: new Date().toISOString()
-      };
+      let reportData;
+
+      if (isSecondShiftOrMITLead) {
+        // Second Shift / MIT Lead report
+        reportData = {
+          reportType: 'secondShift',
+          date: formData.date,
+          installWindowsLeft: formData.installWindowsLeft,
+          installWindows: formData.installWindowsLeft ? formData.windows : null,
+          demoRequested: formData.demoRequested,
+          demoJobs: formData.demoRequested ? formData.demoJobs.filter(j => j.jobName.trim()) : [],
+          jobsPushed: formData.jobsPushed,
+          pushedJobsCount: formData.jobsPushed ? formData.pushedJobsCount : 0,
+          nuances: formData.nuances.filter(j => j.jobName.trim()),
+          cancelledJobs: formData.cancelledJobs.filter(j => j.jobName.trim()),
+          afterHoursJobs: formData.afterHoursJobs.filter(j => j.jobName.trim()),
+          afterHours: formData.afterHoursJobs.filter(j => j.jobName.trim()).length > 0,
+          techShoutouts: formData.techShoutouts.trim(),
+          techConcerns: formData.techConcerns.trim(),
+          deptShoutouts: formData.deptShoutouts.trim(),
+          deptConcerns: formData.deptConcerns.trim(),
+          submittedBy: currentUser?.username || currentUser?.email || 'Unknown',
+          submittedByRole: currentUser?.role || 'Unknown',
+          submittedAt: new Date().toISOString()
+        };
+      } else {
+        // Regular Supervisor report
+        reportData = {
+          reportType: 'supervisor',
+          date: formData.date,
+          equipmentDeployed: formData.equipmentDeployed,
+          equipmentDeployedNotes: formData.equipmentDeployed ? '' : formData.equipmentDeployedNotes.trim(),
+          mitLeadFormsSubmitted: formData.mitLeadFormsSubmitted,
+          mitLeadFormsNotes: formData.mitLeadFormsSubmitted ? '' : formData.mitLeadFormsNotes.trim(),
+          dptNotesUpdated: formData.dptNotesUpdated,
+          dptNotesNotes: formData.dptNotesUpdated ? '' : formData.dptNotesNotes.trim(),
+          talkedToTechs: formData.talkedToTechs,
+          talkedToTechsNotes: formData.talkedToTechs ? '' : formData.talkedToTechsNotes.trim(),
+          todayWin: formData.todayWin.trim(),
+          needSupport: formData.needSupport.trim(),
+          submittedBy: currentUser?.username || currentUser?.email || 'Unknown',
+          submittedByRole: currentUser?.role || 'Unknown',
+          submittedAt: new Date().toISOString()
+        };
+      }
 
       await firebaseService.saveSecondShiftReport(formData.date, reportData);
 
@@ -88,13 +146,13 @@ const SecondShiftReportForm = ({ onClose, onSubmitSuccess }) => {
         onSubmitSuccess();
       }
 
-      alert('Second Shift Report submitted successfully!');
+      alert('Supervisor Report submitted successfully!');
 
       if (onClose) {
         onClose();
       }
     } catch (error) {
-      console.error('Error submitting second shift report:', error);
+      console.error('Error submitting supervisor report:', error);
       alert('Error submitting report. Please try again.');
     } finally {
       setSubmitting(false);
@@ -105,7 +163,10 @@ const SecondShiftReportForm = ({ onClose, onSubmitSuccess }) => {
     <div className="modal-overlay active" onClick={onClose}>
       <div className="modal modal-lg" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h3><i className="fas fa-moon"></i> Second Shift Report</h3>
+          <h3>
+            <i className={isSecondShiftOrMITLead ? 'fas fa-moon' : 'fas fa-clipboard-check'}></i>{' '}
+            {isSecondShiftOrMITLead ? 'Second Shift Report' : 'Supervisor Report'}
+          </h3>
           <button className="modal-close" onClick={onClose}><i className="fas fa-times"></i></button>
         </div>
         <div className="modal-body">
@@ -120,7 +181,10 @@ const SecondShiftReportForm = ({ onClose, onSubmitSuccess }) => {
             />
           </div>
 
-          {/* Install Windows Left */}
+          {isSecondShiftOrMITLead ? (
+            <>
+              {/* Second Shift / MIT Lead Questions */}
+              {/* Install Windows Left */}
           <div className="question-section" style={{ marginTop: '24px', padding: '16px', backgroundColor: '#f9fafb', borderRadius: '8px' }}>
             <div className="form-group">
               <label>Any Install windows left?</label>
@@ -448,6 +512,217 @@ const SecondShiftReportForm = ({ onClose, onSubmitSuccess }) => {
               />
             </div>
           </div>
+            </>
+          ) : (
+            <>
+              {/* Supervisor Questions */}
+              {/* Equipment Deployed */}
+              <div className="question-section" style={{ marginTop: '24px', padding: '16px', backgroundColor: '#f9fafb', borderRadius: '8px' }}>
+                <div className="form-group">
+                  <label>Did I ensure all equipment is properly deployed at day 2 visits?</label>
+                  <div className="radio-group" style={{ display: 'flex', gap: '16px', marginTop: '8px' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+                      <input
+                        type="radio"
+                        name="equipmentDeployed"
+                        value="yes"
+                        checked={formData.equipmentDeployed}
+                        onChange={(e) => handleToggleChange('equipmentDeployed', 'yes')}
+                        style={{ marginRight: '8px' }}
+                      />
+                      Yes
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+                      <input
+                        type="radio"
+                        name="equipmentDeployed"
+                        value="no"
+                        checked={!formData.equipmentDeployed}
+                        onChange={(e) => handleToggleChange('equipmentDeployed', 'no')}
+                        style={{ marginRight: '8px' }}
+                      />
+                      No
+                    </label>
+                  </div>
+                </div>
+                {!formData.equipmentDeployed && (
+                  <div className="form-group" style={{ marginTop: '16px' }}>
+                    <label htmlFor="equipmentDeployedNotes">Explain why</label>
+                    <textarea
+                      id="equipmentDeployedNotes"
+                      className="form-input"
+                      rows="3"
+                      placeholder="Provide explanation..."
+                      value={formData.equipmentDeployedNotes}
+                      onChange={(e) => setFormData(prev => ({ ...prev, equipmentDeployedNotes: e.target.value }))}
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* MIT Lead Forms Submitted */}
+              <div className="question-section" style={{ marginTop: '16px', padding: '16px', backgroundColor: '#f9fafb', borderRadius: '8px' }}>
+                <div className="form-group">
+                  <label>Did I submit all MIT Lead visit forms?</label>
+                  <div className="radio-group" style={{ display: 'flex', gap: '16px', marginTop: '8px' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+                      <input
+                        type="radio"
+                        name="mitLeadFormsSubmitted"
+                        value="yes"
+                        checked={formData.mitLeadFormsSubmitted}
+                        onChange={(e) => handleToggleChange('mitLeadFormsSubmitted', 'yes')}
+                        style={{ marginRight: '8px' }}
+                      />
+                      Yes
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+                      <input
+                        type="radio"
+                        name="mitLeadFormsSubmitted"
+                        value="no"
+                        checked={!formData.mitLeadFormsSubmitted}
+                        onChange={(e) => handleToggleChange('mitLeadFormsSubmitted', 'no')}
+                        style={{ marginRight: '8px' }}
+                      />
+                      No
+                    </label>
+                  </div>
+                </div>
+                {!formData.mitLeadFormsSubmitted && (
+                  <div className="form-group" style={{ marginTop: '16px' }}>
+                    <label htmlFor="mitLeadFormsNotes">Explain why</label>
+                    <textarea
+                      id="mitLeadFormsNotes"
+                      className="form-input"
+                      rows="3"
+                      placeholder="Provide explanation..."
+                      value={formData.mitLeadFormsNotes}
+                      onChange={(e) => setFormData(prev => ({ ...prev, mitLeadFormsNotes: e.target.value }))}
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* DPT Notes Updated */}
+              <div className="question-section" style={{ marginTop: '16px', padding: '16px', backgroundColor: '#f9fafb', borderRadius: '8px' }}>
+                <div className="form-group">
+                  <label>Did I fully update all DPT notes and WOs?</label>
+                  <div className="radio-group" style={{ display: 'flex', gap: '16px', marginTop: '8px' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+                      <input
+                        type="radio"
+                        name="dptNotesUpdated"
+                        value="yes"
+                        checked={formData.dptNotesUpdated}
+                        onChange={(e) => handleToggleChange('dptNotesUpdated', 'yes')}
+                        style={{ marginRight: '8px' }}
+                      />
+                      Yes
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+                      <input
+                        type="radio"
+                        name="dptNotesUpdated"
+                        value="no"
+                        checked={!formData.dptNotesUpdated}
+                        onChange={(e) => handleToggleChange('dptNotesUpdated', 'no')}
+                        style={{ marginRight: '8px' }}
+                      />
+                      No
+                    </label>
+                  </div>
+                </div>
+                {!formData.dptNotesUpdated && (
+                  <div className="form-group" style={{ marginTop: '16px' }}>
+                    <label htmlFor="dptNotesNotes">Explain why</label>
+                    <textarea
+                      id="dptNotesNotes"
+                      className="form-input"
+                      rows="3"
+                      placeholder="Provide explanation..."
+                      value={formData.dptNotesNotes}
+                      onChange={(e) => setFormData(prev => ({ ...prev, dptNotesNotes: e.target.value }))}
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Talked to Techs */}
+              <div className="question-section" style={{ marginTop: '16px', padding: '16px', backgroundColor: '#f9fafb', borderRadius: '8px' }}>
+                <div className="form-group">
+                  <label>Did I talk to all my techs that are working near the end of the day?</label>
+                  <div className="radio-group" style={{ display: 'flex', gap: '16px', marginTop: '8px' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+                      <input
+                        type="radio"
+                        name="talkedToTechs"
+                        value="yes"
+                        checked={formData.talkedToTechs}
+                        onChange={(e) => handleToggleChange('talkedToTechs', 'yes')}
+                        style={{ marginRight: '8px' }}
+                      />
+                      Yes
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+                      <input
+                        type="radio"
+                        name="talkedToTechs"
+                        value="no"
+                        checked={!formData.talkedToTechs}
+                        onChange={(e) => handleToggleChange('talkedToTechs', 'no')}
+                        style={{ marginRight: '8px' }}
+                      />
+                      No
+                    </label>
+                  </div>
+                </div>
+                {!formData.talkedToTechs && (
+                  <div className="form-group" style={{ marginTop: '16px' }}>
+                    <label htmlFor="talkedToTechsNotes">Explain why</label>
+                    <textarea
+                      id="talkedToTechsNotes"
+                      className="form-input"
+                      rows="3"
+                      placeholder="Provide explanation..."
+                      value={formData.talkedToTechsNotes}
+                      onChange={(e) => setFormData(prev => ({ ...prev, talkedToTechsNotes: e.target.value }))}
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Today's Win */}
+              <div className="question-section" style={{ marginTop: '16px', padding: '16px', backgroundColor: '#f9fafb', borderRadius: '8px' }}>
+                <div className="form-group">
+                  <label htmlFor="todayWin">What was one win I had today?</label>
+                  <textarea
+                    id="todayWin"
+                    className="form-input"
+                    rows="3"
+                    placeholder="Describe a win from today..."
+                    value={formData.todayWin}
+                    onChange={(e) => setFormData(prev => ({ ...prev, todayWin: e.target.value }))}
+                  />
+                </div>
+              </div>
+
+              {/* Need Support */}
+              <div className="question-section" style={{ marginTop: '16px', padding: '16px', backgroundColor: '#f9fafb', borderRadius: '8px' }}>
+                <div className="form-group">
+                  <label htmlFor="needSupport">What is something you could use support on?</label>
+                  <textarea
+                    id="needSupport"
+                    className="form-input"
+                    rows="3"
+                    placeholder="Describe what you need support with..."
+                    value={formData.needSupport}
+                    onChange={(e) => setFormData(prev => ({ ...prev, needSupport: e.target.value }))}
+                  />
+                </div>
+              </div>
+            </>
+          )}
         </div>
         <div className="modal-footer">
           <button className="btn btn-secondary" onClick={onClose} disabled={submitting}>

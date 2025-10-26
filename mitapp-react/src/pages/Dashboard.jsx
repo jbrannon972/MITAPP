@@ -175,9 +175,9 @@ const Dashboard = () => {
             <button
               className="btn btn-info"
               onClick={() => setShowReportForm(true)}
-              title="Submit Second Shift Report"
+              title="Submit Supervisor Report"
             >
-              <i className="fas fa-moon"></i> Submit 2nd Shift Report
+              <i className="fas fa-clipboard-check"></i> Submit Supervisor Report
             </button>
           </div>
         </div>
@@ -552,7 +552,7 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* Second Shift Report Form Modal */}
+      {/* Supervisor Report Form Modal */}
       {showReportForm && (
         <SecondShiftReportForm
           onClose={() => setShowReportForm(false)}
