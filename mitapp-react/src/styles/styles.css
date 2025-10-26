@@ -327,8 +327,8 @@ body {
 /* Cards */
 .card {
     background: var(--surface-color);
-    border-radius: var(--radius-xl);
-    padding: 20px; /* Reduced padding */
+    border-radius: var(--radius-md);
+    padding: 16px; /* More compact padding */
     box-shadow: var(--shadow-sm);
     border: 1px solid var(--border-color);
     transition: all 0.2s ease;
@@ -372,8 +372,8 @@ body {
 
 .metric-card {
     background: var(--surface-color);
-    border-radius: var(--radius-xl);
-    padding: 24px;
+    border-radius: var(--radius-md);
+    padding: 16px;
     box-shadow: var(--shadow-sm);
     border: 1px solid var(--border-color);
     transition: all 0.3s ease;
