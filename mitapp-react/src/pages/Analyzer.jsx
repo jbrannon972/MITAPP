@@ -8,6 +8,7 @@ const Analyzer = () => {
   const [analyzing, setAnalyzing] = useState(false);
   const [analysisResults, setAnalysisResults] = useState(null);
   const [historicalData, setHistoricalData] = useState([]);
+  const [currentData, setCurrentData] = useState(null);
 
   useEffect(() => {
     if (activeView === 'history') {
@@ -31,6 +32,239 @@ const Analyzer = () => {
     }
   };
 
+  // Helper function to extract customer name from route_title
+  const extractCustomerName = (title) => {
+    const parts = (title || '').split('|');
+    return parts[0] ? parts[0].trim() : 'Unknown';
+  };
+
+  // Helper function to extract full job ID
+  const extractFullJobId = (title) => {
+    const match = (title || '').match(/\d{2}-\d{5,}-\w+-\w+-\w+/);
+    return match ? match[0] : 'N/A';
+  };
+
+  // Helper function to extract job number
+  const extractJobNumber = (text) => {
+    const match = (text || '').match(/(\d{2}-\d{5,})/);
+    return match ? match[0] : null;
+  };
+
+  // Helper function to extract time frame from route data
+  const extractTimeFrame = (row) => {
+    const title = row.route_title || '';
+    const description = row.route_description || '';
+
+    // Check title first
+    const titleMatch = title.match(/TF:\s*(\d{1,2}-\d{1,2})/i);
+    if (titleMatch) return titleMatch[1];
+
+    // Check description for "TF: 9-12" format
+    const descTFMatch = description.match(/TF:\s*(\d{1,2}-\d{1,2})(?:pm|am)?/i);
+    if (descTFMatch) return descTFMatch[1];
+
+    // Check description for "TF(...)" format
+    const descMatch = description.match(/TF\(([^)]+)\)/i);
+    if (descMatch) {
+      const tfContent = descMatch[1];
+      const timeMatch = tfContent.match(/(\d{1,2})(?::?\d{0,2})?[-\s]*(?:to|-|–)?\s*(\d{1,2})(?::?\d{0,2})?/);
+      if (timeMatch) {
+        return `${timeMatch[1]}-${timeMatch[2]}`;
+      }
+    }
+
+    return null;
+  };
+
+  // Proper CSV parser that handles quoted fields
+  const parseCSV = (text) => {
+    const data = [];
+    let current = '';
+    let inQuotes = false;
+    let headers = null;
+    let currentRow = [];
+
+    for (let i = 0; i < text.length; i++) {
+      const char = text[i];
+
+      if (char === '"') {
+        inQuotes = !inQuotes;
+        current += char;
+      } else if (char === ',' && !inQuotes) {
+        currentRow.push(current.trim());
+        current = '';
+      } else if ((char === '\n' || char === '\r') && !inQuotes) {
+        if (current.trim() || currentRow.length > 0) {
+          currentRow.push(current.trim());
+
+          if (!headers) {
+            headers = currentRow.map(h => h.replace(/"/g, '').trim());
+          } else if (currentRow.length === headers.length) {
+            const row = {};
+            headers.forEach((header, index) => {
+              let value = currentRow[index] || '';
+              value = value.replace(/^"/, '').replace(/"$/, '');
+              // Convert to number if it's a valid number
+              if (!isNaN(value) && value !== '' && !isNaN(parseFloat(value))) {
+                row[header] = parseFloat(value);
+              } else {
+                row[header] = value;
+              }
+            });
+            data.push(row);
+          }
+          currentRow = [];
+          current = '';
+        }
+      } else if (char !== '\r') {
+        current += char;
+      }
+    }
+
+    // Handle last row
+    if (current.trim() || currentRow.length > 0) {
+      currentRow.push(current.trim());
+      if (headers && currentRow.length === headers.length) {
+        const row = {};
+        headers.forEach((header, index) => {
+          let value = currentRow[index] || '';
+          value = value.replace(/^"/, '').replace(/"$/, '');
+          if (!isNaN(value) && value !== '' && !isNaN(parseFloat(value))) {
+            row[header] = parseFloat(value);
+          } else {
+            row[header] = value;
+          }
+        });
+        data.push(row);
+      }
+    }
+
+    return { data, meta: { fields: headers } };
+  };
+
+  // Comprehensive job analysis function matching vanilla version
+  const performAnalysis = (data) => {
+    const jobTypePatterns = {
+      install: /install/i,
+      demo: /demo/i,
+      cs: /check service|cs/i,
+      pull: /pull/i
+    };
+
+    let jobTypeCounts = { install: 0, demo: 0, cs: 0, pull: 0, other: 0 };
+    let jobTypeTechHours = { install: 0, demo: 0, cs: 0, pull: 0, other: 0 };
+    let zoneCounts = {};
+    let timeFrameCounts = { '9-12': 0, '9-4': 0, '12-4': 0, 'other': 0 };
+    let otherTFDetails = [];
+    const jobNumbers = new Set();
+    let demoJobs = [];
+    let dtTrueCount = 0;
+    let dtLaborHours = 0;
+    let totalLaborHours = 0;
+    let jobIdToTypeMap = {};
+    let jobsData = [];
+
+    data.forEach(row => {
+      const title = row.route_title || '';
+      const duration = row.duration || 0;
+      const description = row.route_description || '';
+      const zone = `Z${row.Zone || 'N/A'}`;
+      const isDT = /DT\((true)\)/i.test(description);
+      const techHours = isDT ? duration * 2 : duration;
+      const fullJobId = extractFullJobId(title);
+
+      jobsData.push({
+        id: fullJobId,
+        name: extractCustomerName(title),
+        address: row.customer_address
+      });
+
+      // Extract and count time frames
+      const timeFrame = extractTimeFrame(row);
+      if (timeFrame === '9-12') {
+        timeFrameCounts['9-12']++;
+      } else if (timeFrame === '9-4' || timeFrame === '9-16') {
+        timeFrameCounts['9-4']++;
+      } else if (timeFrame === '12-4' || timeFrame === '12-16') {
+        timeFrameCounts['12-4']++;
+      } else if (timeFrame) {
+        timeFrameCounts['other']++;
+        otherTFDetails.push({
+          customer: extractCustomerName(title),
+          timeFrame: timeFrame,
+          jobNumber: fullJobId
+        });
+      }
+
+      totalLaborHours += duration;
+
+      // Count jobs and hours by zone
+      if (zone.replace('Z', '').trim() !== 'N/A') {
+        zoneCounts[zone] = zoneCounts[zone] || { jobs: 0, hours: 0 };
+        zoneCounts[zone].jobs++;
+        zoneCounts[zone].hours += techHours;
+      }
+
+      // Detect job type from title
+      let foundType = 'other';
+      for (const [type, pattern] of Object.entries(jobTypePatterns)) {
+        if (pattern.test(title)) {
+          foundType = type;
+          break;
+        }
+      }
+
+      if (fullJobId !== 'N/A') {
+        jobNumbers.add(fullJobId);
+        jobIdToTypeMap[fullJobId] = foundType;
+      }
+
+      jobTypeCounts[foundType]++;
+      jobTypeTechHours[foundType] += techHours;
+
+      // Track demo jobs separately
+      if (foundType === 'demo') {
+        demoJobs.push({
+          id: fullJobId,
+          name: extractCustomerName(title),
+          address: row.customer_address,
+          jobType: foundType,
+          duration: duration,
+          isDT: isDT
+        });
+      }
+
+      if (isDT) {
+        dtTrueCount++;
+        dtLaborHours += duration;
+      }
+    });
+
+    const totalJobs = data.length;
+    const totalTechHours = totalLaborHours + dtLaborHours;
+    const averageTechHoursPerJob = totalJobs > 0 ? (totalTechHours / totalJobs).toFixed(2) : 0;
+
+    return {
+      totalJobs,
+      sameDayInstallCount: 0,
+      jobTypeCounts,
+      jobTypeTechHours,
+      zoneCounts,
+      timeFrameCounts,
+      otherTFDetails,
+      demoJobs,
+      dtTrueCount,
+      dtLaborHours,
+      totalLaborHours,
+      totalTechHours,
+      averageTechHoursPerJob,
+      jobNumbers: Array.from(jobNumbers),
+      jobIdToTypeMap,
+      jobsData,
+      timestamp: new Date().toISOString()
+    };
+  };
+
   const handleFileSelect = (event) => {
     const file = event.target.files[0];
     if (file && file.type === 'text/csv') {
@@ -49,48 +283,28 @@ const Analyzer = () => {
     setAnalyzing(true);
 
     try {
-      // Read and parse CSV file
+      // Read and parse CSV file with proper quote handling
       const text = await csvFile.text();
-      const lines = text.split('\n');
-      const headers = lines[0].split(',');
+      const parsedData = parseCSV(text);
 
-      // Parse CSV data
-      const jobs = [];
-      for (let i = 1; i < lines.length; i++) {
-        if (lines[i].trim()) {
-          const values = lines[i].split(',');
-          const job = {};
-          headers.forEach((header, index) => {
-            job[header.trim()] = values[index]?.trim() || '';
-          });
-          jobs.push(job);
-        }
+      if (!parsedData.data || parsedData.data.length === 0) {
+        throw new Error('No data found in CSV file');
       }
 
-      // Calculate statistics
-      const totalJobs = jobs.length;
-      const jobsByType = {};
-      const jobsByCity = {};
+      // Store the raw data
+      setCurrentData(parsedData.data);
 
-      jobs.forEach(job => {
-        const type = job.jobType || job.type || 'Unknown';
-        const city = job.city || 'Unknown';
+      // Perform comprehensive analysis
+      const results = performAnalysis(parsedData.data);
 
-        jobsByType[type] = (jobsByType[type] || 0) + 1;
-        jobsByCity[city] = (jobsByCity[city] || 0) + 1;
-      });
+      // Add metadata
+      results.fileName = csvFile.name;
+      results.analyzedAt = new Date().toLocaleString();
 
-      setAnalysisResults({
-        totalJobs,
-        jobs,
-        jobsByType,
-        jobsByCity,
-        fileName: csvFile.name,
-        analyzedAt: new Date().toLocaleString()
-      });
+      setAnalysisResults(results);
     } catch (error) {
       console.error('Error analyzing CSV:', error);
-      alert('Error analyzing CSV file. Please check the file format.');
+      alert(`Error analyzing CSV file: ${error.message}\nPlease check the file format.`);
     } finally {
       setAnalyzing(false);
     }
@@ -104,15 +318,14 @@ const Analyzer = () => {
 
     try {
       const dateString = new Date().toISOString().split('T')[0];
-      await firebaseService.updateDocument('hou_analyzer', 'daily_stats', {
-        stats: [
-          ...(historicalData || []),
-          {
-            date: dateString,
-            ...analysisResults
-          }
-        ]
+
+      // Save to analyzer_daily_stats collection with date as document ID
+      await firebaseService.saveDocument('analyzer_daily_stats', dateString, {
+        ...analysisResults,
+        date: dateString,
+        savedAt: new Date().toISOString()
       });
+
       alert('Daily stats saved successfully!');
       loadHistoricalData();
     } catch (error) {
@@ -177,6 +390,7 @@ const Analyzer = () => {
 
       {analysisResults && (
         <>
+          {/* Main Metrics */}
           <div className="card" style={{ marginTop: '24px' }}>
             <div className="card-header">
               <h3><i className="fas fa-chart-bar"></i> Analysis Results</h3>
@@ -191,31 +405,56 @@ const Analyzer = () => {
                     <h3><i className="fas fa-clipboard-list"></i> Total Jobs</h3>
                   </div>
                   <div className="metric-value">{analysisResults.totalJobs}</div>
-                  <div className="metric-label">From {analysisResults.fileName}</div>
+                  <div className="metric-label">Jobs analyzed</div>
                 </div>
 
                 <div className="metric-card">
                   <div className="metric-header">
-                    <h3><i className="fas fa-briefcase"></i> Job Types</h3>
+                    <h3><i className="fas fa-clock"></i> Total Labor Hours</h3>
                   </div>
-                  <div className="metric-value">{Object.keys(analysisResults.jobsByType).length}</div>
-                  <div className="metric-label">Different types found</div>
+                  <div className="metric-value">{analysisResults.totalLaborHours.toFixed(1)}</div>
+                  <div className="metric-label">Regular hours</div>
                 </div>
 
                 <div className="metric-card">
                   <div className="metric-header">
-                    <h3><i className="fas fa-map-marker-alt"></i> Cities</h3>
+                    <h3><i className="fas fa-user-clock"></i> Total Tech Hours</h3>
                   </div>
-                  <div className="metric-value">{Object.keys(analysisResults.jobsByCity).length}</div>
-                  <div className="metric-label">Locations covered</div>
+                  <div className="metric-value">{analysisResults.totalTechHours.toFixed(1)}</div>
+                  <div className="metric-label">Including DT</div>
+                </div>
+
+                <div className="metric-card">
+                  <div className="metric-header">
+                    <h3><i className="fas fa-chart-line"></i> Avg Hours/Job</h3>
+                  </div>
+                  <div className="metric-value">{analysisResults.averageTechHoursPerJob}</div>
+                  <div className="metric-label">Per job average</div>
+                </div>
+
+                <div className="metric-card">
+                  <div className="metric-header">
+                    <h3><i className="fas fa-clock"></i> DT Jobs</h3>
+                  </div>
+                  <div className="metric-value">{analysisResults.dtTrueCount}</div>
+                  <div className="metric-label">{analysisResults.dtLaborHours.toFixed(1)} DT hours</div>
+                </div>
+
+                <div className="metric-card">
+                  <div className="metric-header">
+                    <h3><i className="fas fa-hammer"></i> Demo Jobs</h3>
+                  </div>
+                  <div className="metric-value">{analysisResults.demoJobs.length}</div>
+                  <div className="metric-label">Demo jobs found</div>
                 </div>
               </div>
             </div>
           </div>
 
+          {/* Job Types Breakdown */}
           <div className="card" style={{ marginTop: '24px' }}>
             <div className="card-header">
-              <h3><i className="fas fa-list"></i> Jobs by Type</h3>
+              <h3><i className="fas fa-briefcase"></i> Jobs by Type</h3>
             </div>
             <div className="table-container">
               <table className="data-table">
@@ -223,13 +462,44 @@ const Analyzer = () => {
                   <tr>
                     <th>Job Type</th>
                     <th>Count</th>
+                    <th>Tech Hours</th>
+                    <th>% of Jobs</th>
+                    <th>% of Hours</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {Object.entries(analysisResults.jobTypeCounts).map(([type, count]) => (
+                    <tr key={type}>
+                      <td><strong style={{ textTransform: 'capitalize' }}>{type}</strong></td>
+                      <td>{count}</td>
+                      <td>{analysisResults.jobTypeTechHours[type].toFixed(1)}</td>
+                      <td>{((count / analysisResults.totalJobs) * 100).toFixed(1)}%</td>
+                      <td>{((analysisResults.jobTypeTechHours[type] / analysisResults.totalTechHours) * 100).toFixed(1)}%</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Time Frames */}
+          <div className="card" style={{ marginTop: '24px' }}>
+            <div className="card-header">
+              <h3><i className="fas fa-calendar-alt"></i> Time Frame Analysis</h3>
+            </div>
+            <div className="table-container">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Time Frame</th>
+                    <th>Count</th>
                     <th>Percentage</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {Object.entries(analysisResults.jobsByType).map(([type, count]) => (
-                    <tr key={type}>
-                      <td><strong>{type}</strong></td>
+                  {Object.entries(analysisResults.timeFrameCounts).map(([frame, count]) => (
+                    <tr key={frame}>
+                      <td><strong>{frame}</strong></td>
                       <td>{count}</td>
                       <td>{((count / analysisResults.totalJobs) * 100).toFixed(1)}%</td>
                     </tr>
@@ -238,6 +508,72 @@ const Analyzer = () => {
               </table>
             </div>
           </div>
+
+          {/* Zone Distribution */}
+          {Object.keys(analysisResults.zoneCounts).length > 0 && (
+            <div className="card" style={{ marginTop: '24px' }}>
+              <div className="card-header">
+                <h3><i className="fas fa-map-marked-alt"></i> Zone Distribution</h3>
+              </div>
+              <div className="table-container">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Zone</th>
+                      <th>Jobs</th>
+                      <th>Tech Hours</th>
+                      <th>% of Jobs</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {Object.entries(analysisResults.zoneCounts)
+                      .sort((a, b) => a[0].localeCompare(b[0]))
+                      .map(([zone, data]) => (
+                        <tr key={zone}>
+                          <td><strong>{zone}</strong></td>
+                          <td>{data.jobs}</td>
+                          <td>{data.hours.toFixed(1)}</td>
+                          <td>{((data.jobs / analysisResults.totalJobs) * 100).toFixed(1)}%</td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Demo Jobs List */}
+          {analysisResults.demoJobs.length > 0 && (
+            <div className="card" style={{ marginTop: '24px' }}>
+              <div className="card-header">
+                <h3><i className="fas fa-hammer"></i> Demo Jobs</h3>
+              </div>
+              <div className="table-container">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Job ID</th>
+                      <th>Customer</th>
+                      <th>Address</th>
+                      <th>Duration</th>
+                      <th>Double Time</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {analysisResults.demoJobs.map((job, idx) => (
+                      <tr key={idx}>
+                        <td>{job.id}</td>
+                        <td>{job.name}</td>
+                        <td>{job.address}</td>
+                        <td>{job.duration}h</td>
+                        <td>{job.isDT ? '✓' : ''}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </>
       )}
     </div>
