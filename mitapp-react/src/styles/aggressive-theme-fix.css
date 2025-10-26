@@ -336,9 +336,11 @@ tr:hover {
     margin-left: 6px !important;
 }
 
-/* Simplify breakdowns - no boxes */
+/* Simplify breakdowns - 2 columns for compactness */
 .breakdown-grid {
-    display: block !important;
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 12px !important;
     padding: 0 12px 12px 12px !important;
     background: transparent !important;
 }
@@ -679,8 +681,10 @@ button.btn-edit {
         font-size: 14px !important;
     }
 
-    /* Compact breakdown on mobile */
+    /* Compact breakdown on mobile - single column */
     .breakdown-grid {
+        grid-template-columns: 1fr !important;
+        gap: 8px !important;
         padding: 0 8px 8px 8px !important;
     }
 
