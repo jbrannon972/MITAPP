@@ -21,63 +21,125 @@
     background-color: var(--surface-color) !important;
 }
 
-/* Fix ALL modal backgrounds - SUPER AGGRESSIVE */
+/* ============================================
+   NUCLEAR MODAL FIX - FORCE CORRECT DISPLAY
+   Hard-coded colors to bypass any CSS variable issues
+   ============================================ */
+
+/* Modal overlay - dark semi-transparent background */
 .modal-overlay,
 .modal-overlay.active,
-div.modal-overlay {
+div.modal-overlay,
+.modal-overlay[class] {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
     background: rgba(0, 0, 0, 0.7) !important;
+    background-color: rgba(0, 0, 0, 0.7) !important;
     backdrop-filter: blur(4px) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    z-index: 1000 !important;
+    padding: 20px !important;
 }
 
+/* Modal container - centered popup box with HARD-CODED charcoal background */
 .modal,
 .modal-overlay .modal,
-.modal-overlay .modal.modal-lg,
+.modal-overlay > .modal,
+.modal.modal-lg,
 .modal-lg,
-.cal-modal .modal-content,
-.modal-content,
-div.modal {
-    background: var(--surface-color) !important;
-    background-color: var(--surface-color) !important;
-    color: var(--text-primary) !important;
+.modal[class],
+div.modal,
+div.modal[class] {
+    background: #2d2d30 !important;
+    background-color: #2d2d30 !important;
+    color: #ececec !important;
+    position: relative !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5) !important;
 }
 
-/* Ensure modal doesn't become fullscreen on desktop */
+/* Desktop: Centered modal popup - CRITICAL FOR PREVENTING FULLSCREEN */
 @media (min-width: 769px) {
-    .modal {
+    .modal,
+    .modal[class],
+    div.modal,
+    .modal-overlay .modal,
+    .modal-overlay > .modal {
         width: 90% !important;
         max-width: 600px !important;
+        min-width: 400px !important;
         height: auto !important;
         max-height: 90vh !important;
-        border-radius: var(--radius-xl) !important;
+        border-radius: 12px !important;
+        margin: auto !important;
     }
 
-    .modal.modal-lg {
+    .modal.modal-lg,
+    .modal-lg[class],
+    .modal-overlay .modal.modal-lg,
+    .modal-overlay > .modal.modal-lg {
         max-width: 900px !important;
     }
 }
 
+/* Mobile: Fullscreen modal */
+@media (max-width: 768px) {
+    .modal,
+    .modal[class],
+    div.modal,
+    .modal-overlay .modal {
+        width: 100% !important;
+        height: 100% !important;
+        max-width: none !important;
+        max-height: none !important;
+        border-radius: 0 !important;
+    }
+}
+
+/* Modal header - HARD-CODED charcoal */
 .modal-header,
 .modal .modal-header,
+.modal-header[class],
 div.modal .modal-header,
-div[class*="modal"] .modal-header {
-    background: var(--surface-hover) !important;
-    background-color: var(--surface-hover) !important;
-    color: var(--text-primary) !important;
-    border-bottom: 1px solid var(--border-color) !important;
+.modal-overlay .modal .modal-header {
+    background: #3e3e42 !important;
+    background-color: #3e3e42 !important;
+    color: #ececec !important;
+    border-bottom: 1px solid #454549 !important;
+    padding: 20px 24px !important;
+    flex-shrink: 0 !important;
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
 }
 
 .modal-header h3,
-.modal-header h3 i {
-    color: var(--text-primary) !important;
+.modal-header h3 i,
+.modal-header[class] h3,
+.modal .modal-header h3 {
+    color: #ececec !important;
+    margin: 0 !important;
 }
 
+/* Modal body - HARD-CODED charcoal */
 .modal-body,
 .modal .modal-body,
+.modal-body[class],
 div.modal .modal-body,
-div[class*="modal"] .modal-body {
-    background: var(--surface-color) !important;
-    background-color: var(--surface-color) !important;
-    color: var(--text-primary) !important;
+.modal-overlay .modal .modal-body {
+    background: #2d2d30 !important;
+    background-color: #2d2d30 !important;
+    color: #ececec !important;
+    padding: 24px !important;
+    overflow-y: auto !important;
+    flex-grow: 1 !important;
 }
 
 .modal-body form,
@@ -85,27 +147,36 @@ div[class*="modal"] .modal-body {
 .modal-body label,
 .modal-body p,
 .modal-body span {
-    color: var(--text-primary) !important;
+    color: #ececec !important;
+    background: transparent !important;
+    background-color: transparent !important;
 }
 
+/* Modal footer - HARD-CODED charcoal */
 .modal-footer,
 .modal .modal-footer,
+.modal-footer[class],
 div.modal .modal-footer,
-div[class*="modal"] .modal-footer {
-    background: var(--surface-hover) !important;
-    background-color: var(--surface-hover) !important;
-    border-top: 1px solid var(--border-color) !important;
+.modal-overlay .modal .modal-footer {
+    background: #3e3e42 !important;
+    background-color: #3e3e42 !important;
+    border-top: 1px solid #454549 !important;
+    padding: 20px 24px !important;
+    flex-shrink: 0 !important;
+    display: flex !important;
+    justify-content: flex-end !important;
+    gap: 12px !important;
 }
 
 .modal-close:hover,
 .modal-tab-btn:hover {
-    background: var(--surface-color) !important;
-    background-color: var(--surface-color) !important;
+    background: #2d2d30 !important;
+    background-color: #2d2d30 !important;
 }
 
 .modal-tab-btn:disabled {
-    background: var(--background-color) !important;
-    background-color: var(--background-color) !important;
+    background: #1a1a1a !important;
+    background-color: #1a1a1a !important;
 }
 
 /* Fix toggle switches in modals */
