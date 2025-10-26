@@ -13,8 +13,10 @@ const Evaluations = () => {
   const [filters, setFilters] = useState({ zone: 'all', category: 'all' });
   const [showEvalModal, setShowEvalModal] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [showPrintModal, setShowPrintModal] = useState(false);
   const [selectedTech, setSelectedTech] = useState(null);
   const [historyData, setHistoryData] = useState([]);
+  const [printSelection, setPrintSelection] = useState({});
   const [evalFormData, setEvalFormData] = useState({
     technicianId: '',
     evaluationDate: new Date().toISOString().split('T')[0],
@@ -281,6 +283,198 @@ const Evaluations = () => {
     return new Date(timestamp.seconds * 1000).toLocaleDateString();
   };
 
+  const openPrintModal = () => {
+    const allStaff = getAllTechnicians();
+    const supervisors = allStaff.filter(tech => tech.role === 'Supervisor' || tech.role === 'MIT Lead');
+    const technicians = allStaff.filter(tech => tech.role !== 'Supervisor' && tech.role !== 'MIT Lead' && tech.role !== 'Manager');
+
+    // Initialize all as selected
+    const initialSelection = {};
+    [...supervisors, ...technicians].forEach(emp => {
+      initialSelection[emp.id] = true;
+    });
+
+    setPrintSelection(initialSelection);
+    setShowPrintModal(true);
+  };
+
+  const togglePrintSelection = (empId) => {
+    setPrintSelection(prev => ({
+      ...prev,
+      [empId]: !prev[empId]
+    }));
+  };
+
+  const toggleAllInCategory = (employees, value) => {
+    const updates = {};
+    employees.forEach(emp => {
+      updates[emp.id] = value;
+    });
+    setPrintSelection(prev => ({ ...prev, ...updates }));
+  };
+
+  const printEvaluationReport = () => {
+    const selectedIds = Object.keys(printSelection).filter(id => printSelection[id]);
+    const allStaff = getAllTechnicians();
+    const selectedStaff = allStaff.filter(s => selectedIds.includes(s.id));
+
+    const supervisors = selectedStaff.filter(tech => tech.role === 'Supervisor' || tech.role === 'MIT Lead');
+    const technicians = selectedStaff.filter(tech => tech.role !== 'Supervisor' && tech.role !== 'MIT Lead' && tech.role !== 'Manager');
+
+    const generateReportTable = (employeeList, groupName) => {
+      if (employeeList.length === 0) return '<p>No employees selected in this category.</p>';
+
+      let employeesWithEvals = employeeList
+        .map(tech => {
+          const latestEval = allEvaluations[tech.id] || null;
+          const averageScore = latestEval ? calculateScore(latestEval.ratings) : null;
+          return { ...tech, latestEval, averageScore };
+        })
+        .filter(t => t.averageScore !== null);
+
+      employeesWithEvals.sort((a, b) => b.averageScore - a.averageScore);
+
+      const totalEmployees = employeesWithEvals.length;
+      const top20Count = Math.ceil(totalEmployees * 0.2);
+      let bottom10Count = Math.ceil(totalEmployees * 0.1);
+
+      if (totalEmployees > 0 && bottom10Count === 0) {
+        bottom10Count = 1;
+      }
+
+      const rankedEmployees = employeesWithEvals.map((tech, index) => {
+        let category;
+        if (index < top20Count) category = '20';
+        else if (index >= totalEmployees - bottom10Count) category = '10';
+        else category = '70';
+        return { ...tech, category };
+      });
+
+      return `
+        <table class="data-table" style="width: 100%; border-collapse: collapse; margin-bottom: 30px;">
+          <thead>
+            <tr>
+              <th style="border: 1px solid #ddd; padding: 8px; background-color: #f2f2f2;">Employee</th>
+              <th style="border: 1px solid #ddd; padding: 8px; background-color: #f2f2f2;">Category</th>
+              <th style="border: 1px solid #ddd; padding: 8px; background-color: #f2f2f2;">Avg. Score</th>
+              <th style="border: 1px solid #ddd; padding: 8px; background-color: #f2f2f2;">Leadership</th>
+              <th style="border: 1px solid #ddd; padding: 8px; background-color: #f2f2f2;">Culture</th>
+              <th style="border: 1px solid #ddd; padding: 8px; background-color: #f2f2f2;">Jobfit</th>
+              <th style="border: 1px solid #ddd; padding: 8px; background-color: #f2f2f2;">Integrity</th>
+              <th style="border: 1px solid #ddd; padding: 8px; background-color: #f2f2f2;">People</th>
+              <th style="border: 1px solid #ddd; padding: 8px; background-color: #f2f2f2;">Workethic</th>
+              <th style="border: 1px solid #ddd; padding: 8px; background-color: #f2f2f2;">Excellence</th>
+              <th style="border: 1px solid #ddd; padding: 8px; background-color: #f2f2f2;">Longevity</th>
+              <th style="border: 1px solid #ddd; padding: 8px; background-color: #f2f2f2;">Last Evaluated</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rankedEmployees.map(tech => `
+              <tr>
+                <td style="border: 1px solid #ddd; padding: 8px;">${tech.name}</td>
+                <td style="border: 1px solid #ddd; padding: 8px; text-align: center; font-weight: bold;">${tech.category}</td>
+                <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">${tech.averageScore.toFixed(2)}</td>
+                <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">${tech.latestEval.ratings.leadership || 'N/A'}</td>
+                <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">${tech.latestEval.ratings.culture || 'N/A'}</td>
+                <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">${tech.latestEval.ratings.jobfit || 'N/A'}</td>
+                <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">${tech.latestEval.ratings.integrity || 'N/A'}</td>
+                <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">${tech.latestEval.ratings.people || 'N/A'}</td>
+                <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">${tech.latestEval.ratings.workethic || 'N/A'}</td>
+                <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">${tech.latestEval.ratings.excellence || 'N/A'}</td>
+                <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">${tech.latestEval.ratings.longevity || 'N/A'}</td>
+                <td style="border: 1px solid #ddd; padding: 8px;">${formatDate(tech.latestEval?.createdAt)}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `;
+    };
+
+    const printWindow = window.open('', '_blank');
+    const reportDate = new Date().toLocaleDateString();
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>20/70/10 Report - ${reportDate}</title>
+          <style>
+            body {
+              background-color: white;
+              font-family: Arial, sans-serif;
+              padding: 20px;
+              color: #000;
+            }
+            .print-page {
+              page-break-after: always;
+              padding: 20px 0;
+            }
+            .print-page:last-child {
+              page-break-after: avoid;
+            }
+            h1 {
+              font-size: 24px;
+              margin-bottom: 10px;
+              color: #000;
+            }
+            h2 {
+              font-size: 20px;
+              margin-bottom: 20px;
+              color: #333;
+              border-bottom: 2px solid #333;
+              padding-bottom: 10px;
+            }
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              margin-bottom: 30px;
+            }
+            th, td {
+              border: 1px solid #ddd;
+              padding: 8px;
+              text-align: left;
+            }
+            th {
+              background-color: #f2f2f2;
+              font-weight: bold;
+            }
+            .report-header {
+              text-align: center;
+              margin-bottom: 30px;
+            }
+            @media print {
+              body { margin: 0; padding: 10px; }
+              .print-page { page-break-after: always; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="report-header">
+            <h1>20/70/10 Evaluation Report</h1>
+            <p>Generated: ${reportDate}</p>
+          </div>
+
+          <div class="print-page">
+            <h2>Supervisors & Leads</h2>
+            ${generateReportTable(supervisors, 'Supervisors')}
+          </div>
+
+          <div class="print-page">
+            <h2>Technicians</h2>
+            ${generateReportTable(technicians, 'Technicians')}
+          </div>
+        </body>
+      </html>
+    `);
+
+    printWindow.document.close();
+    setTimeout(() => {
+      printWindow.print();
+    }, 250);
+
+    setShowPrintModal(false);
+  };
+
   const renderCardView = () => {
     return (
       <div className="cards-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '16px' }}>
@@ -453,6 +647,9 @@ const Evaluations = () => {
               <i className="fas fa-bars"></i> Table
             </button>
           </div>
+          <button className="btn btn-secondary" onClick={openPrintModal}>
+            <i className="fas fa-print"></i> Print Report
+          </button>
           <button className="btn btn-primary" onClick={() => openEvalModal()}>
             <i className="fas fa-plus"></i> Add Eval
           </button>
@@ -834,6 +1031,138 @@ const Evaluations = () => {
             <div className="modal-footer">
               <button className="btn btn-secondary" onClick={() => setShowHistoryModal(false)}>
                 Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Print Selection Modal */}
+      {showPrintModal && (
+        <div className="modal-overlay active" onClick={() => setShowPrintModal(false)}>
+          <div className="modal modal-lg" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>
+                <i className="fas fa-print"></i> Print 20/70/10 Report
+              </h3>
+              <button className="modal-close" onClick={() => setShowPrintModal(false)}>
+                <i className="fas fa-times"></i>
+              </button>
+            </div>
+            <div className="modal-body">
+              <p style={{ marginBottom: '20px', color: 'var(--text-secondary)' }}>
+                Select the employees to include in the report. The report will separate Supervisors/Leads and Technicians into different sections, each with their own 20/70/10 rankings.
+              </p>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '30px' }}>
+                {/* Supervisors Column */}
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', paddingBottom: '8px', borderBottom: '2px solid var(--primary-color)' }}>
+                    <h4 style={{ margin: 0, fontSize: '16px', color: 'var(--primary-color)' }}>
+                      <i className="fas fa-user-tie"></i> Supervisors & Leads
+                    </h4>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button
+                        className="btn btn-secondary btn-small"
+                        onClick={() => {
+                          const supervisors = getAllTechnicians().filter(tech => tech.role === 'Supervisor' || tech.role === 'MIT Lead');
+                          toggleAllInCategory(supervisors, true);
+                        }}
+                      >
+                        All
+                      </button>
+                      <button
+                        className="btn btn-secondary btn-small"
+                        onClick={() => {
+                          const supervisors = getAllTechnicians().filter(tech => tech.role === 'Supervisor' || tech.role === 'MIT Lead');
+                          toggleAllInCategory(supervisors, false);
+                        }}
+                      >
+                        None
+                      </button>
+                    </div>
+                  </div>
+                  <div style={{ maxHeight: '400px', overflowY: 'auto', padding: '8px' }}>
+                    {getAllTechnicians()
+                      .filter(tech => tech.role === 'Supervisor' || tech.role === 'MIT Lead')
+                      .map(emp => (
+                        <div key={emp.id} style={{ marginBottom: '8px', display: 'flex', alignItems: 'center' }}>
+                          <input
+                            type="checkbox"
+                            id={`print-check-${emp.id}`}
+                            checked={printSelection[emp.id] || false}
+                            onChange={() => togglePrintSelection(emp.id)}
+                            style={{ marginRight: '8px', width: '16px', height: '16px', cursor: 'pointer' }}
+                          />
+                          <label
+                            htmlFor={`print-check-${emp.id}`}
+                            style={{ cursor: 'pointer', fontSize: '14px', userSelect: 'none' }}
+                          >
+                            {emp.name}
+                          </label>
+                        </div>
+                      ))
+                    }
+                  </div>
+                </div>
+
+                {/* Technicians Column */}
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', paddingBottom: '8px', borderBottom: '2px solid var(--primary-color)' }}>
+                    <h4 style={{ margin: 0, fontSize: '16px', color: 'var(--primary-color)' }}>
+                      <i className="fas fa-users"></i> Technicians
+                    </h4>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button
+                        className="btn btn-secondary btn-small"
+                        onClick={() => {
+                          const technicians = getAllTechnicians().filter(tech => tech.role !== 'Supervisor' && tech.role !== 'MIT Lead' && tech.role !== 'Manager');
+                          toggleAllInCategory(technicians, true);
+                        }}
+                      >
+                        All
+                      </button>
+                      <button
+                        className="btn btn-secondary btn-small"
+                        onClick={() => {
+                          const technicians = getAllTechnicians().filter(tech => tech.role !== 'Supervisor' && tech.role !== 'MIT Lead' && tech.role !== 'Manager');
+                          toggleAllInCategory(technicians, false);
+                        }}
+                      >
+                        None
+                      </button>
+                    </div>
+                  </div>
+                  <div style={{ maxHeight: '400px', overflowY: 'auto', padding: '8px' }}>
+                    {getAllTechnicians()
+                      .filter(tech => tech.role !== 'Supervisor' && tech.role !== 'MIT Lead' && tech.role !== 'Manager')
+                      .map(emp => (
+                        <div key={emp.id} style={{ marginBottom: '8px', display: 'flex', alignItems: 'center' }}>
+                          <input
+                            type="checkbox"
+                            id={`print-check-${emp.id}`}
+                            checked={printSelection[emp.id] || false}
+                            onChange={() => togglePrintSelection(emp.id)}
+                            style={{ marginRight: '8px', width: '16px', height: '16px', cursor: 'pointer' }}
+                          />
+                          <label
+                            htmlFor={`print-check-${emp.id}`}
+                            style={{ cursor: 'pointer', fontSize: '14px', userSelect: 'none' }}
+                          >
+                            {emp.name}
+                          </label>
+                        </div>
+                      ))
+                    }
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-secondary" onClick={() => setShowPrintModal(false)}>
+                Cancel
+              </button>
+              <button className="btn btn-primary" onClick={printEvaluationReport}>
+                <i className="fas fa-print"></i> Print
               </button>
             </div>
           </div>
