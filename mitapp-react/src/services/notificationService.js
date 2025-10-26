@@ -205,11 +205,24 @@ class NotificationService {
     try {
       // Show local notification if permission is granted
       if (Notification.permission === 'granted') {
-        const damageType = damageData.vehicle_number ? 'Vehicle' : 'Equipment';
-        const damageItem = damageData.vehicle_number || damageData.equipment_id || 'Item';
+        let notificationBody;
+
+        if (damageData.vehicle_number) {
+          // Vehicle damage
+          notificationBody = `${reportedBy || 'A user'} reported damage to Vehicle: ${damageData.vehicle_number}`;
+        } else if (damageData.equipment_id) {
+          // Equipment damage
+          notificationBody = `${reportedBy || 'A user'} reported damage to Equipment: ${damageData.equipment_id}`;
+        } else if (damageData.jobNumber) {
+          // Job site damage (from tech app)
+          notificationBody = `${reportedBy || 'A user'} reported job site damage on Job #${damageData.jobNumber}`;
+        } else {
+          // Generic damage
+          notificationBody = `${reportedBy || 'A user'} reported a damage incident`;
+        }
 
         const notification = new Notification('New Damage Report', {
-          body: `${reportedBy || 'A user'} reported damage to ${damageType}: ${damageItem}`,
+          body: notificationBody,
           icon: '/Elogo.png',
           badge: '/Elogo.png',
           tag: 'damage-report',

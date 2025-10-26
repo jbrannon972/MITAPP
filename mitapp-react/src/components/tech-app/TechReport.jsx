@@ -3,6 +3,7 @@ import { collection, query, where, getDocs, addDoc, doc, updateDoc, increment } 
 import { db } from '../../config/firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import { useData } from '../../contexts/DataContext';
+import notificationService from '../../services/notificationService';
 
 const TechReport = () => {
   const [activeReport, setActiveReport] = useState('fleet');
@@ -248,27 +249,38 @@ const TechReport = () => {
     }
 
     try {
-      await addDoc(collection(db, 'damage_reports'), {
+      // Prepare damage data in the format expected by the Damages page
+      const damageData = {
+        date_of_occurrence: damageForm.dateOccurred,
+        technician_name: currentUser.username,
+        vehicle_number: '', // Techs don't specify vehicle in this form
+        equipment_id: '', // Techs don't specify equipment in this form
+        damage_description: `${damageForm.cause}: ${damageForm.description}\n\nHow it occurred: ${damageForm.howOccurred}${damageForm.zone ? `\nZone: ${damageForm.zone}` : ''}${damageForm.jobNumber ? `\nJob #: ${damageForm.jobNumber}` : ''}`,
+        estimated_cost: 0,
+        resolved: false,
+        status: 'Pending',
+        createdAt: new Date(),
+        // Additional tech-specific fields
         jobNumber: damageForm.jobNumber,
-        dateOfOccurrence: damageForm.dateOccurred,
         cause: damageForm.cause,
-        description: damageForm.description,
         howOccurred: damageForm.howOccurred,
         zone: damageForm.zone,
         technicianId: currentUser.userId,
-        technicianName: currentUser.username,
         submittedAt: new Date().toISOString(),
-        status: 'New',
-        reviewed: false,
-        resolved: false,
-        activityLog: [{
-          action: 'Report created',
-          timestamp: new Date().toISOString(),
-          user: currentUser.username
-        }]
-      });
+        reviewed: false
+      };
 
-      alert('Damage report submitted successfully!');
+      // Save to hou_damages collection (same as manager Damages page)
+      const docRef = await addDoc(collection(db, 'hou_damages'), damageData);
+
+      // Notify managers of new damage report
+      const damageWithId = { ...damageData, id: docRef.id };
+      await notificationService.notifyManagersOfDamage(
+        damageWithId,
+        currentUser.username
+      );
+
+      alert('Damage report submitted successfully! Managers have been notified.');
       setDamageForm({
         jobNumber: '',
         dateOccurred: new Date().toISOString().split('T')[0],
