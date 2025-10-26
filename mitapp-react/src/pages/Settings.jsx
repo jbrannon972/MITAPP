@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Layout from '../components/common/Layout';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -23,6 +23,32 @@ const Settings = () => {
     compactView: false
   });
 
+  // Load theme from localStorage on mount
+  useEffect(() => {
+    const savedSettings = localStorage.getItem('appSettings');
+    if (savedSettings) {
+      try {
+        const parsed = JSON.parse(savedSettings);
+        setAppSettings(prev => ({ ...prev, ...parsed }));
+        // Apply theme immediately
+        if (parsed.theme === 'dark') {
+          document.body.classList.add('dark-mode');
+        }
+      } catch (error) {
+        console.error('Error loading settings:', error);
+      }
+    }
+  }, []);
+
+  // Apply theme changes to document body
+  useEffect(() => {
+    if (appSettings.theme === 'dark') {
+      document.body.classList.add('dark-mode');
+    } else {
+      document.body.classList.remove('dark-mode');
+    }
+  }, [appSettings.theme]);
+
   const [passwordData, setPasswordData] = useState({
     currentPassword: '',
     newPassword: '',
@@ -42,8 +68,19 @@ const Settings = () => {
     setProfileData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleAppSettingChange = (setting) => {
-    setAppSettings(prev => ({ ...prev, [setting]: !prev[setting] }));
+  const handleAppSettingChange = (setting, value) => {
+    setAppSettings(prev => {
+      const newSettings = typeof value !== 'undefined'
+        ? { ...prev, [setting]: value }
+        : { ...prev, [setting]: !prev[setting] };
+
+      // Auto-save theme changes immediately
+      if (setting === 'theme') {
+        localStorage.setItem('appSettings', JSON.stringify(newSettings));
+      }
+
+      return newSettings;
+    });
   };
 
   const handleSaveProfile = async () => {
@@ -266,11 +303,32 @@ const Settings = () => {
       <div style={{ maxWidth: '600px' }}>
         <div style={{ marginBottom: '24px' }}>
           <h4 style={{ marginBottom: '16px' }}>Appearance</h4>
-          <div style={{ padding: '16px', backgroundColor: '#f9fafb', borderRadius: '6px', marginBottom: '12px' }}>
+
+          {/* Dark Mode Toggle */}
+          <div style={{ padding: '16px', backgroundColor: 'var(--surface-color)', border: '1px solid var(--border-color)', borderRadius: '6px', marginBottom: '12px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <strong>Dark Mode</strong>
+                <p style={{ fontSize: '14px', color: 'var(--text-secondary)', margin: '4px 0 0 0' }}>
+                  Toggle between light and dark theme
+                </p>
+              </div>
+              <label className="switch">
+                <input
+                  type="checkbox"
+                  checked={appSettings.theme === 'dark'}
+                  onChange={(e) => handleAppSettingChange('theme', e.target.checked ? 'dark' : 'light')}
+                />
+                <span className="slider round"></span>
+              </label>
+            </div>
+          </div>
+
+          <div style={{ padding: '16px', backgroundColor: 'var(--surface-color)', border: '1px solid var(--border-color)', borderRadius: '6px', marginBottom: '12px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
                 <strong>Compact View</strong>
-                <p style={{ fontSize: '14px', color: '#6b7280', margin: '4px 0 0 0' }}>
+                <p style={{ fontSize: '14px', color: 'var(--text-secondary)', margin: '4px 0 0 0' }}>
                   Show more data in less space
                 </p>
               </div>
@@ -288,11 +346,11 @@ const Settings = () => {
 
         <div style={{ marginBottom: '24px' }}>
           <h4 style={{ marginBottom: '16px' }}>Notifications</h4>
-          <div style={{ padding: '16px', backgroundColor: '#f9fafb', borderRadius: '6px', marginBottom: '12px' }}>
+          <div style={{ padding: '16px', backgroundColor: 'var(--surface-color)', border: '1px solid var(--border-color)', borderRadius: '6px', marginBottom: '12px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
                 <strong>Enable Notifications</strong>
-                <p style={{ fontSize: '14px', color: '#6b7280', margin: '4px 0 0 0' }}>
+                <p style={{ fontSize: '14px', color: 'var(--text-secondary)', margin: '4px 0 0 0' }}>
                   Receive in-app notifications
                 </p>
               </div>
@@ -307,11 +365,11 @@ const Settings = () => {
             </div>
           </div>
 
-          <div style={{ padding: '16px', backgroundColor: '#f9fafb', borderRadius: '6px', marginBottom: '12px' }}>
+          <div style={{ padding: '16px', backgroundColor: 'var(--surface-color)', border: '1px solid var(--border-color)', borderRadius: '6px', marginBottom: '12px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
                 <strong>Email Notifications</strong>
-                <p style={{ fontSize: '14px', color: '#6b7280', margin: '4px 0 0 0' }}>
+                <p style={{ fontSize: '14px', color: 'var(--text-secondary)', margin: '4px 0 0 0' }}>
                   Receive email updates
                 </p>
               </div>
@@ -329,11 +387,11 @@ const Settings = () => {
 
         <div style={{ marginBottom: '24px' }}>
           <h4 style={{ marginBottom: '16px' }}>Data</h4>
-          <div style={{ padding: '16px', backgroundColor: '#f9fafb', borderRadius: '6px', marginBottom: '12px' }}>
+          <div style={{ padding: '16px', backgroundColor: 'var(--surface-color)', border: '1px solid var(--border-color)', borderRadius: '6px', marginBottom: '12px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
                 <strong>Auto-Save</strong>
-                <p style={{ fontSize: '14px', color: '#6b7280', margin: '4px 0 0 0' }}>
+                <p style={{ fontSize: '14px', color: 'var(--text-secondary)', margin: '4px 0 0 0' }}>
                   Automatically save changes
                 </p>
               </div>

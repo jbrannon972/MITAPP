@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { DataProvider } from './contexts/DataContext';
@@ -21,6 +22,21 @@ import WarehouseApp from './pages/warehouse-app/WarehouseApp';
 import './styles/styles.css';
 
 function App() {
+  // Load and apply theme from localStorage on app mount
+  useEffect(() => {
+    const savedSettings = localStorage.getItem('appSettings');
+    if (savedSettings) {
+      try {
+        const parsed = JSON.parse(savedSettings);
+        if (parsed.theme === 'dark') {
+          document.body.classList.add('dark-mode');
+        }
+      } catch (error) {
+        console.error('Error loading theme:', error);
+      }
+    }
+  }, []);
+
   return (
     <AuthProvider>
       <DataProvider>
