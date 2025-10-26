@@ -60,11 +60,11 @@ export const AuthProvider = ({ children }) => {
   };
 
   // Login function
-  const login = async (email, password, rememberMe = false) => {
+  const login = async (email, password, rememberMe = true) => {
     try {
       setError(null);
 
-      // Set persistence based on remember me
+      // Set persistence based on remember me (default to LOCAL to keep users logged in)
       const persistence = rememberMe ? browserLocalPersistence : browserSessionPersistence;
       await setPersistence(auth, persistence);
 
@@ -148,6 +148,11 @@ export const AuthProvider = ({ children }) => {
 
   // Check auth state on mount
   useEffect(() => {
+    // Set default persistence to LOCAL to keep users logged in
+    setPersistence(auth, browserLocalPersistence).catch((error) => {
+      console.error('Error setting persistence:', error);
+    });
+
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         // Try to get user from localStorage first
