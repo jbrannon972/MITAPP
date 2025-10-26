@@ -6,7 +6,7 @@ import firebaseService from '../services/firebaseService';
 import { getTechsOnRouteToday, getSubTeamsToday, getDailyHoursData } from '../utils/dashboardCalculations';
 import { getCalculatedScheduleForDay } from '../utils/calendarManager';
 import DailyHoursChart from '../components/dashboard/DailyHoursChart';
-import SecondShiftReportForm from '../components/dashboard/SecondShiftReportForm';
+import SupervisorReportForm from '../components/dashboard/SupervisorReportForm';
 import HuddleInfoModal from '../components/team/HuddleInfoModal';
 
 const Dashboard = () => {
@@ -25,7 +25,8 @@ const Dashboard = () => {
     atAGlance: { techsOnRoute: 0, subTeams: 0, newJobsCapacity: 0, inefficientDemoHours: 0 },
     dailyHoursData: null,
     warehouseData: { vehiclesInRepair: [], unassignedVehicles: [], techsOffToday: [] },
-    secondShiftReport: null
+    secondShiftReport: null,
+    supervisorReport: null
   });
 
   useEffect(() => {
@@ -72,11 +73,12 @@ const Dashboard = () => {
       // Get warehouse data (if fleet data available)
       const warehouseData = await getWarehouseData(schedule);
 
-      // Get yesterday's second shift report
+      // Get yesterday's second shift report and supervisor report
       const yesterday = new Date(date);
       yesterday.setDate(yesterday.getDate() - 1);
       const yesterdayString = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
       const secondShiftReport = await firebaseService.getSecondShiftReportByDate(yesterdayString);
+      const supervisorReport = await firebaseService.getSupervisorReportByDate(yesterdayString);
 
       setDashboardData({
         dailyStats,
@@ -90,7 +92,8 @@ const Dashboard = () => {
         },
         dailyHoursData: dailyHours,
         warehouseData,
-        secondShiftReport: { report: secondShiftReport, date: yesterday }
+        secondShiftReport: { report: secondShiftReport, date: yesterday },
+        supervisorReport: { report: supervisorReport, date: yesterday }
       });
     } catch (error) {
       console.error('Error loading dashboard data:', error);
@@ -214,9 +217,9 @@ const Dashboard = () => {
             <button
               className="btn btn-info"
               onClick={() => setShowReportForm(true)}
-              title="Submit Second Shift Report"
+              title="Submit Supervisor Report"
             >
-              <i className="fas fa-moon"></i> Submit 2nd Shift Report
+              <i className="fas fa-clipboard-check"></i> Submit Supervisor Report
             </button>
             {currentUser?.role === 'Manager' && (
               <button
@@ -464,6 +467,93 @@ const Dashboard = () => {
                   </div>
                 </div>
               )}
+
+              {/* Supervisor Report - Below Second Shift Report */}
+              {dashboardData.supervisorReport && (
+                <div id="supervisor-report-container" style={{ marginTop: '24px' }}>
+                  <div className="card supervisor-report-summary">
+                    <div className="card-header">
+                      <h3><i className="fas fa-clipboard-check"></i> Supervisor Report for {dashboardData.supervisorReport.date?.toLocaleDateString()}</h3>
+                      {dashboardData.supervisorReport.report && (
+                        <span>By: {dashboardData.supervisorReport.report.submittedBy} ({dashboardData.supervisorReport.report.submittedByRole})</span>
+                      )}
+                    </div>
+                    {dashboardData.supervisorReport.report ? (
+                      <>
+                        {/* Checklist Items */}
+                        <div style={{ padding: '16px' }}>
+                          <h4 style={{ marginBottom: '16px' }}><i className="fas fa-tasks"></i> Daily Checklist</h4>
+                          <div style={{ display: 'grid', gap: '12px' }}>
+                            {/* Equipment Deployed */}
+                            <div style={{ padding: '12px', backgroundColor: 'var(--surface-hover)', borderRadius: 'var(--radius-md)', borderLeft: `4px solid ${dashboardData.supervisorReport.report.equipmentDeployed ? 'var(--success-color)' : 'var(--danger-color)'}` }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                                <i className={`fas ${dashboardData.supervisorReport.report.equipmentDeployed ? 'fa-check-circle' : 'fa-times-circle'}`} style={{ color: dashboardData.supervisorReport.report.equipmentDeployed ? 'var(--success-color)' : 'var(--danger-color)' }}></i>
+                                <strong>Equipment properly deployed at day 2 visits</strong>
+                              </div>
+                              {!dashboardData.supervisorReport.report.equipmentDeployed && dashboardData.supervisorReport.report.equipmentDeployedReason && (
+                                <p style={{ marginLeft: '28px', fontSize: '14px', color: 'var(--text-secondary)' }}>{dashboardData.supervisorReport.report.equipmentDeployedReason}</p>
+                              )}
+                            </div>
+
+                            {/* MIT Lead Forms */}
+                            <div style={{ padding: '12px', backgroundColor: 'var(--surface-hover)', borderRadius: 'var(--radius-md)', borderLeft: `4px solid ${dashboardData.supervisorReport.report.mitLeadFormsSubmitted ? 'var(--success-color)' : 'var(--danger-color)'}` }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                                <i className={`fas ${dashboardData.supervisorReport.report.mitLeadFormsSubmitted ? 'fa-check-circle' : 'fa-times-circle'}`} style={{ color: dashboardData.supervisorReport.report.mitLeadFormsSubmitted ? 'var(--success-color)' : 'var(--danger-color)' }}></i>
+                                <strong>MIT Lead visit forms submitted</strong>
+                              </div>
+                              {!dashboardData.supervisorReport.report.mitLeadFormsSubmitted && dashboardData.supervisorReport.report.mitLeadFormsReason && (
+                                <p style={{ marginLeft: '28px', fontSize: '14px', color: 'var(--text-secondary)' }}>{dashboardData.supervisorReport.report.mitLeadFormsReason}</p>
+                              )}
+                            </div>
+
+                            {/* DPT Notes */}
+                            <div style={{ padding: '12px', backgroundColor: 'var(--surface-hover)', borderRadius: 'var(--radius-md)', borderLeft: `4px solid ${dashboardData.supervisorReport.report.dptNotesUpdated ? 'var(--success-color)' : 'var(--danger-color)'}` }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                                <i className={`fas ${dashboardData.supervisorReport.report.dptNotesUpdated ? 'fa-check-circle' : 'fa-times-circle'}`} style={{ color: dashboardData.supervisorReport.report.dptNotesUpdated ? 'var(--success-color)' : 'var(--danger-color)' }}></i>
+                                <strong>DPT notes and WOs fully updated</strong>
+                              </div>
+                              {!dashboardData.supervisorReport.report.dptNotesUpdated && dashboardData.supervisorReport.report.dptNotesReason && (
+                                <p style={{ marginLeft: '28px', fontSize: '14px', color: 'var(--text-secondary)' }}>{dashboardData.supervisorReport.report.dptNotesReason}</p>
+                              )}
+                            </div>
+
+                            {/* Talked to Techs */}
+                            <div style={{ padding: '12px', backgroundColor: 'var(--surface-hover)', borderRadius: 'var(--radius-md)', borderLeft: `4px solid ${dashboardData.supervisorReport.report.talkedToTechs ? 'var(--success-color)' : 'var(--danger-color)'}` }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                                <i className={`fas ${dashboardData.supervisorReport.report.talkedToTechs ? 'fa-check-circle' : 'fa-times-circle'}`} style={{ color: dashboardData.supervisorReport.report.talkedToTechs ? 'var(--success-color)' : 'var(--danger-color)' }}></i>
+                                <strong>Talked to all techs working near end of day</strong>
+                              </div>
+                              {!dashboardData.supervisorReport.report.talkedToTechs && dashboardData.supervisorReport.report.talkedToTechsReason && (
+                                <p style={{ marginLeft: '28px', fontSize: '14px', color: 'var(--text-secondary)' }}>{dashboardData.supervisorReport.report.talkedToTechsReason}</p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Win and Support Sections */}
+                        <div style={{ padding: '16px', borderTop: '1px solid var(--border-color)' }}>
+                          <div style={{ marginBottom: '20px' }}>
+                            <h4 style={{ marginBottom: '8px' }}><i className="fas fa-trophy" style={{ color: 'var(--warning-color)' }}></i> Win Today</h4>
+                            <p style={{ padding: '12px', backgroundColor: 'var(--surface-hover)', borderRadius: 'var(--radius-md)', borderLeft: '4px solid var(--warning-color)' }}>
+                              {dashboardData.supervisorReport.report.winToday}
+                            </p>
+                          </div>
+                          {dashboardData.supervisorReport.report.supportNeeded && (
+                            <div>
+                              <h4 style={{ marginBottom: '8px' }}><i className="fas fa-hands-helping" style={{ color: 'var(--primary-color)' }}></i> Support Needed</h4>
+                              <p style={{ padding: '12px', backgroundColor: 'var(--surface-hover)', borderRadius: 'var(--radius-md)', borderLeft: '4px solid var(--primary-color)' }}>
+                                {dashboardData.supervisorReport.report.supportNeeded}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      </>
+                    ) : (
+                      <p className="no-entries">No supervisor report was submitted.</p>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="dashboard-sidebar">
@@ -600,9 +690,9 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* Second Shift Report Form Modal */}
+      {/* Supervisor Report Form Modal */}
       {showReportForm && (
-        <SecondShiftReportForm
+        <SupervisorReportForm
           onClose={() => setShowReportForm(false)}
           onSubmitSuccess={() => {
             setShowReportForm(false);

@@ -23,7 +23,8 @@ class FirebaseService {
     leaderboard: 'hou_leaderboard',
     damages: 'hou_damages',
     slackMentions: 'hou_slack_mentions',
-    huddleInfo: 'hou_huddle_info'
+    huddleInfo: 'hou_huddle_info',
+    supervisorReports: 'hou_supervisor_reports'
   };
 
   // Load staffing data
@@ -530,6 +531,49 @@ class FirebaseService {
       return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     } catch (error) {
       console.error('Error getting all huddle entries:', error);
+      return [];
+    }
+  }
+
+  // ==================== SUPERVISOR REPORT METHODS ====================
+
+  // Save supervisor report for a specific date
+  async saveSupervisorReport(date, reportData) {
+    try {
+      const docRef = doc(db, this.collections.supervisorReports, date);
+      await setDoc(docRef, {
+        ...reportData,
+        date,
+        updatedAt: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('Error saving supervisor report:', error);
+      throw error;
+    }
+  }
+
+  // Get supervisor report by date
+  async getSupervisorReportByDate(date) {
+    try {
+      const docRef = doc(db, this.collections.supervisorReports, date);
+      const docSnap = await getDoc(docRef);
+      return docSnap.exists() ? { date, ...docSnap.data() } : null;
+    } catch (error) {
+      console.error('Error getting supervisor report:', error);
+      return null;
+    }
+  }
+
+  // Get recent supervisor reports (for dashboard display)
+  async getRecentSupervisorReports(limit = 10) {
+    try {
+      const collectionRef = collection(db, this.collections.supervisorReports);
+      const q = query(collectionRef, orderBy('date', 'desc'));
+      const snapshot = await getDocs(q);
+      const reports = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      return reports.slice(0, limit);
+    } catch (error) {
+      console.error('Error getting recent supervisor reports:', error);
       return [];
     }
   }
