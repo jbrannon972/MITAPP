@@ -1247,6 +1247,7 @@ NAVIGATION & RESPONSIVE STYLES
    }
    .modal {
         width: 90%;
+        max-width: 600px;
         height: auto;
         border-radius: var(--radius-xl);
         max-height: 90vh;
@@ -1254,6 +1255,19 @@ NAVIGATION & RESPONSIVE STYLES
         flex-direction: column;
         overflow: hidden;
     }
+
+    .modal.modal-lg {
+        max-width: 900px;
+    }
+
+    .modal.modal-md {
+        max-width: 600px;
+    }
+
+    .modal.modal-sm {
+        max-width: 400px;
+    }
+
     .control-panel-grid {
         grid-template-columns: repeat(2, 1fr); /* 2 columns for tablets */
     }

@@ -105,12 +105,12 @@ const EditProfileModal = ({ person, onClose, onSave }) => {
 
   return (
     <div className="modal-overlay active" onClick={onClose}>
-      <div className="modal-dialog" onClick={(e) => e.stopPropagation()}>
+      <div className="modal modal-lg" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h3><i className="fas fa-user-edit"></i> Edit Profile: {person.name}</h3>
-          <button className="close-btn" onClick={onClose}>&times;</button>
+          <button className="modal-close" onClick={onClose}><i className="fas fa-times"></i></button>
         </div>
-        <div className="modal-body" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
+        <div className="modal-body">
           {/* Summary Boxes */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '24px' }}>
             <div>
