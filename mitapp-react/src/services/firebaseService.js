@@ -22,7 +22,8 @@ class FirebaseService {
     evaluations: 'hou_evaluations',
     leaderboard: 'hou_leaderboard',
     damages: 'hou_damages',
-    slackMentions: 'hou_slack_mentions'
+    slackMentions: 'hou_slack_mentions',
+    huddleInfo: 'hou_huddle_info'
   };
 
   // Load staffing data
@@ -458,6 +459,77 @@ class FirebaseService {
       return techs;
     } catch (error) {
       console.error('Error getting all technicians:', error);
+      return [];
+    }
+  }
+
+  // ==================== HUDDLE INFO METHODS ====================
+
+  // Get huddle info for a specific date
+  async getHuddleInfo(date) {
+    try {
+      const docRef = doc(db, this.collections.huddleInfo, date);
+      const docSnap = await getDoc(docRef);
+      return docSnap.exists() ? { date, ...docSnap.data() } : null;
+    } catch (error) {
+      console.error('Error getting huddle info:', error);
+      return null;
+    }
+  }
+
+  // Save huddle info for a specific date
+  async saveHuddleInfo(date, huddleData) {
+    try {
+      const docRef = doc(db, this.collections.huddleInfo, date);
+      await setDoc(docRef, {
+        ...huddleData,
+        date,
+        updatedAt: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('Error saving huddle info:', error);
+      throw error;
+    }
+  }
+
+  // Delete huddle info for a specific date
+  async deleteHuddleInfo(date) {
+    try {
+      const docRef = doc(db, this.collections.huddleInfo, date);
+      await deleteDoc(docRef);
+    } catch (error) {
+      console.error('Error deleting huddle info:', error);
+      throw error;
+    }
+  }
+
+  // Get huddle entries in a date range
+  async getHuddleEntriesRange(startDate, endDate) {
+    try {
+      const collectionRef = collection(db, this.collections.huddleInfo);
+      const q = query(
+        collectionRef,
+        where('date', '>=', startDate),
+        where('date', '<=', endDate),
+        orderBy('date', 'asc')
+      );
+      const snapshot = await getDocs(q);
+      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    } catch (error) {
+      console.error('Error getting huddle entries range:', error);
+      return [];
+    }
+  }
+
+  // Get all huddle entries (for admin view)
+  async getAllHuddleEntries() {
+    try {
+      const collectionRef = collection(db, this.collections.huddleInfo);
+      const q = query(collectionRef, orderBy('date', 'desc'));
+      const snapshot = await getDocs(q);
+      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    } catch (error) {
+      console.error('Error getting all huddle entries:', error);
       return [];
     }
   }

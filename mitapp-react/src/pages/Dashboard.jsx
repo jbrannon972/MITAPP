@@ -7,6 +7,7 @@ import { getTechsOnRouteToday, getSubTeamsToday, getDailyHoursData } from '../ut
 import { getCalculatedScheduleForDay } from '../utils/calendarManager';
 import DailyHoursChart from '../components/dashboard/DailyHoursChart';
 import SecondShiftReportForm from '../components/dashboard/SecondShiftReportForm';
+import HuddleInfoModal from '../components/team/HuddleInfoModal';
 
 const Dashboard = () => {
   const { currentUser } = useAuth();
@@ -15,6 +16,8 @@ const Dashboard = () => {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [loading, setLoading] = useState(true);
   const [showReportForm, setShowReportForm] = useState(false);
+  const [showHuddleModal, setShowHuddleModal] = useState(false);
+  const [huddleData, setHuddleData] = useState(null);
   const [dashboardData, setDashboardData] = useState({
     dailyStats: null,
     staffingInfo: [],
@@ -143,6 +146,42 @@ const Dashboard = () => {
     return status.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
   };
 
+  const handleViewHuddleInfo = async () => {
+    try {
+      const data = await firebaseService.getHuddleInfo(selectedDate);
+      setHuddleData(data);
+      setShowHuddleModal(true);
+    } catch (error) {
+      console.error('Error loading huddle info:', error);
+      alert('Error loading huddle information.');
+    }
+  };
+
+  const handleSaveHuddle = async (date, huddleFormData) => {
+    try {
+      // Get all team members from staffing data
+      const allTeamMembers = [];
+      if (staffingData && staffingData.zones) {
+        staffingData.zones.forEach(zone => {
+          if (zone.lead) allTeamMembers.push(zone.lead);
+          if (zone.members) allTeamMembers.push(...zone.members);
+        });
+      }
+
+      await firebaseService.saveHuddleInfo(date, {
+        ...huddleFormData,
+        lastModified: new Date().toISOString(),
+        modifiedBy: currentUser?.email || currentUser?.displayName
+      });
+
+      alert('Huddle info saved successfully!');
+      setShowHuddleModal(false);
+    } catch (error) {
+      console.error('Error saving huddle info:', error);
+      throw error;
+    }
+  };
+
   return (
     <Layout>
       <div id="dashboard-tab" className="tab-content active">
@@ -179,6 +218,15 @@ const Dashboard = () => {
             >
               <i className="fas fa-moon"></i> Submit 2nd Shift Report
             </button>
+            {currentUser?.role === 'Manager' && (
+              <button
+                className="btn btn-primary"
+                onClick={handleViewHuddleInfo}
+                title="View Today's Huddle Info"
+              >
+                <i className="fas fa-clipboard-list"></i> View Today's Huddle Info
+              </button>
+            )}
           </div>
         </div>
 
@@ -560,6 +608,25 @@ const Dashboard = () => {
             setShowReportForm(false);
             loadDashboardData(); // Reload dashboard to show new report
           }}
+        />
+      )}
+
+      {/* Huddle Info Modal */}
+      {showHuddleModal && (
+        <HuddleInfoModal
+          isOpen={showHuddleModal}
+          onClose={() => {
+            setShowHuddleModal(false);
+            setHuddleData(null);
+          }}
+          selectedDate={selectedDate}
+          huddleData={huddleData}
+          onSave={handleSaveHuddle}
+          teamMembers={staffingData?.zones?.flatMap(zone => [
+            ...(zone.lead ? [zone.lead] : []),
+            ...(zone.members || [])
+          ]) || []}
+          allZones={staffingData?.zones || []}
         />
       )}
     </Layout>
