@@ -1,0 +1,6 @@
+text,route_title,customer_address,Zone,duration,workers,route_description
+JOB001,John Smith | Install,123 Main St West Palm Beach FL 33401,Z1,2.5,"['spencer.poole@entrusted.com']","Install dehumidifier TF(09:00-12:00)"
+JOB002,Jane Doe | Check Service,456 Oak Ave Fort Lauderdale FL 33301,Z5,1.0,"['jerson.jacques@entrusted.com']","Moisture check follow-up TF(13:00-17:00)"
+JOB003,Bob Johnson | Pull,789 Pine Rd Boca Raton FL 33432,Z3,1.5,"['lens.jean@entrusted.com']","Pull equipment TF(08:00-11:00)"
+JOB004,Mary Williams | Install,321 Elm St Delray Beach FL 33445,Z2,3.0,"['spencer.poole@entrusted.com','jaiquan.newby@entrusted.com']","Large install - 2 techs needed TF(09:00-15:00)"
+JOB005,Tom Brown | Moisture Check,654 Maple Dr Boynton Beach FL 33435,Z4,0.5,"['jerson.jacques@entrusted.com']","Quick moisture check TF(10:00-12:00)"

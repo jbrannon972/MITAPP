@@ -1,0 +1,325 @@
+/* Tech Calendar Styles */
+
+.tech-calendar-container {
+  padding: 16px;
+}
+
+.tech-loading {
+  text-align: center;
+  padding: 40px;
+  color: #6b7280;
+  font-size: 1rem;
+}
+
+.tech-calendar-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.tech-view-selector {
+  display: flex;
+  gap: 8px;
+  background: white;
+  padding: 4px;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.tech-view-btn {
+  flex: 1;
+  padding: 10px;
+  border: none;
+  background: transparent;
+  color: #6b7280;
+  font-weight: 600;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.tech-view-btn.active {
+  background: #f87b4d;
+  color: white;
+}
+
+.tech-calendar-nav {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+}
+
+.tech-nav-btn {
+  background: white;
+  border: 1px solid #e5e7eb;
+  padding: 10px 16px;
+  border-radius: 8px;
+  color: #374151;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.tech-nav-btn:hover {
+  background: #f9fafb;
+}
+
+.tech-today-btn {
+  background: white;
+  border: 1px solid #e5e7eb;
+  padding: 10px 20px;
+  border-radius: 8px;
+  color: #f87b4d;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.tech-today-btn:hover {
+  background: #fef2ee;
+}
+
+.tech-calendar-period {
+  text-align: center;
+  margin-bottom: 16px;
+}
+
+.tech-calendar-period h3 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #111827;
+  margin: 0;
+}
+
+/* Week View */
+.tech-calendar-week {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.tech-calendar-day {
+  background: white;
+  border-radius: 12px;
+  padding: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 120px;
+}
+
+.tech-calendar-day.today {
+  border: 2px solid #f87b4d;
+  box-shadow: 0 4px 12px rgba(248, 123, 77, 0.2);
+}
+
+.tech-day-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.tech-day-name {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+}
+
+.tech-day-date {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #111827;
+}
+
+.tech-day-status {
+  padding: 6px 12px;
+  border-radius: 6px;
+  text-align: center;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.tech-day-status.status-scheduled {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.tech-day-status.status-off {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.tech-day-status.status-vacation {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.tech-day-status.status-sick {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.tech-day-hours {
+  font-size: 0.875rem;
+  color: #374151;
+  text-align: center;
+}
+
+.tech-day-source {
+  font-size: 0.75rem;
+  color: #9ca3af;
+  text-align: center;
+  font-style: italic;
+}
+
+/* Month View */
+.tech-calendar-month {
+  background: white;
+  border-radius: 12px;
+  padding: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  margin-bottom: 20px;
+}
+
+.tech-month-header {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.tech-month-header-day {
+  text-align: center;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  padding: 4px;
+}
+
+.tech-month-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+
+.tech-calendar-day.compact {
+  min-height: 60px;
+  padding: 8px 4px;
+  align-items: center;
+}
+
+.tech-calendar-day.empty {
+  background: transparent;
+  box-shadow: none;
+}
+
+.tech-day-date-compact {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #111827;
+  text-align: center;
+}
+
+.tech-status-badge {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  margin: 0 auto;
+}
+
+.tech-status-badge.status-scheduled {
+  background: #10b981;
+  color: white;
+}
+
+.tech-status-badge.status-off {
+  background: #ef4444;
+  color: white;
+}
+
+.tech-status-badge.status-vacation {
+  background: #3b82f6;
+  color: white;
+}
+
+.tech-status-badge.status-sick {
+  background: #f59e0b;
+  color: white;
+}
+
+.tech-hours-compact {
+  font-size: 0.7rem;
+  color: #6b7280;
+  text-align: center;
+  margin-top: 2px;
+}
+
+/* Legend */
+.tech-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+  padding: 16px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.tech-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.875rem;
+  color: #374151;
+}
+
+.tech-legend-badge {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+}
+
+/* Mobile adjustments */
+@media (max-width: 640px) {
+  .tech-calendar-week {
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+  }
+
+  .tech-calendar-day {
+    padding: 8px 4px;
+    min-height: 80px;
+  }
+
+  .tech-day-name {
+    font-size: 0.65rem;
+  }
+
+  .tech-day-date {
+    font-size: 1rem;
+  }
+
+  .tech-day-status {
+    font-size: 0.7rem;
+    padding: 4px 6px;
+  }
+
+  .tech-day-hours, .tech-day-source {
+    font-size: 0.7rem;
+  }
+}

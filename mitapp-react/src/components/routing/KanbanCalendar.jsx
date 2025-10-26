@@ -1,0 +1,1033 @@
+import { useState, useEffect, useRef } from 'react';
+import mapboxgl from 'mapbox-gl';
+import 'mapbox-gl/dist/mapbox-gl.css';
+import { getMapboxService } from '../../services/mapboxService';
+
+const KanbanCalendar = ({
+  jobs: initialJobs,
+  routes: initialRoutes,
+  techs,
+  offices,
+  onUpdateRoutes,
+  onUpdateJobs,
+  selectedDate
+}) => {
+  // Local state for instant UI updates
+  const [localJobs, setLocalJobs] = useState(initialJobs);
+  const [localRoutes, setLocalRoutes] = useState(initialRoutes);
+  const [draggedJob, setDraggedJob] = useState(null);
+  const [draggedTech, setDraggedTech] = useState(null);
+  const [dragOverTech, setDragOverTech] = useState(null);
+  const [showMapModal, setShowMapModal] = useState(false);
+  const [selectedTechForMap, setSelectedTechForMap] = useState(null);
+  const [showJobModal, setShowJobModal] = useState(false);
+  const [selectedJob, setSelectedJob] = useState(null);
+  const [isCalculatingDrive, setIsCalculatingDrive] = useState(false);
+  const [returnToOfficeTimes, setReturnToOfficeTimes] = useState({});
+  const scrollContainerRef = useRef(null);
+  const columnRefs = useRef({});
+  const mapContainerRef = useRef(null);
+  const mapInstanceRef = useRef(null);
+
+  // Get all techs including demo techs for second tech assignment
+  const allTechs = [...techs];
+  const demoTechs = techs.filter(t => t.isDemoTech || t.role?.toLowerCase().includes('demo'));
+
+  // Sync with parent when props change
+  useEffect(() => {
+    setLocalJobs(initialJobs);
+  }, [initialJobs]);
+
+  useEffect(() => {
+    setLocalRoutes(initialRoutes);
+  }, [initialRoutes]);
+
+  // Calculate return to office times whenever routes change
+  useEffect(() => {
+    const calculateReturnTimes = async () => {
+      const newReturnTimes = {};
+
+      for (const tech of techs) {
+        const techRoute = localRoutes[tech.id];
+        const techJobs = techRoute?.jobs || [];
+
+        if (techJobs.length === 0) {
+          newReturnTimes[tech.id] = null;
+          continue;
+        }
+
+        // Sort jobs by start time to find the actual last job
+        const sortedJobs = [...techJobs].sort((a, b) => {
+          const aTime = timeToMinutes(a.startTime || a.timeframeStart);
+          const bTime = timeToMinutes(b.startTime || b.timeframeStart);
+          return aTime - bTime;
+        });
+
+        const lastJob = sortedJobs[sortedJobs.length - 1];
+        const lastJobEndTime = lastJob.endTime || lastJob.timeframeEnd;
+
+        // Get office address
+        const officeKey = tech.office;
+        const officeAddress = offices[officeKey]?.address;
+
+        if (!officeAddress || !lastJob.address) {
+          // Fallback: add 30 min to last job end time
+          const endMinutes = timeToMinutes(lastJobEndTime);
+          newReturnTimes[tech.id] = {
+            time: minutesToTime(endMinutes + 30),
+            driveTime: 30,
+            isEstimate: true
+          };
+          continue;
+        }
+
+        try {
+          const mapboxService = getMapboxService();
+          const result = await mapboxService.getDrivingDistance(lastJob.address, officeAddress);
+          const driveMinutes = result.durationMinutes || 30;
+
+          const endMinutes = timeToMinutes(lastJobEndTime);
+          const returnTime = minutesToTime(endMinutes + driveMinutes);
+
+          newReturnTimes[tech.id] = {
+            time: returnTime,
+            driveTime: driveMinutes,
+            isEstimate: false
+          };
+        } catch (error) {
+          console.error('Error calculating return time:', error);
+          const endMinutes = timeToMinutes(lastJobEndTime);
+          newReturnTimes[tech.id] = {
+            time: minutesToTime(endMinutes + 30),
+            driveTime: 30,
+            isEstimate: true
+          };
+        }
+      }
+
+      setReturnToOfficeTimes(newReturnTimes);
+    };
+
+    calculateReturnTimes();
+  }, [localRoutes, techs, offices]);
+
+  // Initialize map when modal opens
+  useEffect(() => {
+    if (!showMapModal || !mapContainerRef.current || mapInstanceRef.current) return;
+
+    const mapboxToken = localStorage.getItem('mapboxToken') ||
+                        'pk.eyJ1IjoiamJyYW5ub245NzIiLCJhIjoiY204NXN2Z2w2Mms4ODJrb2tvemV2ZnlicyJ9.84JYhRSUAF5_-vvdebw-TA';
+
+    mapboxgl.accessToken = mapboxToken;
+
+    const map = new mapboxgl.Map({
+      container: mapContainerRef.current,
+      style: 'mapbox://styles/mapbox/streets-v12',
+      center: [-95.5698, 30.1945],
+      zoom: 10
+    });
+
+    map.addControl(new mapboxgl.NavigationControl(), 'top-right');
+
+    // Wait for map to load before rendering route
+    map.on('load', () => {
+      mapInstanceRef.current = map;
+      renderRouteOnMap();
+    });
+
+    return () => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove();
+        mapInstanceRef.current = null;
+      }
+    };
+  }, [showMapModal]);
+
+  // Render route on map
+  const renderRouteOnMap = () => {
+    if (!mapInstanceRef.current || !selectedTechForMap) return;
+
+    const map = mapInstanceRef.current;
+    const techRoute = localRoutes[selectedTechForMap];
+
+    if (!techRoute || !techRoute.jobs || techRoute.jobs.length === 0) {
+      console.log('No jobs to display on map');
+      return;
+    }
+
+    // Clear existing markers and layers
+    const markers = document.getElementsByClassName('mapboxgl-marker');
+    while(markers[0]) {
+      markers[0].remove();
+    }
+
+    if (map.getLayer('route')) map.removeLayer('route');
+    if (map.getSource('route')) map.removeSource('route');
+
+    // Get office coordinates
+    const officeKey = techRoute.tech.office;
+    const officeCoords = officeKey === 'office_1'
+      ? { lng: -95.4559, lat: 30.3119 } // Conroe
+      : { lng: -95.6508, lat: 29.7858 }; // Katy
+
+    const coordinates = [[officeCoords.lng, officeCoords.lat]];
+
+    // Add office marker
+    const officeEl = document.createElement('div');
+    officeEl.innerHTML = `<div style="background-color: #10b981; color: white; width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 16px; border: 3px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.3);"><i class="fas fa-home"></i></div>`;
+    new mapboxgl.Marker(officeEl)
+      .setLngLat([officeCoords.lng, officeCoords.lat])
+      .setPopup(new mapboxgl.Popup({ offset: 25 })
+        .setHTML(`<div style="padding: 8px;"><strong>${offices[officeKey]?.name}</strong><br/>Start/End Point</div>`))
+      .addTo(map);
+
+    // Add job markers and build route
+    techRoute.jobs.forEach((job, idx) => {
+      if (job.coordinates && job.coordinates.lng && job.coordinates.lat) {
+        coordinates.push([job.coordinates.lng, job.coordinates.lat]);
+
+        const el = document.createElement('div');
+        el.innerHTML = `<div style="background-color: #3b82f6; color: white; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 14px; border: 3px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.3); cursor: pointer;">${idx + 1}</div>`;
+
+        new mapboxgl.Marker(el)
+          .setLngLat([job.coordinates.lng, job.coordinates.lat])
+          .setPopup(new mapboxgl.Popup({ offset: 25 })
+            .setHTML(`<div style="padding: 8px;"><strong>${idx + 1}. ${job.customerName}</strong><br/>${job.address}<br/>${job.startTime || job.timeframeStart} - ${job.endTime || job.timeframeEnd}<br/>${job.duration}h</div>`))
+          .addTo(map);
+      }
+    });
+
+    // Return to office
+    coordinates.push([officeCoords.lng, officeCoords.lat]);
+
+    // Draw route line if we have coordinates
+    if (coordinates.length > 2) {
+      map.addSource('route', {
+        type: 'geojson',
+        data: {
+          type: 'Feature',
+          properties: {},
+          geometry: {
+            type: 'LineString',
+            coordinates: coordinates
+          }
+        }
+      });
+
+      map.addLayer({
+        id: 'route',
+        type: 'line',
+        source: 'route',
+        layout: {
+          'line-join': 'round',
+          'line-cap': 'round'
+        },
+        paint: {
+          'line-color': '#3b82f6',
+          'line-width': 4,
+          'line-opacity': 0.75
+        }
+      });
+
+      // Fit map to show entire route
+      const bounds = coordinates.reduce(
+        (bounds, coord) => bounds.extend(coord),
+        new mapboxgl.LngLatBounds(coordinates[0], coordinates[0])
+      );
+      map.fitBounds(bounds, { padding: 50 });
+    }
+  };
+
+  // Re-render route when tech or routes change
+  useEffect(() => {
+    if (showMapModal && mapInstanceRef.current) {
+      renderRouteOnMap();
+    }
+  }, [selectedTechForMap, localRoutes, showMapModal]);
+
+  // Time configuration
+  const startHour = 7;
+  const endHour = 20;
+  const pixelsPerHour = 80;
+  const totalHours = endHour - startHour;
+  const timelineHeight = totalHours * pixelsPerHour;
+
+  const timeSlots = Array.from({ length: totalHours + 1 }, (_, i) => {
+    const hour = startHour + i;
+    return `${String(hour).padStart(2, '0')}:00`;
+  });
+
+  const getJobTypeColor = (jobType) => {
+    const type = jobType.toLowerCase();
+    if (type.includes('install')) return '#8b5cf6';
+    if (type.includes('demo prep') || type.includes('demo-prep')) return '#f59e0b';
+    if (type.includes('demo') && !type.includes('check')) return '#ec4899';
+    if (type.includes('service') || type.includes('repair')) return '#3b82f6';
+    if (type.includes('maintenance') || type.includes('maint')) return '#10b981';
+    if (type.includes('inspection') || type.includes('check')) return '#06b6d4';
+    return '#6b7280';
+  };
+
+  const timeToMinutes = (timeStr) => {
+    const [hours, minutes] = timeStr.split(':').map(Number);
+    return hours * 60 + minutes;
+  };
+
+  const minutesToTime = (minutes) => {
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
+  };
+
+  const getYPosition = (timeStr) => {
+    const [hours, minutes] = timeStr.split(':').map(Number);
+    const minutesFromStart = (hours - startHour) * 60 + minutes;
+    return (minutesFromStart / 60) * pixelsPerHour;
+  };
+
+  const getTimeFromY = (yPos) => {
+    const minutesFromStart = Math.round((yPos / pixelsPerHour) * 60);
+    const totalMinutes = startHour * 60 + minutesFromStart;
+    const roundedMinutes = Math.round(totalMinutes / 15) * 15;
+    return minutesToTime(roundedMinutes);
+  };
+
+  // Calculate optimal start time with drive time intelligence
+  const calculateOptimalStartTime = async (job, targetTechId, droppedYPos) => {
+    const techRoute = localRoutes[targetTechId];
+    const techJobs = techRoute?.jobs || [];
+
+    if (techJobs.length === 0) {
+      const shiftStart = '08:15';
+      const droppedTime = getTimeFromY(droppedYPos);
+      const shiftMinutes = timeToMinutes(shiftStart);
+      const droppedMinutes = timeToMinutes(droppedTime);
+      return minutesToTime(Math.max(shiftMinutes, droppedMinutes));
+    }
+
+    const droppedTime = getTimeFromY(droppedYPos);
+    const droppedMinutes = timeToMinutes(droppedTime);
+
+    const sortedJobs = [...techJobs].sort((a, b) => {
+      const aTime = timeToMinutes(a.startTime || a.timeframeStart);
+      const bTime = timeToMinutes(b.startTime || b.timeframeStart);
+      return aTime - bTime;
+    });
+
+    let previousJob = null;
+    for (let i = sortedJobs.length - 1; i >= 0; i--) {
+      const jobEndMinutes = timeToMinutes(sortedJobs[i].endTime || sortedJobs[i].timeframeEnd);
+      if (jobEndMinutes <= droppedMinutes) {
+        previousJob = sortedJobs[i];
+        break;
+      }
+    }
+
+    if (!previousJob) {
+      return minutesToTime(Math.max(timeToMinutes('08:15'), droppedMinutes));
+    }
+
+    // Calculate drive time
+    setIsCalculatingDrive(true);
+    try {
+      const mapboxService = getMapboxService();
+      const result = await mapboxService.getDrivingDistance(previousJob.address, job.address);
+      const driveMinutes = Math.ceil(result.durationMinutes || 20);
+
+      const prevEndMinutes = timeToMinutes(previousJob.endTime);
+      const calculatedStartMinutes = prevEndMinutes + driveMinutes;
+
+      setIsCalculatingDrive(false);
+
+      // Always use calculated time, not dropped time
+      return minutesToTime(calculatedStartMinutes);
+    } catch (error) {
+      console.error('Drive time error:', error);
+      setIsCalculatingDrive(false);
+      const prevEndMinutes = timeToMinutes(previousJob.endTime);
+      return minutesToTime(prevEndMinutes + 20);
+    }
+  };
+
+  const handleJobDragStart = (e, job, sourceTechId) => {
+    setDraggedJob({ job, sourceTechId });
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', '');
+  };
+
+  const handleTechDragStart = (e, techId) => {
+    setDraggedTech(techId);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', '');
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleDragEnter = (techId) => {
+    setDragOverTech(techId);
+  };
+
+  const handleDragLeave = () => {
+    setDragOverTech(null);
+  };
+
+  const handleJobDrop = async (e, targetTechId) => {
+    e.preventDefault();
+    setDragOverTech(null);
+
+    if (!draggedJob) return;
+
+    const { job, sourceTechId } = draggedJob;
+
+    if (sourceTechId === targetTechId && !targetTechId) {
+      setDraggedJob(null);
+      return;
+    }
+
+    // Calculate Y position relative to the scroll container
+    let yPos = 0;
+    if (targetTechId) {
+      const scrollContainer = scrollContainerRef.current;
+      const scrollTop = scrollContainer ? scrollContainer.scrollTop : 0;
+      yPos = e.clientY - scrollContainer.getBoundingClientRect().top + scrollTop - 80; // Adjust for header
+    }
+
+    const startTime = targetTechId
+      ? await calculateOptimalStartTime(job, targetTechId, yPos)
+      : (job.startTime || job.timeframeStart);
+
+    const startMinutes = timeToMinutes(startTime);
+    const endMinutes = startMinutes + (job.duration * 60);
+    const endTime = minutesToTime(endMinutes);
+
+    const updatedJob = {
+      ...job,
+      startTime,
+      endTime,
+      assignedTech: targetTechId,
+      status: targetTechId ? 'assigned' : 'unassigned'
+    };
+
+    const updatedRoutes = { ...localRoutes };
+
+    if (sourceTechId) {
+      updatedRoutes[sourceTechId] = {
+        ...updatedRoutes[sourceTechId],
+        jobs: updatedRoutes[sourceTechId].jobs.filter(j => j.id !== job.id)
+      };
+    }
+
+    if (targetTechId) {
+      const targetTech = techs.find(t => t.id === targetTechId);
+      if (!updatedRoutes[targetTechId]) {
+        updatedRoutes[targetTechId] = {
+          tech: targetTech,
+          jobs: []
+        };
+      }
+      updatedRoutes[targetTechId].jobs.push(updatedJob);
+    }
+
+    const updatedJobs = localJobs.map(j => {
+      if (j.id === job.id) {
+        return updatedJob;
+      }
+      return j;
+    });
+
+    setLocalRoutes(updatedRoutes);
+    setLocalJobs(updatedJobs);
+    setDraggedJob(null);
+
+    await onUpdateRoutes(updatedRoutes);
+    await onUpdateJobs(updatedJobs);
+  };
+
+  const handleRouteSwap = async (e, targetTechId) => {
+    e.preventDefault();
+    setDragOverTech(null);
+
+    if (!draggedTech || draggedTech === targetTechId) {
+      setDraggedTech(null);
+      return;
+    }
+
+    const updatedRoutes = { ...localRoutes };
+    const draggedJobs = updatedRoutes[draggedTech]?.jobs || [];
+    const targetJobs = updatedRoutes[targetTechId]?.jobs || [];
+
+    const temp = { ...updatedRoutes[draggedTech] };
+    updatedRoutes[draggedTech] = {
+      ...(updatedRoutes[targetTechId] || { jobs: [] }),
+      tech: temp.tech
+    };
+    updatedRoutes[targetTechId] = {
+      ...temp,
+      tech: updatedRoutes[targetTechId]?.tech || techs.find(t => t.id === targetTechId)
+    };
+
+    const updatedJobs = localJobs.map(job => {
+      if (draggedJobs.some(j => j.id === job.id)) {
+        return { ...job, assignedTech: draggedTech };
+      }
+      if (targetJobs.some(j => j.id === job.id)) {
+        return { ...job, assignedTech: targetTechId };
+      }
+      return job;
+    });
+
+    setLocalRoutes(updatedRoutes);
+    setLocalJobs(updatedJobs);
+    setDraggedTech(null);
+
+    await onUpdateRoutes(updatedRoutes);
+    await onUpdateJobs(updatedJobs);
+  };
+
+  const handleTechClick = (techId) => {
+    setSelectedTechForMap(techId);
+    setShowMapModal(true);
+  };
+
+  const handleJobClick = (job) => {
+    setSelectedJob({...job});
+    setShowJobModal(true);
+  };
+
+  const handleSaveJobDetails = async () => {
+    if (!selectedJob) return;
+
+    const updatedJobs = localJobs.map(j => {
+      if (j.id === selectedJob.id) {
+        return selectedJob;
+      }
+      return j;
+    });
+
+    const updatedRoutes = { ...localRoutes };
+    if (selectedJob.assignedTech && updatedRoutes[selectedJob.assignedTech]) {
+      updatedRoutes[selectedJob.assignedTech].jobs = updatedRoutes[selectedJob.assignedTech].jobs.map(j => {
+        if (j.id === selectedJob.id) {
+          return selectedJob;
+        }
+        return j;
+      });
+    }
+
+    setLocalJobs(updatedJobs);
+    setLocalRoutes(updatedRoutes);
+    setShowJobModal(false);
+
+    await onUpdateJobs(updatedJobs);
+    await onUpdateRoutes(updatedRoutes);
+  };
+
+  const unassignedJobs = localJobs.filter(j => !j.assignedTech);
+
+  return (
+    <div style={{ height: 'calc(100vh - 140px)', display: 'flex', flexDirection: 'column' }}>
+      {/* Header */}
+      <div style={{
+        marginBottom: '8px',
+        padding: '8px 12px',
+        backgroundColor: '#f9fafb',
+        borderRadius: '6px',
+        border: '1px solid #e5e7eb',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        flexShrink: 0
+      }}>
+        <div>
+          <h3 style={{ margin: 0, marginBottom: '2px', fontSize: '14px', fontWeight: '600' }}>
+            <i className="fas fa-calendar-day"></i> Timeline - {selectedDate}
+          </h3>
+          <p style={{ margin: 0, fontSize: '11px', color: '#6b7280' }}>
+            Drop jobs to auto-schedule • Click job to edit • Click tech name for map
+          </p>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          {isCalculatingDrive && (
+            <span style={{ fontSize: '11px', color: '#f59e0b' }}>
+              <i className="fas fa-spinner fa-spin"></i> Calculating...
+            </span>
+          )}
+          <div style={{ fontSize: '12px', fontWeight: '500', color: '#3b82f6' }}>
+            {localJobs.filter(j => j.assignedTech).length} / {localJobs.length} assigned
+          </div>
+        </div>
+      </div>
+
+      {/* Calendar Grid - Single Unified Scroll */}
+      <div
+        ref={scrollContainerRef}
+        style={{
+          flex: 1,
+          overflow: 'auto',
+          position: 'relative',
+          backgroundColor: '#f9fafb'
+        }}
+      >
+        <div style={{
+          display: 'flex',
+          gap: '6px',
+          minHeight: `${timelineHeight + 100}px`,
+          padding: '0 8px 8px 8px'
+        }}>
+          {/* Time Column - Sticky */}
+          <div style={{
+            width: '50px',
+            flexShrink: 0,
+            position: 'sticky',
+            left: '8px',
+            zIndex: 10,
+            backgroundColor: '#ffffff',
+            borderRadius: '6px',
+            border: '1px solid #e5e7eb',
+            height: 'fit-content'
+          }}>
+            <div style={{
+              height: '60px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderBottom: '2px solid #e5e7eb',
+              fontSize: '10px',
+              fontWeight: '600',
+              color: '#6b7280',
+              position: 'sticky',
+              top: 0,
+              backgroundColor: '#ffffff'
+            }}>
+              TIME
+            </div>
+            {timeSlots.map((time, idx) => (
+              <div key={time} style={{
+                height: `${pixelsPerHour}px`,
+                display: 'flex',
+                alignItems: 'flex-start',
+                justifyContent: 'center',
+                paddingTop: '2px',
+                borderTop: idx === 0 ? 'none' : '1px solid #f3f4f6',
+                fontSize: '10px',
+                color: '#6b7280',
+                fontWeight: '500'
+              }}>
+                {time}
+              </div>
+            ))}
+          </div>
+
+          {/* Unassigned Column - Sticky */}
+          <div
+            style={{
+              width: '140px',
+              flexShrink: 0,
+              position: 'sticky',
+              left: '66px',
+              zIndex: 9,
+              backgroundColor: dragOverTech === 'unassigned' ? '#fef3c7' : '#ffffff',
+              border: dragOverTech === 'unassigned' ? '2px solid #f59e0b' : '1px solid #e5e7eb',
+              borderRadius: '8px',
+              transition: 'all 0.15s ease',
+              boxShadow: dragOverTech === 'unassigned' ? '0 4px 12px rgba(245, 158, 11, 0.2)' : 'none',
+              height: 'fit-content'
+            }}
+            onDragOver={handleDragOver}
+            onDragEnter={() => handleDragEnter('unassigned')}
+            onDragLeave={handleDragLeave}
+            onDrop={(e) => handleJobDrop(e, null)}
+          >
+            <div style={{
+              padding: '8px',
+              borderBottom: '2px solid #e5e7eb',
+              backgroundColor: '#f9fafb',
+              position: 'sticky',
+              top: 0,
+              height: '60px',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'center'
+            }}>
+              <h4 style={{ margin: 0, fontSize: '12px', fontWeight: '600', marginBottom: '2px' }}>
+                <i className="fas fa-inbox"></i> Unassigned
+              </h4>
+              <p style={{ margin: 0, fontSize: '10px', color: '#6b7280' }}>
+                {unassignedJobs.length} jobs
+              </p>
+            </div>
+
+            <div style={{ padding: '6px' }}>
+              {unassignedJobs.map(job => (
+                <div
+                  key={job.id}
+                  draggable
+                  onDragStart={(e) => handleJobDragStart(e, job, null)}
+                  onClick={() => handleJobClick(job)}
+                  style={{
+                    marginBottom: '4px',
+                    padding: '6px',
+                    backgroundColor: '#ffffff',
+                    border: `2px solid ${getJobTypeColor(job.jobType)}`,
+                    borderRadius: '6px',
+                    cursor: 'grab',
+                    transition: 'all 0.15s ease',
+                    boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-1px)';
+                    e.currentTarget.style.boxShadow = '0 3px 6px rgba(0,0,0,0.15)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = '0 1px 2px rgba(0,0,0,0.1)';
+                  }}
+                >
+                  <div style={{ fontWeight: '600', fontSize: '11px', marginBottom: '2px' }}>
+                    {job.customerName}
+                  </div>
+                  <div style={{ fontSize: '9px', color: '#6b7280' }}>
+                    <div>{job.jobType}</div>
+                    <div style={{ marginTop: '2px' }}>{job.duration}h</div>
+                    {job.requiresTwoTechs && (
+                      <div style={{ color: '#f59e0b', marginTop: '2px', fontWeight: '500' }}>
+                        <i className="fas fa-users"></i> 2 Techs
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Tech Columns */}
+          {techs.map(tech => {
+            const techRoute = localRoutes[tech.id];
+            const techJobs = techRoute?.jobs || [];
+            const totalHours = techJobs.reduce((sum, j) => sum + j.duration, 0);
+            const isDragOver = dragOverTech === tech.id;
+            const isDragging = draggedTech === tech.id;
+
+            return (
+              <div
+                key={tech.id}
+                style={{
+                  width: '150px',
+                  flexShrink: 0,
+                  backgroundColor: isDragOver ? '#dbeafe' : '#ffffff',
+                  border: isDragging ? '2px solid #f59e0b' : (isDragOver ? '2px solid #3b82f6' : '1px solid #e5e7eb'),
+                  borderRadius: '8px',
+                  opacity: isDragging ? 0.5 : 1,
+                  transition: 'all 0.15s ease',
+                  boxShadow: isDragOver ? '0 4px 12px rgba(59, 130, 246, 0.2)' : 'none',
+                  height: 'fit-content',
+                  minHeight: `${timelineHeight + 60}px`
+                }}
+                onDragOver={handleDragOver}
+                onDragEnter={() => handleDragEnter(tech.id)}
+                onDragLeave={handleDragLeave}
+                onDrop={(e) => {
+                  if (draggedJob) {
+                    handleJobDrop(e, tech.id);
+                  } else if (draggedTech) {
+                    handleRouteSwap(e, tech.id);
+                  }
+                }}
+              >
+                {/* Tech Header */}
+                <div
+                  draggable
+                  onDragStart={(e) => handleTechDragStart(e, tech.id)}
+                  onClick={() => handleTechClick(tech.id)}
+                  style={{
+                    padding: '8px',
+                    borderBottom: '2px solid #e5e7eb',
+                    cursor: 'pointer',
+                    backgroundColor: '#f9fafb',
+                    position: 'sticky',
+                    top: 0,
+                    zIndex: 1,
+                    height: '60px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'center'
+                  }}
+                  title="Click to view route map"
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '2px' }}>
+                    <i className="fas fa-grip-vertical" style={{ color: '#9ca3af', fontSize: '9px' }}></i>
+                    <h4 style={{ margin: 0, fontSize: '11px', fontWeight: '600', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {tech.name}
+                    </h4>
+                    <i className="fas fa-map-marked-alt" style={{ color: '#3b82f6', fontSize: '10px' }}></i>
+                  </div>
+                  <div style={{ marginTop: '4px', display: 'flex', gap: '6px', fontSize: '9px', fontWeight: '500' }}>
+                    <span style={{ color: '#3b82f6' }}>{techJobs.length}j</span>
+                    <span style={{ color: '#10b981' }}>{totalHours.toFixed(1)}h</span>
+                  </div>
+                </div>
+
+                {/* Timeline */}
+                <div
+                  ref={el => columnRefs.current[tech.id] = el}
+                  style={{
+                    position: 'relative',
+                    minHeight: `${timelineHeight}px`
+                  }}
+                >
+                  {/* Grid lines */}
+                  {timeSlots.map((time, idx) => (
+                    <div
+                      key={time}
+                      style={{
+                        position: 'absolute',
+                        top: `${idx * pixelsPerHour}px`,
+                        left: 0,
+                        right: 0,
+                        height: `${pixelsPerHour}px`,
+                        borderTop: idx === 0 ? 'none' : '1px solid #f3f4f6',
+                        pointerEvents: 'none'
+                      }}
+                    />
+                  ))}
+
+                  {/* Jobs */}
+                  {techJobs.map((job) => {
+                    const yPos = job.startTime ? getYPosition(job.startTime) : 0;
+                    const height = job.duration * pixelsPerHour;
+
+                    return (
+                      <div
+                        key={job.id}
+                        draggable
+                        onDragStart={(e) => handleJobDragStart(e, job, tech.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleJobClick(job);
+                        }}
+                        style={{
+                          position: 'absolute',
+                          top: `${yPos}px`,
+                          left: '4px',
+                          right: '4px',
+                          minHeight: `${Math.max(height, 40)}px`,
+                          padding: '6px',
+                          backgroundColor: '#ffffff',
+                          border: `2px solid ${getJobTypeColor(job.jobType)}`,
+                          borderLeft: `4px solid ${getJobTypeColor(job.jobType)}`,
+                          borderRadius: '4px',
+                          cursor: 'pointer',
+                          transition: 'all 0.15s ease',
+                          boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
+                          overflow: 'hidden'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.transform = 'translateX(2px)';
+                          e.currentTarget.style.boxShadow = '0 3px 6px rgba(0,0,0,0.15)';
+                          e.currentTarget.style.zIndex = '10';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.transform = 'translateX(0)';
+                          e.currentTarget.style.boxShadow = '0 1px 2px rgba(0,0,0,0.1)';
+                          e.currentTarget.style.zIndex = '1';
+                        }}
+                      >
+                        <div style={{ fontWeight: '600', fontSize: '10px', marginBottom: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {job.customerName}
+                        </div>
+                        <div style={{ fontSize: '9px', color: '#6b7280' }}>
+                          {job.startTime && job.endTime && (
+                            <div style={{ color: '#059669', fontWeight: '600', marginBottom: '2px' }}>
+                              <i className="fas fa-clock"></i> {job.startTime} - {job.endTime}
+                            </div>
+                          )}
+                          <div>{job.duration}h{job.travelTime > 0 && ` • ${job.travelTime}m`}</div>
+                          {job.requiresTwoTechs && (
+                            <div style={{ color: '#f59e0b', marginTop: '2px', fontWeight: '500' }}>
+                              <i className="fas fa-users"></i> 2
+                            </div>
+                          )}
+                          {job.demoTech && (
+                            <div style={{ color: '#8b5cf6', fontSize: '8px', marginTop: '1px' }}>
+                              + {job.demoTech}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  {/* Return to Office */}
+                  {returnToOfficeTimes[tech.id] && (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        top: `${getYPosition(returnToOfficeTimes[tech.id].time)}px`,
+                        left: '4px',
+                        right: '4px',
+                        minHeight: '50px',
+                        padding: '8px',
+                        backgroundColor: '#f0fdf4',
+                        border: '2px solid #10b981',
+                        borderLeft: '4px solid #10b981',
+                        borderRadius: '4px',
+                        boxShadow: '0 2px 4px rgba(16, 185, 129, 0.2)',
+                        pointerEvents: 'none'
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '3px' }}>
+                        <i className="fas fa-home" style={{ color: '#10b981', fontSize: '10px' }}></i>
+                        <div style={{ fontWeight: '600', fontSize: '10px', color: '#065f46' }}>
+                          Return to Office
+                        </div>
+                      </div>
+                      <div style={{ fontSize: '9px', color: '#065f46' }}>
+                        <div style={{ fontWeight: '600', marginBottom: '2px' }}>
+                          <i className="fas fa-clock"></i> {returnToOfficeTimes[tech.id].time}
+                        </div>
+                        <div>
+                          <i className="fas fa-car"></i> {returnToOfficeTimes[tech.id].driveTime}m
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Job Details Modal */}
+      {showJobModal && selectedJob && (
+        <div
+          className="modal-overlay active"
+          onClick={() => setShowJobModal(false)}
+          style={{ zIndex: 1000 }}
+        >
+          <div
+            className="modal"
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: '500px' }}
+          >
+            <div className="modal-header">
+              <h3>
+                <i className="fas fa-edit"></i> Edit Job Details
+              </h3>
+              <button className="modal-close" onClick={() => setShowJobModal(false)}>
+                <i className="fas fa-times"></i>
+              </button>
+            </div>
+            <div className="modal-body">
+              <div style={{ display: 'grid', gap: '16px' }}>
+                <div>
+                  <strong style={{ fontSize: '14px' }}>{selectedJob.customerName}</strong>
+                  <p style={{ margin: '4px 0', fontSize: '12px', color: '#6b7280' }}>{selectedJob.address}</p>
+                </div>
+
+                <div className="form-group">
+                  <label>Duration (hours)</label>
+                  <input
+                    type="number"
+                    className="form-control"
+                    value={selectedJob.duration}
+                    onChange={(e) => setSelectedJob({...selectedJob, duration: parseFloat(e.target.value) || 1})}
+                    min="0.5"
+                    step="0.5"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={selectedJob.requiresTwoTechs || false}
+                      onChange={(e) => setSelectedJob({...selectedJob, requiresTwoTechs: e.target.checked})}
+                      style={{ marginRight: '8px' }}
+                    />
+                    Requires 2 Technicians
+                  </label>
+                </div>
+
+                {selectedJob.requiresTwoTechs && (
+                  <div className="form-group">
+                    <label>Second Technician</label>
+                    <select
+                      className="form-control"
+                      value={selectedJob.demoTech || ''}
+                      onChange={(e) => setSelectedJob({...selectedJob, demoTech: e.target.value})}
+                    >
+                      <option value="">Select Demo Tech...</option>
+                      {demoTechs.map(dt => (
+                        <option key={dt.id} value={dt.name}>{dt.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                <div className="form-group">
+                  <label>Job Type</label>
+                  <select
+                    className="form-control"
+                    value={selectedJob.jobType}
+                    onChange={(e) => setSelectedJob({...selectedJob, jobType: e.target.value})}
+                  >
+                    <option>Install</option>
+                    <option>Demo</option>
+                    <option>Demo Prep</option>
+                    <option>Service</option>
+                    <option>Maintenance</option>
+                    <option>Inspection</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-secondary" onClick={() => setShowJobModal(false)}>
+                Cancel
+              </button>
+              <button className="btn btn-primary" onClick={handleSaveJobDetails}>
+                <i className="fas fa-save"></i> Save Changes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Route Map Modal */}
+      {showMapModal && (
+        <div
+          className="modal-overlay active"
+          onClick={() => setShowMapModal(false)}
+          style={{ zIndex: 1000 }}
+        >
+          <div
+            className="modal modal-lg"
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: '900px', height: '80vh' }}
+          >
+            <div className="modal-header">
+              <h3>
+                <i className="fas fa-map-marked-alt"></i> {selectedTechForMap && localRoutes[selectedTechForMap]?.tech?.name}'s Route
+              </h3>
+              <button className="modal-close" onClick={() => setShowMapModal(false)}>
+                <i className="fas fa-times"></i>
+              </button>
+            </div>
+            <div className="modal-body" style={{ padding: 0, height: 'calc(100% - 60px)' }}>
+              <div
+                ref={mapContainerRef}
+                style={{ width: '100%', height: '100%', borderRadius: '0 0 8px 8px' }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default KanbanCalendar;

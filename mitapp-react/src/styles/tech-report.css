@@ -1,0 +1,232 @@
+/* Tech Report Styles */
+
+.tech-report-container {
+  padding: 16px;
+}
+
+.tech-report-tabs {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.tech-report-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 12px 8px;
+  background: white;
+  border: 2px solid #e5e7eb;
+  border-radius: 12px;
+  color: #6b7280;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.tech-report-tab i {
+  font-size: 1.5rem;
+}
+
+.tech-report-tab.active {
+  background: #f87b4d;
+  border-color: #f87b4d;
+  color: white;
+}
+
+.tech-report-tab:hover:not(.active) {
+  background: #f9fafb;
+  border-color: #d1d5db;
+}
+
+.tech-report-content {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.tech-report-form h3 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.tech-form-group {
+  margin-bottom: 16px;
+}
+
+.tech-form-group label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 6px;
+}
+
+.tech-form-group input,
+.tech-form-group select,
+.tech-form-group textarea {
+  width: 100%;
+  padding: 12px;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 1rem;
+  color: #111827;
+  background: white;
+  transition: all 0.2s ease;
+}
+
+.tech-form-group input:focus,
+.tech-form-group select:focus,
+.tech-form-group textarea:focus {
+  outline: none;
+  border-color: #f87b4d;
+  box-shadow: 0 0 0 3px rgba(248, 123, 77, 0.1);
+}
+
+.tech-form-group textarea {
+  resize: vertical;
+  font-family: inherit;
+}
+
+.tech-inspection-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 16px;
+  background: #f9fafb;
+  border-radius: 8px;
+}
+
+.tech-inspection-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.tech-inspection-item label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #374151;
+}
+
+.tech-inspection-item select {
+  padding: 10px;
+  border: 2px solid #e5e7eb;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  background: white;
+}
+
+.tech-submit-btn {
+  width: 100%;
+  padding: 16px;
+  background: #10b981;
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  transition: all 0.2s ease;
+  margin-top: 20px;
+}
+
+.tech-submit-btn:hover {
+  background: #059669;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.tech-submit-btn:active {
+  transform: translateY(0);
+}
+
+.tech-tool-request-item {
+  padding: 16px;
+  background: #f9fafb;
+  border-radius: 12px;
+  margin-bottom: 16px;
+  border: 2px solid #e5e7eb;
+}
+
+.tech-tool-request-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.tech-tool-request-header span {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #111827;
+}
+
+.tech-remove-btn {
+  background: #ef4444;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  transition: all 0.2s ease;
+}
+
+.tech-remove-btn:hover {
+  background: #dc2626;
+}
+
+.tech-add-btn {
+  width: 100%;
+  padding: 12px;
+  background: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+  margin-bottom: 16px;
+}
+
+.tech-add-btn:hover {
+  background: #2563eb;
+}
+
+/* Mobile adjustments */
+@media (max-width: 640px) {
+  .tech-report-tabs {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .tech-inspection-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .tech-report-content {
+    padding: 16px;
+  }
+}
