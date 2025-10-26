@@ -14,7 +14,7 @@
 }
 
 :root {
-    /* New theme variables from Project Management Tool */
+    /* Light theme variables (fallback) */
     --primary-color: #f87b4d; /* Entrusted Orange */
     --primary-dark: #e06a3c; /* Darker Orange for hover */
     --secondary-color: #a4a4a5; /* Entrusted Gray */
@@ -38,6 +38,158 @@
     --success-color: #10b981;
     --warning-color: #f59e0b;
     --danger-color: #ef4444;
+}
+
+/* Dark Theme - Now Default */
+[data-theme="dark"], body {
+    /* Dark theme colors */
+    --primary-color: #ff8a5b; /* Brighter orange for dark mode */
+    --primary-dark: #ff6f3d; /* Even brighter for hover */
+    --secondary-color: #b8b8ba; /* Lighter gray for dark mode */
+    --background-color: #0f1419; /* Deep dark background */
+    --surface-color: #1a1f2e; /* Slightly lighter surface */
+    --surface-hover: #252d3d; /* Hover state for surfaces */
+    --border-color: #2d3548; /* Subtle borders */
+    --text-primary: #e8eaed; /* Very light text */
+    --text-secondary: #b8bcc4; /* Secondary text */
+    --text-muted: #6c7280; /* Muted text */
+    --input-bg: #252d3d; /* Input backgrounds */
+    --input-border: #3d4555; /* Input borders */
+
+    /* Adjusted shadows for dark mode */
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.4);
+
+    /* Status colors adjusted for dark mode */
+    --success-color: #34d399;
+    --warning-color: #fbbf24;
+    --danger-color: #f87171;
+}
+
+/* Dark Theme Form & Input Fixes */
+[data-theme="dark"] .form-input,
+[data-theme="dark"] input,
+[data-theme="dark"] select,
+[data-theme="dark"] textarea,
+body .form-input,
+body input,
+body select,
+body textarea {
+    background-color: var(--input-bg);
+    color: var(--text-primary);
+    border-color: var(--input-border);
+}
+
+[data-theme="dark"] .form-input:focus,
+[data-theme="dark"] input:focus,
+[data-theme="dark"] select:focus,
+[data-theme="dark"] textarea:focus,
+body .form-input:focus,
+body input:focus,
+body select:focus,
+body textarea:focus {
+    background-color: var(--surface-hover);
+    border-color: var(--primary-color);
+}
+
+/* Dark Theme Label Fixes - Improve Contrast */
+[data-theme="dark"] label,
+[data-theme="dark"] .date-picker-container label,
+[data-theme="dark"] .form-group label,
+body label,
+body .date-picker-container label,
+body .form-group label {
+    color: var(--text-primary);
+    font-weight: 500;
+}
+
+/* Dark Theme Button Improvements */
+[data-theme="dark"] .btn-secondary,
+body .btn-secondary {
+    background: var(--surface-hover);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+}
+
+[data-theme="dark"] .btn-secondary:hover,
+body .btn-secondary:hover {
+    background: var(--input-bg);
+    border-color: var(--primary-color);
+}
+
+/* Dark Theme Card & Surface Improvements */
+[data-theme="dark"] .chart-container,
+body .chart-container {
+    background: var(--surface-color);
+}
+
+[data-theme="dark"] .calculated-value,
+body .calculated-value {
+    background: rgba(255, 138, 91, 0.15);
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+}
+
+/* Dark Theme Stats & Metrics Improvements */
+[data-theme="dark"] .stat,
+body .stat {
+    background: var(--surface-hover);
+    border: 1px solid var(--border-color);
+}
+
+[data-theme="dark"] .stat:hover,
+body .stat:hover {
+    background: var(--input-bg);
+    border-color: var(--primary-color);
+}
+
+[data-theme="dark"] .metric-card,
+body .metric-card {
+    background: var(--surface-color);
+    border-color: var(--border-color);
+}
+
+/* Dark Theme Job Analyzer & Dashboard Stats */
+[data-theme="dark"] .stats-grid,
+[data-theme="dark"] .breakdown-section,
+body .stats-grid,
+body .breakdown-section {
+    background: transparent;
+}
+
+[data-theme="dark"] .stat-item,
+body .stat-item {
+    background: var(--surface-hover);
+    padding: 12px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-color);
+}
+
+[data-theme="dark"] .breakdown-item,
+body .breakdown-item {
+    border-bottom-color: var(--border-color);
+}
+
+/* Dark Theme Routing Page Fixes */
+[data-theme="dark"] .job-card,
+[data-theme="dark"] .route-card,
+body .job-card,
+body .route-card {
+    background: var(--surface-color);
+    border-color: var(--border-color);
+}
+
+[data-theme="dark"] .kanban-column,
+body .kanban-column {
+    background: var(--surface-color);
+    border-color: var(--border-color);
+}
+
+[data-theme="dark"] .kanban-column-header,
+body .kanban-column-header {
+    background: var(--surface-hover);
+    border-bottom-color: var(--border-color);
 }
 
 body {
@@ -268,6 +420,19 @@ body {
     gap: 6px;
     min-height: 36px;
     min-width: 36px;
+}
+
+.btn-outline {
+    background: transparent;
+    color: var(--text-primary);
+    border: 2px solid var(--border-color);
+}
+
+.btn-outline:hover {
+    background: var(--surface-hover);
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+    transform: translateY(-1px);
 }
 
 
@@ -1805,4 +1970,671 @@ input:checked + .slider:before {
 .badge-secondary {
     background-color: #f1f5f9;
     color: #64748b;
+}
+
+/* ============================================
+   COMPREHENSIVE MOBILE OVERHAUL
+   Fresh, Modern, Touch-Optimized Design
+   ============================================ */
+
+@media (max-width: 768px) {
+    /* Enhanced Mobile Typography */
+    body {
+        font-size: 15px;
+        line-height: 1.6;
+    }
+
+    h1, h2, h3 {
+        letter-spacing: -0.02em;
+    }
+
+    /* Mobile-First Button Improvements */
+    .btn {
+        min-height: 48px;
+        min-width: 48px;
+        padding: 12px 20px;
+        font-size: 14px;
+        font-weight: 600;
+        touch-action: manipulation;
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    .btn-small {
+        min-height: 40px;
+        min-width: 40px;
+        padding: 10px 16px;
+        font-size: 13px;
+    }
+
+    .btn i {
+        font-size: 16px;
+    }
+
+    /* Mobile Card Enhancements */
+    .card {
+        border-radius: var(--radius-xl);
+        margin-bottom: 16px;
+        box-shadow: var(--shadow-md);
+    }
+
+    .card-header {
+        padding: 16px;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        background: var(--surface-color);
+        border-bottom: 2px solid var(--border-color);
+    }
+
+    .card-header h3 {
+        font-size: 18px;
+        font-weight: 700;
+    }
+
+    /* Mobile Dashboard Grid Optimization */
+    .dashboard-grid {
+        grid-template-columns: 1fr !important;
+        gap: 16px;
+    }
+
+    .dashboard-main-grid {
+        grid-template-columns: 1fr !important;
+        gap: 16px;
+    }
+
+    .dashboard-top-grid {
+        grid-template-columns: 1fr !important;
+        gap: 16px;
+    }
+
+    /* Mobile Stats - Make Them Pop */
+    .glance-grid,
+    .glance-grid-two-col {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 12px;
+    }
+
+    .glance-item {
+        padding: 20px 16px;
+        background: linear-gradient(135deg, var(--surface-color) 0%, var(--surface-hover) 100%);
+        border-radius: var(--radius-lg);
+        border: 2px solid var(--border-color);
+        transition: all 0.3s ease;
+    }
+
+    .glance-item:active {
+        transform: scale(0.98);
+        border-color: var(--primary-color);
+    }
+
+    .glance-value {
+        font-size: 32px !important;
+        font-weight: 800;
+        background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        display: block;
+        margin-bottom: 8px;
+    }
+
+    .glance-label {
+        font-size: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        opacity: 0.8;
+    }
+
+    /* Mobile Form Enhancements */
+    .form-input,
+    input,
+    select,
+    textarea {
+        min-height: 48px;
+        font-size: 16px !important; /* Prevents zoom on iOS */
+        padding: 14px 16px;
+        border-radius: var(--radius-lg);
+        border-width: 2px;
+        transition: all 0.2s ease;
+    }
+
+    .form-input:focus,
+    input:focus,
+    select:focus,
+    textarea:focus {
+        transform: none; /* Remove scale on mobile */
+        box-shadow: 0 0 0 4px rgba(248, 123, 77, 0.15);
+    }
+
+    textarea {
+        min-height: 120px;
+        resize: vertical;
+    }
+
+    .form-group {
+        margin-bottom: 20px;
+    }
+
+    .form-group label {
+        font-size: 13px;
+        font-weight: 600;
+        margin-bottom: 8px;
+        display: block;
+        color: var(--text-primary);
+    }
+
+    /* Mobile Date Picker Enhancement */
+    .date-picker-container {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+        padding: 16px;
+    }
+
+    .date-picker-container label {
+        font-size: 14px;
+        font-weight: 600;
+    }
+
+    .date-input {
+        width: 100%;
+        padding: 14px 16px;
+        font-size: 16px;
+    }
+
+    /* Mobile Modal Improvements */
+    .modal {
+        width: 100% !important;
+        height: 100% !important;
+        max-height: 100vh !important;
+        max-width: 100% !important;
+        border-radius: 0 !important;
+        margin: 0;
+    }
+
+    .modal-header {
+        padding: 20px;
+        position: sticky;
+        top: 0;
+        z-index: 20;
+        background: var(--surface-color);
+        border-bottom: 2px solid var(--border-color);
+    }
+
+    .modal-header h3 {
+        font-size: 20px;
+        font-weight: 700;
+    }
+
+    .modal-body {
+        padding: 20px;
+        overflow-y: auto;
+        max-height: calc(100vh - 160px);
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .modal-footer {
+        padding: 16px 20px;
+        position: sticky;
+        bottom: 0;
+        background: var(--surface-color);
+        border-top: 2px solid var(--border-color);
+        display: flex;
+        gap: 12px;
+        flex-direction: column-reverse;
+    }
+
+    .modal-footer .btn {
+        width: 100%;
+        margin: 0;
+    }
+
+    /* Mobile Table Enhancements */
+    .data-table {
+        border-radius: var(--radius-lg);
+        overflow: hidden;
+    }
+
+    .data-table tr {
+        background: var(--surface-color);
+        border: 2px solid var(--border-color);
+        border-radius: var(--radius-lg);
+        padding: 16px;
+        margin-bottom: 16px;
+        box-shadow: var(--shadow-md);
+        transition: all 0.2s ease;
+    }
+
+    .data-table tr:active {
+        transform: scale(0.99);
+        box-shadow: var(--shadow-sm);
+    }
+
+    .data-table td {
+        padding: 12px 0;
+        font-size: 14px;
+    }
+
+    .data-table td::before {
+        font-size: 12px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        opacity: 0.7;
+    }
+
+    /* Mobile Tab Controls */
+    .tab-header {
+        position: sticky;
+        top: 0;
+        z-index: 15;
+        background: var(--background-color);
+        padding: 16px;
+        margin: -16px -16px 16px -16px;
+    }
+
+    .tab-controls {
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+
+    .tab-controls > * {
+        flex: 1 1 auto;
+        min-width: 140px;
+    }
+
+    /* Mobile Sub-Navigation */
+    .sub-nav {
+        width: 100%;
+        flex-direction: column;
+        gap: 8px;
+        padding: 8px;
+    }
+
+    .sub-nav-btn {
+        width: 100%;
+        justify-content: center;
+        padding: 14px;
+        font-size: 15px;
+        font-weight: 600;
+    }
+
+    .sub-nav-btn i {
+        font-size: 18px;
+    }
+
+    /* Mobile Navigation Improvements */
+    .nav-btn {
+        padding: 14px 16px;
+        font-size: 15px;
+        font-weight: 600;
+        border-radius: var(--radius-lg);
+        margin-bottom: 4px;
+        transition: all 0.2s ease;
+    }
+
+    .nav-btn:active {
+        transform: scale(0.98);
+        background: var(--surface-hover);
+    }
+
+    .nav-btn.active {
+        background: var(--primary-color);
+        color: white;
+        font-weight: 700;
+    }
+
+    .nav-btn i {
+        font-size: 18px;
+        width: 24px;
+        text-align: center;
+    }
+
+    /* Mobile Stat Cards */
+    .stat-item {
+        padding: 16px;
+        border-radius: var(--radius-lg);
+        border: 2px solid var(--border-color);
+    }
+
+    .stat-value {
+        font-size: 24px !important;
+        font-weight: 800;
+    }
+
+    .stat-label {
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    /* Mobile Metric Cards */
+    .metric-card {
+        padding: 20px;
+        border-radius: var(--radius-xl);
+        border: 2px solid var(--border-color);
+    }
+
+    .metric-stats {
+        grid-template-columns: 1fr !important;
+        gap: 12px;
+    }
+
+    .stat {
+        padding: 20px;
+        border-radius: var(--radius-lg);
+        border: 2px solid var(--border-color);
+    }
+
+    /* Mobile Zone Cards (Team Page) */
+    .zones-container {
+        grid-template-columns: 1fr !important;
+        gap: 16px;
+    }
+
+    .zone-card {
+        border-radius: var(--radius-xl);
+        padding: 16px;
+        border: 2px solid var(--border-color);
+    }
+
+    .zone-header {
+        margin-bottom: 16px;
+        padding-bottom: 12px;
+        border-bottom: 2px solid var(--border-color);
+    }
+
+    .zone-title {
+        font-size: 18px;
+        font-weight: 700;
+    }
+
+    /* Mobile Technician Cards */
+    .tech-card,
+    .technician-card {
+        padding: 16px;
+        border-radius: var(--radius-lg);
+        border: 2px solid var(--border-color);
+        margin-bottom: 12px;
+    }
+
+    /* Mobile Chart Improvements */
+    .chart-container {
+        border-radius: var(--radius-xl);
+        padding: 16px;
+        margin-bottom: 16px;
+    }
+
+    /* Mobile Breakdownsections */
+    .breakdown-section {
+        margin-bottom: 16px;
+    }
+
+    .breakdown-section h4 {
+        font-size: 14px;
+        font-weight: 700;
+        margin-bottom: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .breakdown-list {
+        list-style: none;
+        padding: 0;
+    }
+
+    .breakdown-item {
+        padding: 12px;
+        border-radius: var(--radius-md);
+        background: var(--surface-hover);
+        margin-bottom: 8px;
+        border-left: 3px solid var(--primary-color);
+    }
+
+    .breakdown-label {
+        font-size: 13px;
+        font-weight: 600;
+    }
+
+    .breakdown-value {
+        font-size: 16px;
+        font-weight: 700;
+        color: var(--primary-color);
+    }
+
+    /* Mobile Spacing & Padding */
+    .container {
+        padding: 16px;
+    }
+
+    .main-content {
+        padding: 16px 0;
+    }
+
+    /* Mobile Touch Feedback */
+    * {
+        -webkit-tap-highlight-color: rgba(248, 123, 77, 0.1);
+    }
+
+    /* Mobile Scrollbar (WebKit) */
+    ::-webkit-scrollbar {
+        width: 4px;
+        height: 4px;
+    }
+
+    ::-webkit-scrollbar-track {
+        background: var(--background-color);
+    }
+
+    ::-webkit-scrollbar-thumb {
+        background: var(--border-color);
+        border-radius: 2px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+        background: var(--primary-color);
+    }
+
+    /* Mobile Staff Off Items */
+    .staff-off-item,
+    .staffing-info-list > div {
+        padding: 14px 16px;
+        border-radius: var(--radius-lg);
+        margin-bottom: 10px;
+        border-left: 4px solid var(--primary-color);
+        background: var(--surface-hover);
+    }
+
+    /* Mobile Summary Grid */
+    .summary-grid {
+        grid-template-columns: 1fr !important;
+        gap: 16px;
+    }
+
+    /* Mobile Team Stats */
+    .team-stats {
+        grid-template-columns: 1fr 1fr !important;
+        gap: 12px;
+    }
+
+    /* Mobile Vehicle List */
+    .vehicle-list {
+        gap: 12px;
+    }
+
+    .vehicle-item,
+    .vehicle-list-item {
+        padding: 14px 16px;
+        border-radius: var(--radius-lg);
+        border: 2px solid var(--border-color);
+        background: var(--surface-hover);
+    }
+
+    /* Mobile Second Shift Report */
+    .second-shift-summary {
+        border-radius: var(--radius-xl);
+        margin-bottom: 20px;
+    }
+
+    .second-shift-summary h4 {
+        font-size: 16px;
+        font-weight: 700;
+        margin-bottom: 12px;
+    }
+
+    /* Mobile Loading States */
+    .loading,
+    .spinner {
+        font-size: 16px;
+        padding: 40px 20px;
+    }
+
+    /* Mobile Error States */
+    .error-message,
+    .no-entries {
+        padding: 24px;
+        text-align: center;
+        font-size: 14px;
+        border-radius: var(--radius-lg);
+        background: var(--surface-hover);
+        border: 2px dashed var(--border-color);
+    }
+
+    /* Mobile Badge Improvements */
+    .badge {
+        padding: 6px 12px;
+        font-size: 12px;
+        font-weight: 700;
+        border-radius: var(--radius-md);
+    }
+
+    /* Mobile Header Improvements */
+    .header {
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .header-content {
+        padding: 12px 16px;
+    }
+
+    .logo {
+        font-size: 20px;
+        font-weight: 800;
+    }
+
+    /* Mobile Hamburger Menu Enhancement */
+    .hamburger {
+        width: 48px;
+        height: 48px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: var(--radius-md);
+        transition: all 0.2s ease;
+    }
+
+    .hamburger:active {
+        transform: scale(0.95);
+        background: var(--surface-hover);
+    }
+
+    /* Mobile Analysis Grid */
+    .analysis-grid {
+        grid-template-columns: 1fr !important;
+        gap: 16px;
+    }
+
+    /* Mobile Form Grid */
+    .form-grid {
+        grid-template-columns: 1fr !important;
+        gap: 16px;
+    }
+
+    /* Mobile Control Panel */
+    .control-panel-grid {
+        grid-template-columns: 1fr !important;
+        gap: 16px;
+    }
+
+    .control-panel-section {
+        padding: 16px;
+        border-radius: var(--radius-xl);
+    }
+
+    /* Mobile Job Cards (Routing) */
+    .job-card {
+        padding: 16px;
+        border-radius: var(--radius-lg);
+        margin-bottom: 12px;
+        border: 2px solid var(--border-color);
+        background: var(--surface-color);
+    }
+
+    /* Mobile Kanban */
+    .kanban-column {
+        min-width: 100%;
+        border-radius: var(--radius-xl);
+        margin-bottom: 16px;
+    }
+
+    .kanban-column-header {
+        padding: 16px;
+        font-size: 16px;
+        font-weight: 700;
+    }
+
+    /* Mobile Floating Action Button (if added) */
+    .fab {
+        position: fixed;
+        bottom: 24px;
+        right: 24px;
+        width: 64px;
+        height: 64px;
+        border-radius: 50%;
+        background: var(--primary-color);
+        color: white;
+        box-shadow: 0 8px 24px rgba(248, 123, 77, 0.4);
+        border: none;
+        font-size: 24px;
+        z-index: 50;
+        transition: all 0.3s ease;
+    }
+
+    .fab:active {
+        transform: scale(0.95);
+    }
+
+    /* Mobile Bottom Spacing (for FABs and fixed buttons) */
+    .has-fab .main-content {
+        padding-bottom: 100px;
+    }
+
+    /* Mobile Pull-to-Refresh Indicator Area */
+    .pull-to-refresh {
+        height: 60px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--text-muted);
+        font-size: 14px;
+    }
+
+    /* Mobile Safe Area (for notched devices) */
+    @supports (padding-top: env(safe-area-inset-top)) {
+        .header {
+            padding-top: env(safe-area-inset-top);
+        }
+
+        .main-content {
+            padding-bottom: calc(32px + env(safe-area-inset-bottom));
+        }
+
+        .modal {
+            padding-top: env(safe-area-inset-top);
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+    }
 }

@@ -16,7 +16,7 @@ const Settings = () => {
   });
 
   const [appSettings, setAppSettings] = useState({
-    theme: 'light',
+    theme: localStorage.getItem('theme') || 'dark',
     notificationsEnabled: true,
     emailNotifications: true,
     autoSave: true,

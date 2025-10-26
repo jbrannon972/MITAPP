@@ -1,4 +1,5 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { useEffect } from 'react';
 import { AuthProvider } from './contexts/AuthContext';
 import { DataProvider } from './contexts/DataContext';
 import ProtectedRoute from './components/common/ProtectedRoute';
@@ -20,6 +21,13 @@ import WarehouseApp from './pages/warehouse-app/WarehouseApp';
 import './styles/styles.css';
 
 function App() {
+  // Set dark theme as default on app load
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('theme') || 'dark';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+    document.body.setAttribute('data-theme', savedTheme);
+  }, []);
+
   return (
     <AuthProvider>
       <DataProvider>
