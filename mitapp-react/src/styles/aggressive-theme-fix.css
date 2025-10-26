@@ -24,9 +24,9 @@
 /* Fix ALL modal backgrounds - SUPER AGGRESSIVE */
 .modal-overlay,
 .modal-overlay.active,
-div.modal-overlay,
-div[class*="modal"] {
+div.modal-overlay {
     background: rgba(0, 0, 0, 0.7) !important;
+    backdrop-filter: blur(4px) !important;
 }
 
 .modal,
@@ -35,11 +35,25 @@ div[class*="modal"] {
 .modal-lg,
 .cal-modal .modal-content,
 .modal-content,
-div.modal,
-div[class*="modal"].modal {
+div.modal {
     background: var(--surface-color) !important;
     background-color: var(--surface-color) !important;
     color: var(--text-primary) !important;
+}
+
+/* Ensure modal doesn't become fullscreen on desktop */
+@media (min-width: 769px) {
+    .modal {
+        width: 90% !important;
+        max-width: 600px !important;
+        height: auto !important;
+        max-height: 90vh !important;
+        border-radius: var(--radius-xl) !important;
+    }
+
+    .modal.modal-lg {
+        max-width: 900px !important;
+    }
 }
 
 .modal-header,
@@ -103,12 +117,19 @@ div[class*="modal"] .modal-footer {
     background-color: var(--primary-color) !important;
 }
 
-/* Fix form inputs in modals */
+/* Fix form groups and inputs in modals */
+.modal .form-group {
+    background: transparent !important;
+    background-color: transparent !important;
+}
+
 .modal .form-input,
+.modal .form-control,
 .modal input[type="text"],
 .modal input[type="email"],
 .modal input[type="date"],
 .modal input[type="number"],
+.modal input[type="checkbox"],
 .modal select,
 .modal textarea {
     background: var(--background-color) !important;
@@ -118,11 +139,13 @@ div[class*="modal"] .modal-footer {
 }
 
 .modal .form-input:focus,
+.modal .form-control:focus,
 .modal input:focus,
 .modal select:focus,
 .modal textarea:focus {
     border-color: var(--primary-color) !important;
     outline: none !important;
+    background: var(--background-color) !important;
 }
 
 /* Fix ALL sub-nav and tab backgrounds */
