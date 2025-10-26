@@ -134,10 +134,10 @@ const SupervisorReportForm = ({ onClose, onSubmitSuccess }) => {
   };
 
   return (
-    <div className="modal-overlay active" onClick={onClose}>
-      <div className="modal modal-lg" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <h3>
+    <div className="modal-overlay active" onClick={onClose} style={{ background: 'rgba(0, 0, 0, 0.7)', backgroundColor: 'rgba(0, 0, 0, 0.7)' }}>
+      <div className="modal modal-lg" onClick={(e) => e.stopPropagation()} style={{ background: '#2d2d30', backgroundColor: '#2d2d30', color: '#ececec' }}>
+        <div className="modal-header" style={{ background: '#3e3e42', backgroundColor: '#3e3e42', color: '#ececec' }}>
+          <h3 style={{ color: '#ececec' }}>
             <i className="fas fa-clipboard-check"></i> Supervisor Report - {new Date(formData.date).toLocaleDateString()}
           </h3>
           <button className="modal-close" onClick={onClose}>
@@ -145,11 +145,11 @@ const SupervisorReportForm = ({ onClose, onSubmitSuccess }) => {
           </button>
         </div>
 
-        <div className="modal-body">
-          <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }}>
+        <div className="modal-body" style={{ background: '#2d2d30', backgroundColor: '#2d2d30', color: '#ececec' }}>
+          <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }} style={{ background: 'transparent', backgroundColor: 'transparent' }}>
             {/* Date Selection */}
-            <div className="form-group">
-              <label htmlFor="reportDate">Report Date</label>
+            <div className="form-group" style={{ background: 'transparent', backgroundColor: 'transparent' }}>
+              <label htmlFor="reportDate" style={{ color: '#ececec' }}>Report Date</label>
               <input
                 type="date"
                 id="reportDate"
@@ -157,12 +157,13 @@ const SupervisorReportForm = ({ onClose, onSubmitSuccess }) => {
                 value={formData.date}
                 onChange={(e) => handleInputChange('date', e.target.value)}
                 max={new Date().toISOString().split('T')[0]}
+                style={{ background: '#1a1a1a', backgroundColor: '#1a1a1a', color: '#ececec', border: '1px solid #454549' }}
               />
             </div>
 
             {/* Equipment Deployed */}
-            <div className="form-group">
-              <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}>
+            <div className="form-group" style={{ background: 'transparent', backgroundColor: 'transparent' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', color: '#ececec', background: 'transparent' }}>
                 <div className="toggle-switch">
                   <input
                     type="checkbox"
@@ -171,7 +172,7 @@ const SupervisorReportForm = ({ onClose, onSubmitSuccess }) => {
                   />
                   <span className="slider round"></span>
                 </div>
-                <span>Did I ensure all equipment is properly deployed at day 2 visits?</span>
+                <span style={{ color: '#ececec' }}>Did I ensure all equipment is properly deployed at day 2 visits?</span>
               </label>
               {!formData.equipmentDeployed && (
                 <textarea
@@ -180,14 +181,14 @@ const SupervisorReportForm = ({ onClose, onSubmitSuccess }) => {
                   value={formData.equipmentDeployedReason}
                   onChange={(e) => handleInputChange('equipmentDeployedReason', e.target.value)}
                   rows={3}
-                  style={{ marginTop: '12px' }}
+                  style={{ marginTop: '12px', background: '#1a1a1a', backgroundColor: '#1a1a1a', color: '#ececec', border: '1px solid #454549' }}
                 />
               )}
             </div>
 
             {/* MIT Lead Forms */}
-            <div className="form-group">
-              <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}>
+            <div className="form-group" style={{ background: 'transparent', backgroundColor: 'transparent' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', color: '#ececec', background: 'transparent' }}>
                 <div className="toggle-switch">
                   <input
                     type="checkbox"
@@ -196,7 +197,7 @@ const SupervisorReportForm = ({ onClose, onSubmitSuccess }) => {
                   />
                   <span className="slider round"></span>
                 </div>
-                <span>Did I submit all MIT Lead visit forms?</span>
+                <span style={{ color: '#ececec' }}>Did I submit all MIT Lead visit forms?</span>
               </label>
               {!formData.mitLeadFormsSubmitted && (
                 <textarea
@@ -205,14 +206,14 @@ const SupervisorReportForm = ({ onClose, onSubmitSuccess }) => {
                   value={formData.mitLeadFormsReason}
                   onChange={(e) => handleInputChange('mitLeadFormsReason', e.target.value)}
                   rows={3}
-                  style={{ marginTop: '12px' }}
+                  style={{ marginTop: '12px', background: '#1a1a1a', backgroundColor: '#1a1a1a', color: '#ececec', border: '1px solid #454549' }}
                 />
               )}
             </div>
 
             {/* DPT Notes Updated */}
-            <div className="form-group">
-              <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}>
+            <div className="form-group" style={{ background: 'transparent', backgroundColor: 'transparent' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', color: '#ececec', background: 'transparent' }}>
                 <div className="toggle-switch">
                   <input
                     type="checkbox"
@@ -221,7 +222,7 @@ const SupervisorReportForm = ({ onClose, onSubmitSuccess }) => {
                   />
                   <span className="slider round"></span>
                 </div>
-                <span>Did I fully update all DPT notes and WOs?</span>
+                <span style={{ color: '#ececec' }}>Did I fully update all DPT notes and WOs?</span>
               </label>
               {!formData.dptNotesUpdated && (
                 <textarea
@@ -230,14 +231,14 @@ const SupervisorReportForm = ({ onClose, onSubmitSuccess }) => {
                   value={formData.dptNotesReason}
                   onChange={(e) => handleInputChange('dptNotesReason', e.target.value)}
                   rows={3}
-                  style={{ marginTop: '12px' }}
+                  style={{ marginTop: '12px', background: '#1a1a1a', backgroundColor: '#1a1a1a', color: '#ececec', border: '1px solid #454549' }}
                 />
               )}
             </div>
 
             {/* Talked to Techs */}
-            <div className="form-group">
-              <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}>
+            <div className="form-group" style={{ background: 'transparent', backgroundColor: 'transparent' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', color: '#ececec', background: 'transparent' }}>
                 <div className="toggle-switch">
                   <input
                     type="checkbox"
@@ -246,7 +247,7 @@ const SupervisorReportForm = ({ onClose, onSubmitSuccess }) => {
                   />
                   <span className="slider round"></span>
                 </div>
-                <span>Did I talk to all my techs that are working near the end of the day?</span>
+                <span style={{ color: '#ececec' }}>Did I talk to all my techs that are working near the end of the day?</span>
               </label>
               {!formData.talkedToTechs && (
                 <textarea
@@ -255,14 +256,14 @@ const SupervisorReportForm = ({ onClose, onSubmitSuccess }) => {
                   value={formData.talkedToTechsReason}
                   onChange={(e) => handleInputChange('talkedToTechsReason', e.target.value)}
                   rows={3}
-                  style={{ marginTop: '12px' }}
+                  style={{ marginTop: '12px', background: '#1a1a1a', backgroundColor: '#1a1a1a', color: '#ececec', border: '1px solid #454549' }}
                 />
               )}
             </div>
 
             {/* Win Today */}
-            <div className="form-group">
-              <label htmlFor="winToday">What was one win I had today? <span style={{ color: 'var(--danger-color)' }}>*</span></label>
+            <div className="form-group" style={{ background: 'transparent', backgroundColor: 'transparent' }}>
+              <label htmlFor="winToday" style={{ color: '#ececec' }}>What was one win I had today? <span style={{ color: '#ef4444' }}>*</span></label>
               <textarea
                 id="winToday"
                 className="form-input"
@@ -271,12 +272,13 @@ const SupervisorReportForm = ({ onClose, onSubmitSuccess }) => {
                 onChange={(e) => handleInputChange('winToday', e.target.value)}
                 rows={3}
                 required
+                style={{ background: '#1a1a1a', backgroundColor: '#1a1a1a', color: '#ececec', border: '1px solid #454549' }}
               />
             </div>
 
             {/* Support Needed */}
-            <div className="form-group">
-              <label htmlFor="supportNeeded">What is something you could use support on?</label>
+            <div className="form-group" style={{ background: 'transparent', backgroundColor: 'transparent' }}>
+              <label htmlFor="supportNeeded" style={{ color: '#ececec' }}>What is something you could use support on?</label>
               <textarea
                 id="supportNeeded"
                 className="form-input"
@@ -284,12 +286,13 @@ const SupervisorReportForm = ({ onClose, onSubmitSuccess }) => {
                 value={formData.supportNeeded}
                 onChange={(e) => handleInputChange('supportNeeded', e.target.value)}
                 rows={3}
+                style={{ background: '#1a1a1a', backgroundColor: '#1a1a1a', color: '#ececec', border: '1px solid #454549' }}
               />
             </div>
           </form>
         </div>
 
-        <div className="modal-footer">
+        <div className="modal-footer" style={{ background: '#3e3e42', backgroundColor: '#3e3e42' }}>
           <button
             className="btn btn-secondary"
             onClick={onClose}
