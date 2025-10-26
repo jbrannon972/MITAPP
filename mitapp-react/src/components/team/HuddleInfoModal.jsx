@@ -549,6 +549,8 @@ const HuddleInfoModal = ({
               )}
             </>
           )}
+        </>
+      )}
         </div>
 
         {/* Modal Footer - Dashboard Mode */}
