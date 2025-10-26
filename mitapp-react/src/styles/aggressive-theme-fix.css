@@ -21,6 +21,17 @@
     background-color: var(--surface-color) !important;
 }
 
+/* CRITICAL: Override ANY element with orange background (#f87b4d) */
+*[style*="#f87b4d"],
+*[style*="#F87B4D"],
+*[style*="rgb(248, 123, 77)"],
+.modal *[style*="#f87b4d"],
+.modal *[style*="#F87B4D"],
+.modal-body *[style*="#f87b4d"] {
+    background: #2d2d30 !important;
+    background-color: #2d2d30 !important;
+}
+
 /* ============================================
    NUCLEAR MODAL FIX - FORCE CORRECT DISPLAY
    Hard-coded colors to bypass any CSS variable issues
@@ -128,7 +139,7 @@ div.modal .modal-header,
     margin: 0 !important;
 }
 
-/* Modal body - HARD-CODED charcoal */
+/* Modal body - HARD-CODED charcoal - ABSOLUTELY NO ORANGE ALLOWED */
 .modal-body,
 .modal .modal-body,
 .modal-body[class],
@@ -142,13 +153,28 @@ div.modal .modal-body,
     flex-grow: 1 !important;
 }
 
+/* FORCE: Every single element inside modal-body to have transparent background (except buttons) */
+.modal-body > *:not(.btn):not(button),
+.modal .modal-body > *:not(.btn):not(button),
+.modal-body > div:not(.btn):not(button),
+.modal-body > form:not(.btn):not(button) {
+    background: transparent !important;
+    background-color: transparent !important;
+}
+
 .modal-body form,
 .modal-body .form-group,
 .modal-body label,
 .modal-body p,
-.modal-body span {
+.modal-body span,
+.modal-body div:not(.toggle-switch):not(.slider):not(.btn) {
     color: #ececec !important;
     background: transparent !important;
+    background-color: transparent !important;
+}
+
+/* ULTRA-AGGRESSIVE: Target ALL descendants inside modal-body */
+.modal-body *:not(.btn):not(button):not(.btn-primary):not(.btn-secondary):not(.toggle-switch):not(.slider):not(i):not(.fa):not(.fas) {
     background-color: transparent !important;
 }
 
