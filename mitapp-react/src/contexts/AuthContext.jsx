@@ -128,14 +128,14 @@ export const AuthProvider = ({ children }) => {
       // Get staff member data
       const staffMember = await getStaffMemberFromStaffingData(user.email);
 
-      // Check permissions
-      if (!staffMember || !staffMember.role || staffMember.role === 'Tech' || staffMember.role === 'Warehouse') {
+      // Check if user exists in staffing data
+      if (!staffMember || !staffMember.role) {
         await signOut(auth);
         localStorage.removeItem('loggedInUser');
-        throw new Error('This account does not have access to the Supervisor tool.');
+        throw new Error('No staff record found for this account.');
       }
 
-      // Create user session data
+      // Create user session data for ALL roles (Tech, Warehouse, and Supervisors)
       const sessionData = {
         email: user.email,
         uid: user.uid,
@@ -147,8 +147,11 @@ export const AuthProvider = ({ children }) => {
       localStorage.setItem('loggedInUser', JSON.stringify(sessionData));
       setCurrentUser(sessionData);
 
-      // Initialize notifications for this user
-      await initializeNotifications(sessionData);
+      // Initialize notifications only for supervisor roles
+      if (staffMember.role !== 'Tech' && staffMember.role !== 'MIT Tech' &&
+          staffMember.role !== 'Demo Tech' && staffMember.role !== 'Warehouse') {
+        await initializeNotifications(sessionData);
+      }
 
       return sessionData;
     } catch (error) {
@@ -216,11 +219,10 @@ export const AuthProvider = ({ children }) => {
       if (user) {
         // SECURITY FIX: Always re-validate user role from staffing data
         // Never blindly trust localStorage as it could be outdated or tampered with
-        // This prevents techs from accessing the supervisor app after re-opening the browser
         const staffMember = await getStaffMemberFromStaffingData(user.email);
 
-        // Check if user has supervisor permissions (not Tech or Warehouse)
-        if (staffMember && staffMember.role && staffMember.role !== 'Tech' && staffMember.role !== 'Warehouse') {
+        if (staffMember && staffMember.role) {
+          // Create session data for ALL users (including Tech and Warehouse)
           const sessionData = {
             email: user.email,
             uid: user.uid,
@@ -230,14 +232,15 @@ export const AuthProvider = ({ children }) => {
           };
           localStorage.setItem('loggedInUser', JSON.stringify(sessionData));
           setCurrentUser(sessionData);
-          // Initialize notifications for user with supervisor permissions
-          await initializeNotifications(sessionData);
+
+          // Initialize notifications only for supervisor roles
+          if (staffMember.role !== 'Tech' && staffMember.role !== 'Warehouse') {
+            await initializeNotifications(sessionData);
+          }
         } else {
-          // User is Tech or Warehouse - they should NOT have access to supervisor app
-          console.warn('Tech or Warehouse user attempted to access supervisor app, signing out');
-          await signOut(auth);
-          localStorage.removeItem('loggedInUser');
+          // No valid staff member found
           setCurrentUser(null);
+          localStorage.removeItem('loggedInUser');
         }
       } else {
         setCurrentUser(null);
