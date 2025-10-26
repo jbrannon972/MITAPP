@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useData } from '../../contexts/DataContext';
 import firebaseService from '../../services/firebaseService';
+import { Timestamp } from 'firebase/firestore';
 
 const Evaluations = () => {
   const { currentUser } = useAuth();
@@ -10,6 +11,30 @@ const Evaluations = () => {
   const [allEvaluations, setAllEvaluations] = useState({});
   const [techsWithEvals, setTechsWithEvals] = useState([]);
   const [filters, setFilters] = useState({ zone: 'all', category: 'all' });
+  const [showEvalModal, setShowEvalModal] = useState(false);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [selectedTech, setSelectedTech] = useState(null);
+  const [historyData, setHistoryData] = useState([]);
+  const [evalFormData, setEvalFormData] = useState({
+    technicianId: '',
+    evaluationDate: new Date().toISOString().split('T')[0],
+    ratings: {
+      leadership: '',
+      culture: '',
+      jobfit: '',
+      integrity: '',
+      people: '',
+      workethic: '',
+      excellence: '',
+      longevity: ''
+    },
+    trainingOpportunities: '',
+    observations: '',
+    developmentPlan: '',
+    planDocumentLink: '',
+    planStart: '',
+    planEnd: ''
+  });
 
   useEffect(() => {
     loadEvaluations();
@@ -68,12 +93,14 @@ const Evaluations = () => {
 
   const processAndDisplayTechnicians = () => {
     const userRole = currentUser?.role;
+    const userId = currentUser?.id || currentUser?.uid;
     let allStaff = getAllTechnicians();
 
     // Filter based on user role
     if (userRole === 'Supervisor' || userRole === 'MIT Lead') {
+      // Can see all techs AND themselves, but NOT other Supervisors/MIT Leads
       allStaff = allStaff.filter(tech =>
-        tech.role !== 'Supervisor' && tech.role !== 'MIT Lead'
+        (tech.role !== 'Supervisor' && tech.role !== 'MIT Lead') || tech.id === userId
       );
     }
 
@@ -140,6 +167,106 @@ const Evaluations = () => {
     setTechsWithEvals(finalList);
   };
 
+  const openEvalModal = (tech = null) => {
+    if (tech) {
+      const latestEval = allEvaluations[tech.id];
+      setSelectedTech(tech);
+      setEvalFormData({
+        technicianId: tech.id,
+        evaluationDate: latestEval?.createdAt ?
+          new Date(latestEval.createdAt.seconds * 1000).toISOString().split('T')[0] :
+          new Date().toISOString().split('T')[0],
+        ratings: latestEval?.ratings || {
+          leadership: '', culture: '', jobfit: '', integrity: '',
+          people: '', workethic: '', excellence: '', longevity: ''
+        },
+        trainingOpportunities: latestEval?.trainingOpportunities || '',
+        observations: latestEval?.observations || '',
+        developmentPlan: latestEval?.developmentPlan || '',
+        planDocumentLink: latestEval?.planDocumentLink || '',
+        planStart: latestEval?.planStart ?
+          new Date(latestEval.planStart.seconds * 1000).toISOString().split('T')[0] : '',
+        planEnd: latestEval?.planEnd ?
+          new Date(latestEval.planEnd.seconds * 1000).toISOString().split('T')[0] : ''
+      });
+    } else {
+      setSelectedTech(null);
+      setEvalFormData({
+        technicianId: '',
+        evaluationDate: new Date().toISOString().split('T')[0],
+        ratings: {
+          leadership: '', culture: '', jobfit: '', integrity: '',
+          people: '', workethic: '', excellence: '', longevity: ''
+        },
+        trainingOpportunities: '',
+        observations: '',
+        developmentPlan: '',
+        planDocumentLink: '',
+        planStart: '',
+        planEnd: ''
+      });
+    }
+    setShowEvalModal(true);
+  };
+
+  const saveEvaluation = async () => {
+    try {
+      // Validate required fields
+      if (!evalFormData.technicianId) {
+        alert('Please select a technician');
+        return;
+      }
+
+      const ratingFields = ['leadership', 'culture', 'jobfit', 'integrity', 'people', 'workethic', 'excellence', 'longevity'];
+      for (const field of ratingFields) {
+        if (!evalFormData.ratings[field]) {
+          alert(`Please provide a rating for "${field}"`);
+          return;
+        }
+      }
+
+      const tech = getAllTechnicians().find(t => t.id === evalFormData.technicianId);
+
+      const evaluationData = {
+        technicianId: evalFormData.technicianId,
+        employeeName: tech?.name || '',
+        evaluatorName: currentUser?.username || currentUser?.email || 'Unknown',
+        createdAt: Timestamp.fromDate(new Date(evalFormData.evaluationDate)),
+        ratings: evalFormData.ratings,
+        trainingOpportunities: evalFormData.trainingOpportunities.trim(),
+        observations: evalFormData.observations.trim(),
+        developmentPlan: evalFormData.developmentPlan,
+        planDocumentLink: evalFormData.planDocumentLink.trim(),
+        planStart: evalFormData.planStart ? Timestamp.fromDate(new Date(evalFormData.planStart)) : null,
+        planEnd: evalFormData.planEnd ? Timestamp.fromDate(new Date(evalFormData.planEnd)) : null
+      };
+
+      await firebaseService.addDocument('technician-evaluations', evaluationData);
+      alert('Evaluation saved successfully!');
+      setShowEvalModal(false);
+      await loadEvaluations(); // Reload
+    } catch (error) {
+      console.error('Error saving evaluation:', error);
+      alert('Error saving evaluation. Please try again.');
+    }
+  };
+
+  const viewHistory = async (tech) => {
+    setSelectedTech(tech);
+    setShowHistoryModal(true);
+
+    try {
+      const allEvals = await firebaseService.getCollection('technician-evaluations');
+      const techEvals = allEvals
+        .filter(e => e.technicianId === tech.id)
+        .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+      setHistoryData(techEvals);
+    } catch (error) {
+      console.error('Error loading history:', error);
+      setHistoryData([]);
+    }
+  };
+
   const getZones = () => {
     if (!staffingData?.zones) return [];
     return [...new Set(staffingData.zones.map(z => z.name))];
@@ -189,6 +316,14 @@ const Evaluations = () => {
                     <p style={{ margin: '4px 0', fontStyle: 'italic' }}>No evaluation on record</p>
                   )}
                 </div>
+                <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
+                  <button className="btn btn-secondary btn-small" onClick={() => viewHistory(tech)}>
+                    History
+                  </button>
+                  <button className="btn btn-primary btn-small" onClick={() => openEvalModal(tech)}>
+                    New/Edit
+                  </button>
+                </div>
               </div>
             );
           })
@@ -213,6 +348,7 @@ const Evaluations = () => {
               <th>Zone</th>
               <th>Role</th>
               <th>Last Evaluated</th>
+              <th style={{ textAlign: 'right' }}>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -239,12 +375,20 @@ const Evaluations = () => {
                     <td data-label="Zone">{tech.zoneName}</td>
                     <td data-label="Role">{tech.role}</td>
                     <td data-label="Last Evaluated">{formatDate(tech.latestEvaluation?.createdAt)}</td>
+                    <td data-label="Actions" style={{ textAlign: 'right' }}>
+                      <button className="btn btn-secondary btn-small" onClick={() => viewHistory(tech)} style={{ marginRight: '8px' }}>
+                        History
+                      </button>
+                      <button className="btn btn-primary btn-small" onClick={() => openEvalModal(tech)}>
+                        New/Edit
+                      </button>
+                    </td>
                   </tr>
                 );
               })
             ) : (
               <tr>
-                <td colSpan="6" style={{ textAlign: 'center', padding: '40px' }}>
+                <td colSpan="7" style={{ textAlign: 'center', padding: '40px' }}>
                   No technicians match the selected filters.
                 </td>
               </tr>
@@ -313,11 +457,392 @@ const Evaluations = () => {
               <i className="fas fa-bars"></i> Table
             </button>
           </div>
+          <button className="btn btn-primary" onClick={() => openEvalModal()}>
+            <i className="fas fa-plus"></i> Add Eval
+          </button>
         </div>
       </div>
 
       {/* Content */}
       {viewMode === 'card' ? renderCardView() : renderTableView()}
+
+      {/* Evaluation Form Modal */}
+      {showEvalModal && (
+        <div className="modal-overlay active" onClick={() => setShowEvalModal(false)}>
+          <div className="modal modal-lg" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>
+                <i className="fas fa-clipboard-check"></i> {selectedTech ? `Edit Evaluation: ${selectedTech.name}` : 'New Evaluation'}
+              </h3>
+              <button className="modal-close" onClick={() => setShowEvalModal(false)}>
+                <i className="fas fa-times"></i>
+              </button>
+            </div>
+            <div className="modal-body">
+              {/* Employee Selection */}
+              <div className="form-group">
+                <label htmlFor="technicianId">Employee *</label>
+                <select
+                  id="technicianId"
+                  className="form-input"
+                  value={evalFormData.technicianId}
+                  onChange={(e) => setEvalFormData({ ...evalFormData, technicianId: e.target.value })}
+                  disabled={selectedTech !== null}
+                >
+                  <option value="">Select Employee...</option>
+                  {getAllTechnicians().map(tech => (
+                    <option key={tech.id} value={tech.id}>{tech.name} - {tech.role}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Evaluation Date */}
+              <div className="form-group">
+                <label htmlFor="evaluationDate">Evaluation Date *</label>
+                <input
+                  type="date"
+                  id="evaluationDate"
+                  className="form-input"
+                  value={evalFormData.evaluationDate}
+                  onChange={(e) => setEvalFormData({ ...evalFormData, evaluationDate: e.target.value })}
+                />
+              </div>
+
+              {/* Ratings Section */}
+              <h4 style={{ fontSize: '16px', marginTop: '20px', marginBottom: '12px', color: 'var(--primary-color)', borderBottom: '1px solid var(--border-color)', paddingBottom: '8px' }}>
+                <i className="fas fa-star"></i> Ratings (1-4 scale) *
+              </h4>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                <div className="form-group">
+                  <label htmlFor="leadership">Leadership</label>
+                  <select
+                    id="leadership"
+                    className="form-input"
+                    value={evalFormData.ratings.leadership}
+                    onChange={(e) => setEvalFormData({
+                      ...evalFormData,
+                      ratings: { ...evalFormData.ratings, leadership: e.target.value }
+                    })}
+                  >
+                    <option value="">Select...</option>
+                    <option value="1">1</option>
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                    <option value="4">4</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label htmlFor="culture">Culture</label>
+                  <select
+                    id="culture"
+                    className="form-input"
+                    value={evalFormData.ratings.culture}
+                    onChange={(e) => setEvalFormData({
+                      ...evalFormData,
+                      ratings: { ...evalFormData.ratings, culture: e.target.value }
+                    })}
+                  >
+                    <option value="">Select...</option>
+                    <option value="1">1</option>
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                    <option value="4">4</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label htmlFor="jobfit">Job Fit</label>
+                  <select
+                    id="jobfit"
+                    className="form-input"
+                    value={evalFormData.ratings.jobfit}
+                    onChange={(e) => setEvalFormData({
+                      ...evalFormData,
+                      ratings: { ...evalFormData.ratings, jobfit: e.target.value }
+                    })}
+                  >
+                    <option value="">Select...</option>
+                    <option value="1">1</option>
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                    <option value="4">4</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label htmlFor="integrity">Integrity</label>
+                  <select
+                    id="integrity"
+                    className="form-input"
+                    value={evalFormData.ratings.integrity}
+                    onChange={(e) => setEvalFormData({
+                      ...evalFormData,
+                      ratings: { ...evalFormData.ratings, integrity: e.target.value }
+                    })}
+                  >
+                    <option value="">Select...</option>
+                    <option value="1">1</option>
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                    <option value="4">4</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label htmlFor="people">People</label>
+                  <select
+                    id="people"
+                    className="form-input"
+                    value={evalFormData.ratings.people}
+                    onChange={(e) => setEvalFormData({
+                      ...evalFormData,
+                      ratings: { ...evalFormData.ratings, people: e.target.value }
+                    })}
+                  >
+                    <option value="">Select...</option>
+                    <option value="1">1</option>
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                    <option value="4">4</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label htmlFor="workethic">Work Ethic</label>
+                  <select
+                    id="workethic"
+                    className="form-input"
+                    value={evalFormData.ratings.workethic}
+                    onChange={(e) => setEvalFormData({
+                      ...evalFormData,
+                      ratings: { ...evalFormData.ratings, workethic: e.target.value }
+                    })}
+                  >
+                    <option value="">Select...</option>
+                    <option value="1">1</option>
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                    <option value="4">4</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label htmlFor="excellence">Excellence</label>
+                  <select
+                    id="excellence"
+                    className="form-input"
+                    value={evalFormData.ratings.excellence}
+                    onChange={(e) => setEvalFormData({
+                      ...evalFormData,
+                      ratings: { ...evalFormData.ratings, excellence: e.target.value }
+                    })}
+                  >
+                    <option value="">Select...</option>
+                    <option value="1">1</option>
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                    <option value="4">4</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label htmlFor="longevity">Longevity</label>
+                  <select
+                    id="longevity"
+                    className="form-input"
+                    value={evalFormData.ratings.longevity}
+                    onChange={(e) => setEvalFormData({
+                      ...evalFormData,
+                      ratings: { ...evalFormData.ratings, longevity: e.target.value }
+                    })}
+                  >
+                    <option value="">Select...</option>
+                    <option value="1">1</option>
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                    <option value="4">4</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Additional Details */}
+              <h4 style={{ fontSize: '16px', marginTop: '20px', marginBottom: '12px', color: 'var(--primary-color)', borderBottom: '1px solid var(--border-color)', paddingBottom: '8px' }}>
+                <i className="fas fa-clipboard-list"></i> Additional Details
+              </h4>
+              <div className="form-group">
+                <label htmlFor="trainingOpportunities">Training Opportunities</label>
+                <textarea
+                  id="trainingOpportunities"
+                  className="form-input"
+                  rows="3"
+                  value={evalFormData.trainingOpportunities}
+                  onChange={(e) => setEvalFormData({ ...evalFormData, trainingOpportunities: e.target.value })}
+                  placeholder="List any training opportunities or areas for improvement..."
+                />
+              </div>
+              <div className="form-group">
+                <label htmlFor="observations">Observations</label>
+                <textarea
+                  id="observations"
+                  className="form-input"
+                  rows="3"
+                  value={evalFormData.observations}
+                  onChange={(e) => setEvalFormData({ ...evalFormData, observations: e.target.value })}
+                  placeholder="General observations about performance..."
+                />
+              </div>
+
+              {/* Development Plan */}
+              <h4 style={{ fontSize: '16px', marginTop: '20px', marginBottom: '12px', color: 'var(--primary-color)', borderBottom: '1px solid var(--border-color)', paddingBottom: '8px' }}>
+                <i className="fas fa-road"></i> Development Plan
+              </h4>
+              <div className="form-group">
+                <label htmlFor="developmentPlan">Plan Type</label>
+                <select
+                  id="developmentPlan"
+                  className="form-input"
+                  value={evalFormData.developmentPlan}
+                  onChange={(e) => setEvalFormData({ ...evalFormData, developmentPlan: e.target.value })}
+                >
+                  <option value="">None</option>
+                  <option value="Training Plan">Training Plan</option>
+                  <option value="IDP">Individual Development Plan (IDP)</option>
+                  <option value="PIP">Performance Improvement Plan (PIP)</option>
+                </select>
+              </div>
+              {evalFormData.developmentPlan && (
+                <>
+                  <div className="form-group">
+                    <label htmlFor="planDocumentLink">Plan Document Link</label>
+                    <input
+                      type="text"
+                      id="planDocumentLink"
+                      className="form-input"
+                      value={evalFormData.planDocumentLink}
+                      onChange={(e) => setEvalFormData({ ...evalFormData, planDocumentLink: e.target.value })}
+                      placeholder="https://..."
+                    />
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                    <div className="form-group">
+                      <label htmlFor="planStart">Plan Start Date</label>
+                      <input
+                        type="date"
+                        id="planStart"
+                        className="form-input"
+                        value={evalFormData.planStart}
+                        onChange={(e) => setEvalFormData({ ...evalFormData, planStart: e.target.value })}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label htmlFor="planEnd">Plan End Date</label>
+                      <input
+                        type="date"
+                        id="planEnd"
+                        className="form-input"
+                        value={evalFormData.planEnd}
+                        onChange={(e) => setEvalFormData({ ...evalFormData, planEnd: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-secondary" onClick={() => setShowEvalModal(false)}>
+                Cancel
+              </button>
+              <button className="btn btn-primary" onClick={saveEvaluation}>
+                <i className="fas fa-save"></i> Save Evaluation
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* History Modal */}
+      {showHistoryModal && (
+        <div className="modal-overlay active" onClick={() => setShowHistoryModal(false)}>
+          <div className="modal modal-lg" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>
+                <i className="fas fa-history"></i> Evaluation History: {selectedTech?.name}
+              </h3>
+              <button className="modal-close" onClick={() => setShowHistoryModal(false)}>
+                <i className="fas fa-times"></i>
+              </button>
+            </div>
+            <div className="modal-body">
+              {historyData.length > 0 ? (
+                <div className="table-container">
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th>Date</th>
+                        <th>Avg Score</th>
+                        <th>Evaluator</th>
+                        <th>Development Plan</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {historyData.map((evalRecord, index) => {
+                        const avgScore = calculateScore(evalRecord.ratings);
+                        return (
+                          <tr key={index}>
+                            <td data-label="Date">{formatDate(evalRecord.createdAt)}</td>
+                            <td data-label="Avg Score">
+                              <strong style={{ fontSize: '16px', color: 'var(--primary-color)' }}>
+                                {avgScore ? avgScore.toFixed(2) : 'N/A'}
+                              </strong>
+                            </td>
+                            <td data-label="Evaluator">{evalRecord.evaluatorName || 'Unknown'}</td>
+                            <td data-label="Development Plan">
+                              {evalRecord.developmentPlan || 'None'}
+                            </td>
+                            <td data-label="Actions">
+                              <button
+                                className="btn btn-secondary btn-small"
+                                onClick={() => {
+                                  setEvalFormData({
+                                    technicianId: selectedTech.id,
+                                    evaluationDate: evalRecord.createdAt ?
+                                      new Date(evalRecord.createdAt.seconds * 1000).toISOString().split('T')[0] :
+                                      new Date().toISOString().split('T')[0],
+                                    ratings: evalRecord.ratings || {
+                                      leadership: '', culture: '', jobfit: '', integrity: '',
+                                      people: '', workethic: '', excellence: '', longevity: ''
+                                    },
+                                    trainingOpportunities: evalRecord.trainingOpportunities || '',
+                                    observations: evalRecord.observations || '',
+                                    developmentPlan: evalRecord.developmentPlan || '',
+                                    planDocumentLink: evalRecord.planDocumentLink || '',
+                                    planStart: evalRecord.planStart ?
+                                      new Date(evalRecord.planStart.seconds * 1000).toISOString().split('T')[0] : '',
+                                    planEnd: evalRecord.planEnd ?
+                                      new Date(evalRecord.planEnd.seconds * 1000).toISOString().split('T')[0] : ''
+                                  });
+                                  setShowHistoryModal(false);
+                                  setShowEvalModal(true);
+                                }}
+                              >
+                                <i className="fas fa-eye"></i> View
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p style={{ textAlign: 'center', padding: '40px', color: 'var(--text-secondary)' }}>
+                  No evaluation history found for this employee.
+                </p>
+              )}
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-secondary" onClick={() => setShowHistoryModal(false)}>
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
