@@ -47,60 +47,99 @@ export const getSubTeamsToday = async (date, staffingData, firebaseService, cale
 
 export const getDailyHoursData = async (date, monthlyData, staffingData, firebaseService, calendarManager, unifiedTechnicianData) => {
   const month = date.getMonth();
-  const data = monthlyData[month];
+  const monthDataForMonth = monthlyData[month];
 
-  if (!data) {
+  if (!monthDataForMonth) {
     return {
+      totalTechHours: 0,
+      totalLaborHours: 0,
+      dtHours: 0,
+      hoursAvailable: 0,
+      dtHoursAvailable: 0,
+      subHours: 0,
+      availableHoursGoal: 0,
       potentialNewJobs: 0,
-      inefficientDemoHours: 0,
-      dailyHoursData: []
+      inefficientDemoHours: 0
     };
   }
 
+  // Get daily stats from Firebase (from job analyzer)
+  const dateString = formatDateString(date);
+  const stats = await firebaseService.getDailyStats(dateString);
+
+  // Calculate sub team prep time and hours
+  const subTeamCount = stats ? stats.subTeamCount || 0 : 0;
+  const subPrepTime = subTeamCount * 1.5;
+  let totalLaborHours = (stats ? stats.totalLaborHours || 0 : 0) + subPrepTime;
+
+  const totalTechHours = (stats ? stats.totalTechHours || 0 : 0) + subPrepTime;
+  const dtHours = stats ? stats.dtLaborHours || 0 : 0; // Total DT hours requested
+
+  // Get schedule for the day
   const monthlySchedules = await firebaseService.getScheduleDataForMonth(date.getFullYear(), date.getMonth());
   const allTechs = unifiedTechnicianData || getAllTechnicians(staffingData);
   const schedule = calendarManager.getCalculatedScheduleForDay(date, monthlySchedules, allTechs);
 
-  // Calculate techs working
-  const mitTechs = allTechs.filter(t => t.role === 'MIT Tech' && !t.inTraining);
-  const demoTechs = allTechs.filter(t => t.role === 'Demo Tech');
+  // Calculate techs on route today
+  const techsOnRoute = await getTechsOnRouteToday(date, staffingData, firebaseService, calendarManager, unifiedTechnicianData);
+  const demoTechs = allTechs.filter(t => t && t.role === 'Demo Tech');
 
-  let mitTechsWorking = 0;
-  let demoTechsWorking = 0;
-
-  mitTechs.forEach(tech => {
-    const entry = schedule.staff.find(s => s.id === tech.id);
-    if (entry && entry.status === 'on') mitTechsWorking++;
-  });
-
+  let demoTechsOnRoute = 0;
   demoTechs.forEach(tech => {
     const entry = schedule.staff.find(s => s.id === tech.id);
-    if (entry && entry.status === 'on') demoTechsWorking++;
+    if (entry && entry.status === 'on') demoTechsOnRoute++;
   });
 
-  const driveTime = data.averageDriveTime || 0;
-  const otHours = data.otHoursPerTechPerDay || 0;
-  const hoursPerRoute = (8 - driveTime) + otHours;
+  // Calculate available hours
+  const driveTime = monthDataForMonth.averageDriveTime || 0;
+  const otHours = monthDataForMonth.otHoursPerTechPerDay || 0;
+  const hoursPerTech = (8 - driveTime + otHours);
 
-  const totalMitHours = mitTechsWorking * hoursPerRoute;
-  const totalDemoHours = demoTechsWorking * 8;
+  const hoursAvailable = techsOnRoute * hoursPerTech;
+  const dtHoursAvailable = demoTechsOnRoute * hoursPerTech;
 
-  const hoursPerJob = data.hoursPerAppointment || 8;
-  const potentialNewJobs = Math.floor(totalMitHours / hoursPerJob);
+  // Calculate sub hours handled
+  const subHours = stats && stats.subContractorJobs
+    ? stats.subContractorJobs.reduce((acc, job) => acc + (job.demoHours || 0), 0)
+    : 0;
+
+  // Calculate new jobs forecasted today
+  const dayOfWeek = date.getDay();
+  let newJobsToday = 0;
+
+  // Simple forecast based on day of week - you can enhance this with actual forecast calculations
+  if (dayOfWeek >= 1 && dayOfWeek <= 5) newJobsToday = 3; // Weekday default
+  else if (dayOfWeek === 6) newJobsToday = 1; // Saturday default
+  else if (dayOfWeek === 0) newJobsToday = 0; // Sunday default
+
+  // Calculate available hours goal
+  const avgInstallDuration = monthDataForMonth.hoursPerAppointment || 4;
+  const totalRequestedHours = totalLaborHours + dtHours;
+  const availableHoursGoal = totalRequestedHours + (newJobsToday * avgInstallDuration);
+
+  // Calculate potential new jobs
+  const baseWorkSurplus = hoursAvailable - totalLaborHours;
+  const surplusHoursForNewInstalls = baseWorkSurplus;
+
+  let potentialNewJobs = 0;
+  if (surplusHoursForNewInstalls > 0 && avgInstallDuration > 0) {
+    potentialNewJobs = Math.floor(surplusHoursForNewInstalls / avgInstallDuration);
+  }
 
   // Calculate inefficient demo hours
-  const demoPairs = Math.floor(demoTechsWorking / 2);
-  const oddDemoTech = demoTechsWorking % 2;
-  const inefficientDemoHours = oddDemoTech * 8;
+  const internalDemoHoursNeeded = Math.max(0, dtHours - subHours);
+  const inefficientDemoHours = Math.max(0, dtHoursAvailable - internalDemoHoursNeeded);
 
   return {
+    totalTechHours,
+    totalLaborHours,
+    dtHours,
+    hoursAvailable,
+    dtHoursAvailable,
+    subHours,
+    availableHoursGoal,
     potentialNewJobs,
-    inefficientDemoHours,
-    totalMitHours,
-    totalDemoHours,
-    mitTechsWorking,
-    demoTechsWorking,
-    demoPairs
+    inefficientDemoHours
   };
 };
 

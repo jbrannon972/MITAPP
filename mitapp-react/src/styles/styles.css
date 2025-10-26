@@ -40,31 +40,31 @@
     --danger-color: #ef4444;
 }
 
-/* Dark Theme - Now Default */
+/* Dark Theme - Now Default - Matches Dark Claude */
 [data-theme="dark"], body {
-    /* Dark theme colors - Pure greys, no blue tones */
-    --primary-color: #ff8a5b; /* Brighter orange for dark mode */
-    --primary-dark: #ff6f3d; /* Even brighter for hover */
-    --secondary-color: #b8b8ba; /* Lighter gray for dark mode */
-    --background-color: #0a0a0a; /* Deep dark background - pure grey */
-    --surface-color: #1a1a1a; /* Slightly lighter surface - pure grey */
-    --surface-hover: #2a2a2a; /* Hover state for surfaces - pure grey */
-    --border-color: #333333; /* Subtle borders - pure grey */
-    --text-primary: #e8e8e8; /* Very light text */
-    --text-secondary: #b8b8b8; /* Secondary text */
-    --text-muted: #6c6c6c; /* Muted text */
-    --input-bg: #2a2a2a; /* Input backgrounds - pure grey */
-    --input-border: #404040; /* Input borders - pure grey */
+    /* Dark theme colors - Charcoal/warm greys matching dark Claude */
+    --primary-color: #f87b4d; /* Keep same orange from light theme */
+    --primary-dark: #e06a3c; /* Darker orange for hover */
+    --secondary-color: #9b9b9f; /* Mid grey for secondary elements */
+    --background-color: #1a1a1a; /* Deep charcoal background */
+    --surface-color: #2d2d30; /* Slightly lighter charcoal surface */
+    --surface-hover: #3e3e42; /* Hover state for surfaces */
+    --border-color: #454549; /* Subtle warm grey borders */
+    --text-primary: #ececec; /* Off-white text for readability */
+    --text-secondary: #b4b4b4; /* Secondary text */
+    --text-muted: #858585; /* Muted text */
+    --input-bg: #2d2d30; /* Input backgrounds match surface */
+    --input-border: #454549; /* Input borders match border color */
 
     /* Adjusted shadows for dark mode */
-    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
-    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
-    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.4);
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.4);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -1px rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.6), 0 4px 6px -2px rgba(0, 0, 0, 0.5);
 
     /* Status colors adjusted for dark mode */
-    --success-color: #34d399;
-    --warning-color: #fbbf24;
-    --danger-color: #f87171;
+    --success-color: #10b981;
+    --warning-color: #f59e0b;
+    --danger-color: #ef4444;
 }
 
 /* Dark Theme Form & Input Fixes */
@@ -126,7 +126,7 @@ body .chart-container {
 
 [data-theme="dark"] .calculated-value,
 body .calculated-value {
-    background: rgba(255, 138, 91, 0.15);
+    background: rgba(248, 123, 77, 0.15);
     border-color: var(--primary-color);
     color: var(--primary-color);
 }
