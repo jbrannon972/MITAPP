@@ -21,28 +21,66 @@
     background-color: var(--surface-color) !important;
 }
 
-/* Fix ALL modal backgrounds */
+/* Fix ALL modal backgrounds - SUPER AGGRESSIVE */
+.modal-overlay,
+.modal-overlay.active,
+div.modal-overlay,
+div[class*="modal"] {
+    background: rgba(0, 0, 0, 0.7) !important;
+}
+
 .modal,
 .modal-overlay .modal,
+.modal-overlay .modal.modal-lg,
+.modal-lg,
 .cal-modal .modal-content,
-.modal-content {
+.modal-content,
+div.modal,
+div[class*="modal"].modal {
     background: var(--surface-color) !important;
     background-color: var(--surface-color) !important;
+    color: var(--text-primary) !important;
 }
 
-.modal-header {
+.modal-header,
+.modal .modal-header,
+div.modal .modal-header,
+div[class*="modal"] .modal-header {
     background: var(--surface-hover) !important;
     background-color: var(--surface-hover) !important;
+    color: var(--text-primary) !important;
+    border-bottom: 1px solid var(--border-color) !important;
 }
 
-.modal-body {
+.modal-header h3,
+.modal-header h3 i {
+    color: var(--text-primary) !important;
+}
+
+.modal-body,
+.modal .modal-body,
+div.modal .modal-body,
+div[class*="modal"] .modal-body {
     background: var(--surface-color) !important;
     background-color: var(--surface-color) !important;
+    color: var(--text-primary) !important;
 }
 
-.modal-footer {
+.modal-body form,
+.modal-body .form-group,
+.modal-body label,
+.modal-body p,
+.modal-body span {
+    color: var(--text-primary) !important;
+}
+
+.modal-footer,
+.modal .modal-footer,
+div.modal .modal-footer,
+div[class*="modal"] .modal-footer {
     background: var(--surface-hover) !important;
     background-color: var(--surface-hover) !important;
+    border-top: 1px solid var(--border-color) !important;
 }
 
 .modal-close:hover,
@@ -54,6 +92,37 @@
 .modal-tab-btn:disabled {
     background: var(--background-color) !important;
     background-color: var(--background-color) !important;
+}
+
+/* Fix toggle switches in modals */
+.modal .toggle-switch {
+    background: var(--background-color) !important;
+}
+
+.modal .toggle-switch input:checked + .slider {
+    background-color: var(--primary-color) !important;
+}
+
+/* Fix form inputs in modals */
+.modal .form-input,
+.modal input[type="text"],
+.modal input[type="email"],
+.modal input[type="date"],
+.modal input[type="number"],
+.modal select,
+.modal textarea {
+    background: var(--background-color) !important;
+    background-color: var(--background-color) !important;
+    color: var(--text-primary) !important;
+    border: 1px solid var(--border-color) !important;
+}
+
+.modal .form-input:focus,
+.modal input:focus,
+.modal select:focus,
+.modal textarea:focus {
+    border-color: var(--primary-color) !important;
+    outline: none !important;
 }
 
 /* Fix ALL sub-nav and tab backgrounds */
@@ -212,10 +281,12 @@ tr:hover {
    SIMPLIFY JOB STATS - Remove Sub-Boxes
    ============================================ */
 
-/* Make Job Stats a simple list, not grid of boxes */
+/* Make Job Stats a compact 2-column grid */
 #todays-stats-content .stats-grid {
-    display: block !important;
-    padding: 12px !important;
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 6px 12px !important;
+    padding: 8px !important;
     background: transparent !important;
 }
 
@@ -304,9 +375,77 @@ tr:hover {
 }
 
 /* ============================================
-   FIX TEAM PAGE - REMOVE EDIT BUTTON STYLING
+   FIX TEAM PAGE - COMPLETE BACKGROUND OVERHAUL
    ============================================ */
 
+/* Fix zone cards */
+.zone-card {
+    background: var(--surface-color) !important;
+    background-color: var(--surface-color) !important;
+}
+
+.zone-header {
+    background: var(--surface-hover) !important;
+    background-color: var(--surface-hover) !important;
+}
+
+.zone-lead {
+    background: var(--background-color) !important;
+    background-color: var(--background-color) !important;
+    color: var(--text-primary) !important;
+}
+
+.zone-lead span,
+.zone-lead i {
+    color: var(--text-primary) !important;
+}
+
+.zone-lead:hover {
+    background: var(--surface-hover) !important;
+    background-color: var(--surface-hover) !important;
+}
+
+/* Fix zone members */
+.zone-members {
+    background: transparent !important;
+    background-color: transparent !important;
+}
+
+.member-card {
+    background: var(--background-color) !important;
+    background-color: var(--background-color) !important;
+    color: var(--text-primary) !important;
+}
+
+.member-card:hover {
+    background: var(--surface-hover) !important;
+    background-color: var(--surface-hover) !important;
+}
+
+.member-details {
+    background: transparent !important;
+    background-color: transparent !important;
+}
+
+.member-name {
+    color: var(--text-primary) !important;
+}
+
+.member-role {
+    color: var(--text-secondary) !important;
+}
+
+.zone-stats {
+    background: var(--surface-hover) !important;
+    background-color: var(--surface-hover) !important;
+    color: var(--text-secondary) !important;
+}
+
+.zone-stats span {
+    color: var(--text-secondary) !important;
+}
+
+/* Fix tech card variations */
 .tech-card {
     background: var(--surface-color) !important;
 }
@@ -334,9 +473,40 @@ tr:hover {
     cursor: pointer !important;
 }
 
-/* Hide edit button - merged into name click */
-.tech-actions .btn-edit {
+/* Hide ALL edit buttons - merged into name click */
+.tech-actions .btn-edit,
+.btn-edit,
+button.btn-edit {
     display: none !important;
+}
+
+/* Fix stat cards on team page */
+.stat-card {
+    background: var(--surface-color) !important;
+    background-color: var(--surface-color) !important;
+}
+
+.stat-card h3 {
+    color: var(--text-secondary) !important;
+}
+
+.stat-number {
+    color: var(--primary-color) !important;
+}
+
+/* Fix team overview */
+.team-overview {
+    background: transparent !important;
+}
+
+.team-stats {
+    background: transparent !important;
+}
+
+/* Fix add member section */
+.add-member-section {
+    background: transparent !important;
+    background-color: transparent !important;
 }
 
 /* ============================================
@@ -490,9 +660,11 @@ tr:hover {
         padding: 5px 6px !important;
     }
 
-    /* Make stats even more compact */
+    /* Make stats even more compact and single column on mobile */
     #todays-stats-content .stats-grid {
         padding: 8px !important;
+        grid-template-columns: 1fr !important;
+        gap: 4px !important;
     }
 
     #todays-stats-content .stat-item {

@@ -716,6 +716,7 @@ const Dashboard = () => {
             ...(zone.members || [])
           ]) || []}
           allZones={staffingData?.zones || []}
+          dashboardMode={true}
         />
       )}
     </Layout>
