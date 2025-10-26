@@ -196,8 +196,8 @@ const SlackMentions = () => {
           </div>
         )}
 
-        <div className="card" style={{ marginTop: '24px', backgroundColor: '#fffbea', border: '1px solid #f59e0b' }}>
-          <div className="card-header" style={{ backgroundColor: '#fef3c7' }}>
+        <div className="card" style={{ marginTop: '24px', backgroundColor: 'var(--warning-bg)', border: '1px solid var(--warning-color)' }}>
+          <div className="card-header" style={{ backgroundColor: 'var(--status-pending-bg)' }}>
             <h3><i className="fas fa-info-circle"></i> About Slack Integration</h3>
           </div>
           <div style={{ padding: '20px' }}>

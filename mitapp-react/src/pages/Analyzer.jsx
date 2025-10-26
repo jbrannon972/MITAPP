@@ -341,7 +341,7 @@ const Analyzer = () => {
           <h3><i className="fas fa-upload"></i> Upload CSV File for Analysis</h3>
         </div>
         <div style={{ padding: '20px' }}>
-          <p style={{ marginBottom: '16px', color: '#6b7280' }}>
+          <p style={{ marginBottom: '16px', color: 'var(--text-secondary)' }}>
             Select the exported job schedule CSV file to analyze job distribution and requirements
           </p>
 
@@ -361,7 +361,7 @@ const Analyzer = () => {
           </div>
 
           {csvFile && (
-            <div style={{ marginBottom: '20px', padding: '12px', backgroundColor: '#f3f4f6', borderRadius: '8px' }}>
+            <div style={{ marginBottom: '20px', padding: '12px', backgroundColor: 'var(--surface-tertiary)', borderRadius: '8px' }}>
               <i className="fas fa-file-csv"></i> Selected: <strong>{csvFile.name}</strong>
             </div>
           )}
@@ -394,7 +394,7 @@ const Analyzer = () => {
           <div className="card" style={{ marginTop: '24px' }}>
             <div className="card-header">
               <h3><i className="fas fa-chart-bar"></i> Analysis Results</h3>
-              <span style={{ fontSize: '14px', color: '#6b7280' }}>
+              <span style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>
                 {analysisResults.analyzedAt}
               </span>
             </div>
@@ -680,7 +680,7 @@ const Analyzer = () => {
     <div className="card">
       <div className="card-header">
         <h3><i className="fas fa-history"></i> Historical Data</h3>
-        <span style={{ fontSize: '14px', color: '#6b7280' }}>
+        <span style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>
           {historicalData.length} days of data
         </span>
       </div>
@@ -744,7 +744,7 @@ const Analyzer = () => {
       </div>
       <div style={{ padding: '20px' }}>
         <p>Custom reports and exports coming soon.</p>
-        <p style={{ marginTop: '12px', color: '#6b7280' }}>
+        <p style={{ marginTop: '12px', color: 'var(--text-secondary)' }}>
           This will allow you to generate custom reports based on your analysis data.
         </p>
       </div>

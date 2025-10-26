@@ -212,7 +212,7 @@ const Damages = () => {
               </div>
             </div>
             {(searchTerm || statusFilter !== 'all') && (
-              <div style={{ marginTop: '12px', fontSize: '14px', color: '#6b7280' }}>
+              <div style={{ marginTop: '12px', fontSize: '14px', color: 'var(--text-secondary)' }}>
                 Showing {filteredDamages.length} of {damages.length} reports
               </div>
             )}

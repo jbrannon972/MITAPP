@@ -427,7 +427,7 @@ const Routing = () => {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
           <div>
             <h3 style={{ margin: 0, marginBottom: '8px' }}>Daily Jobs - {selectedDate}</h3>
-            <p style={{ margin: 0, color: '#6b7280' }}>
+            <p style={{ margin: 0, color: 'var(--text-secondary)' }}>
               {jobs.length} total | {unassignedJobs.length} unassigned | {assignedJobs.length} assigned
             </p>
           </div>
@@ -463,13 +463,13 @@ const Routing = () => {
             <div className="metric-header">
               <h3>Unassigned</h3>
             </div>
-            <div className="metric-value" style={{ color: '#f59e0b' }}>{unassignedJobs.length}</div>
+            <div className="metric-value" style={{ color: 'var(--warning-color)' }}>{unassignedJobs.length}</div>
           </div>
           <div className="metric-card">
             <div className="metric-header">
               <h3>Assigned</h3>
             </div>
-            <div className="metric-value" style={{ color: '#10b981' }}>{assignedJobs.length}</div>
+            <div className="metric-value" style={{ color: 'var(--success-color)' }}>{assignedJobs.length}</div>
           </div>
           <div className="metric-card">
             <div className="metric-header">
@@ -512,11 +512,11 @@ const Routing = () => {
                       <td>{job.duration}h</td>
                       <td>
                         {job.requiresTwoTechs ? (
-                          <span style={{ color: '#f59e0b' }}>
+                          <span style={{ color: 'var(--warning-color)' }}>
                             <i className="fas fa-users"></i> Yes
                           </span>
                         ) : (
-                          <span style={{ color: '#6b7280' }}>No</span>
+                          <span style={{ color: 'var(--text-secondary)' }}>No</span>
                         )}
                       </td>
                       <td>
@@ -544,7 +544,7 @@ const Routing = () => {
                 </tbody>
               </table>
             ) : (
-              <p style={{ padding: '20px', textAlign: 'center', color: '#6b7280' }}>
+              <p style={{ padding: '20px', textAlign: 'center', color: 'var(--text-secondary)' }}>
                 All jobs have been assigned!
               </p>
             )}
@@ -579,7 +579,7 @@ const Routing = () => {
                         <td>{job.jobType}</td>
                         <td>{job.duration}h</td>
                         <td>
-                          <span style={{ color: '#3b82f6', fontWeight: '500' }}>
+                          <span style={{ color: 'var(--info-color)', fontWeight: '500' }}>
                             <i className="fas fa-user"></i> {tech?.name || 'Unknown'}
                           </span>
                         </td>
@@ -695,7 +695,7 @@ const Routing = () => {
                 </button>
               </div>
               <div className="modal-body">
-                <p style={{ marginBottom: '16px', color: '#6b7280' }}>
+                <p style={{ marginBottom: '16px', color: 'var(--text-secondary)' }}>
                   Select your daily export CSV file. The file should include customer info, addresses, timeframes, durations, and zone assignments.
                 </p>
                 <div style={{ marginBottom: '20px' }}>
@@ -710,7 +710,7 @@ const Routing = () => {
                     style={{ display: 'none' }}
                   />
                 </div>
-                <div style={{ padding: '12px', backgroundColor: '#eff6ff', borderRadius: '6px', fontSize: '14px' }}>
+                <div style={{ padding: '12px', backgroundColor: 'var(--active-bg)', borderRadius: '6px', fontSize: '14px' }}>
                   <strong>Houston Branch CSV Format:</strong>
                   <ul style={{ marginTop: '8px', marginBottom: 0, paddingLeft: '20px' }}>
                     <li>text (Job ID)</li>
@@ -743,11 +743,11 @@ const Routing = () => {
                 </button>
               </div>
               <div className="modal-body">
-                <p style={{ marginBottom: '20px', color: '#6b7280' }}>
+                <p style={{ marginBottom: '20px', color: 'var(--text-secondary)' }}>
                   The optimizer will automatically assign all unassigned jobs to technicians and optimize their routes.
                 </p>
 
-                <div style={{ marginBottom: '20px', padding: '16px', backgroundColor: '#f9fafb', borderRadius: '8px' }}>
+                <div style={{ marginBottom: '20px', padding: '16px', backgroundColor: 'var(--surface-secondary)', borderRadius: '8px' }}>
                   <h4 style={{ margin: 0, marginBottom: '12px' }}>What the optimizer does:</h4>
                   <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '14px' }}>
                     <li>Balances workload across available technicians</li>
@@ -762,7 +762,7 @@ const Routing = () => {
                 <div className="form-group">
                   <label htmlFor="mapboxToken">
                     Mapbox API Token
-                    <span style={{ marginLeft: '8px', fontSize: '12px', color: '#6b7280' }}>
+                    <span style={{ marginLeft: '8px', fontSize: '12px', color: 'var(--text-secondary)' }}>
                       (Required for drive time calculations)
                     </span>
                   </label>
@@ -774,7 +774,7 @@ const Routing = () => {
                     onChange={(e) => setMapboxToken(e.target.value)}
                     placeholder="pk.your-mapbox-token-here"
                   />
-                  <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
+                  <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px' }}>
                     Get a free token at{' '}
                     <a href="https://www.mapbox.com" target="_blank" rel="noopener noreferrer">
                       mapbox.com

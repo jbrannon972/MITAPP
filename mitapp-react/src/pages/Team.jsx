@@ -404,7 +404,7 @@ const Team = () => {
 
                 {(!staffingData.zones || staffingData.zones.length === 0) && (
                   <div className="card" style={{ padding: '40px', textAlign: 'center' }}>
-                    <p style={{ color: '#6b7280', marginBottom: '16px' }}>No zones created yet.</p>
+                    <p style={{ color: 'var(--text-secondary)', marginBottom: '16px' }}>No zones created yet.</p>
                     {canManage && (
                       <button className="btn btn-primary" onClick={openAddZoneModal}>
                         <i className="fas fa-plus"></i> Create First Zone
@@ -492,7 +492,7 @@ const Team = () => {
 
                     {getTotalStaff(staffingData) === 0 && (
                       <tr>
-                        <td colSpan="4" style={{ textAlign: 'center', padding: '20px', color: '#6b7280' }}>
+                        <td colSpan="4" style={{ textAlign: 'center', padding: '20px', color: 'var(--text-secondary)' }}>
                           No team members found
                         </td>
                       </tr>
@@ -582,7 +582,7 @@ const Team = () => {
                     onChange={handleZoneFormChange}
                     placeholder="MIT Lead name"
                   />
-                  <small style={{ color: '#6b7280', fontSize: '12px' }}>
+                  <small style={{ color: 'var(--text-secondary)', fontSize: '12px' }}>
                     You can add or change the lead later
                   </small>
                 </div>
@@ -641,7 +641,7 @@ const Team = () => {
                 <div className="form-group">
                   <label htmlFor="memberEmail">
                     Email (Gmail for Calendar)
-                    <span style={{ marginLeft: '8px', fontSize: '12px', color: '#6b7280' }}>
+                    <span style={{ marginLeft: '8px', fontSize: '12px', color: 'var(--text-secondary)' }}>
                       (Required for route calendar integration)
                     </span>
                   </label>
@@ -654,7 +654,7 @@ const Team = () => {
                     onChange={handleMemberFormChange}
                     placeholder="e.g., tech@gmail.com"
                   />
-                  <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
+                  <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px' }}>
                     This email is used to push route assignments to the technician's Google Calendar
                   </p>
                 </div>
