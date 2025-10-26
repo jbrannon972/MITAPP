@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useData } from '../contexts/DataContext';
 import ZoneCard from '../components/team/ZoneCard';
 import EditProfileModal from '../components/team/EditProfileModal';
+import DriverLeaderboard from '../components/team/DriverLeaderboard';
 import { getTotalStaff, getMITTechCount, getDemoTechCount } from '../utils/calculations';
 import { exportToCSV, prepareTeamDataForExport } from '../utils/exportUtils';
 import firebaseService from '../services/firebaseService';
@@ -298,6 +299,12 @@ const Team = () => {
                 <i className="fas fa-users"></i> Team View
               </button>
               <button
+                className={'sub-nav-btn ' + (activeView === 'leaderboard' ? 'active' : '')}
+                onClick={() => setActiveView('leaderboard')}
+              >
+                <i className="fas fa-trophy"></i> Driver Leaderboard
+              </button>
+              <button
                 className={'sub-nav-btn ' + (activeView === 'roster' ? 'active' : '')}
                 onClick={() => setActiveView('roster')}
               >
@@ -400,6 +407,12 @@ const Team = () => {
                 )}
               </div>
             </div>
+          </div>
+        )}
+
+        {activeView === 'leaderboard' && (
+          <div className="team-view active">
+            <DriverLeaderboard />
           </div>
         )}
 
