@@ -42,19 +42,19 @@
 
 /* Dark Theme - Now Default */
 [data-theme="dark"], body {
-    /* Dark theme colors */
+    /* Dark theme colors - Pure greys, no blue tones */
     --primary-color: #ff8a5b; /* Brighter orange for dark mode */
     --primary-dark: #ff6f3d; /* Even brighter for hover */
     --secondary-color: #b8b8ba; /* Lighter gray for dark mode */
-    --background-color: #0f1419; /* Deep dark background */
-    --surface-color: #1a1f2e; /* Slightly lighter surface */
-    --surface-hover: #252d3d; /* Hover state for surfaces */
-    --border-color: #2d3548; /* Subtle borders */
-    --text-primary: #e8eaed; /* Very light text */
-    --text-secondary: #b8bcc4; /* Secondary text */
-    --text-muted: #6c7280; /* Muted text */
-    --input-bg: #252d3d; /* Input backgrounds */
-    --input-border: #3d4555; /* Input borders */
+    --background-color: #0a0a0a; /* Deep dark background - pure grey */
+    --surface-color: #1a1a1a; /* Slightly lighter surface - pure grey */
+    --surface-hover: #2a2a2a; /* Hover state for surfaces - pure grey */
+    --border-color: #333333; /* Subtle borders - pure grey */
+    --text-primary: #e8e8e8; /* Very light text */
+    --text-secondary: #b8b8b8; /* Secondary text */
+    --text-muted: #6c6c6c; /* Muted text */
+    --input-bg: #2a2a2a; /* Input backgrounds - pure grey */
+    --input-border: #404040; /* Input borders - pure grey */
 
     /* Adjusted shadows for dark mode */
     --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);

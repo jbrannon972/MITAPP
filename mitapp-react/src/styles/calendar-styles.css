@@ -26,13 +26,13 @@
     --primary-color: #ff8a5b;
     --primary-dark: #ff6f3d;
     --secondary-color: #b8b8ba;
-    --background-color: #0f1419;
-    --surface-color: #1a1f2e;
-    --surface-hover: #252d3d;
-    --border-color: #2d3548;
-    --text-primary: #e8eaed;
-    --text-secondary: #b8bcc4;
-    --text-muted: #6c7280;
+    --background-color: #0a0a0a;
+    --surface-color: #1a1a1a;
+    --surface-hover: #2a2a2a;
+    --border-color: #333333;
+    --text-primary: #e8e8e8;
+    --text-secondary: #b8b8b8;
+    --text-muted: #6c6c6c;
 }
 
 /* Calendar Styles */
