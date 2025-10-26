@@ -61,10 +61,8 @@ class NotificationService {
       }
 
       // Get the FCM token
-      // IMPORTANT: Replace 'REPLACE_WITH_YOUR_VAPID_KEY' with your actual VAPID key from Firebase Console
-      // See NOTIFICATION_SETUP.md for detailed instructions on generating and adding your VAPID key
       const token = await getToken(this.messaging, {
-        vapidKey: 'REPLACE_WITH_YOUR_VAPID_KEY'
+        vapidKey: 'BAQf0xP8pus8aJn9l9-ZKrwbPa3AwEMFugSoPKGrhD6wvXvJKGNDbr1wxqA6bJS5_uW-ns-E7FdjtSAAe0GVBi4'
       });
 
       if (token) {
