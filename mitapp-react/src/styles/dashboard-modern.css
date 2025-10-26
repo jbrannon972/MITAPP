@@ -1,0 +1,700 @@
+/*
+ * Modern Dashboard UI - Compact & Professional Design
+ * Mobile-first responsive with completely different mobile view
+ */
+
+/* ============================================
+   MODERN CARD DESIGN - Less Blocky, More Professional
+   ============================================ */
+
+.card {
+    background: var(--surface-color);
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    transition: box-shadow 0.2s ease, transform 0.2s ease;
+    overflow: hidden;
+}
+
+.card:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+.card-header {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--surface-color);
+}
+
+.card-header h3 {
+    font-size: 14px;
+    font-weight: 600;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-primary);
+}
+
+.card-header h3 i {
+    font-size: 13px;
+    opacity: 0.7;
+}
+
+.card-header span {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+/* ============================================
+   COMPACT JOB STATS - Better Information Density
+   ============================================ */
+
+#todays-stats-content .stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    padding: 12px;
+    background: transparent;
+}
+
+#todays-stats-content .stat-item {
+    background: var(--background-color);
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    transition: all 0.2s ease;
+}
+
+#todays-stats-content .stat-item:hover {
+    border-color: var(--primary-color);
+    transform: translateY(-1px);
+}
+
+#todays-stats-content .stat-item .stat-label {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    display: block;
+    margin-bottom: 6px;
+}
+
+#todays-stats-content .stat-item .stat-value {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text-primary);
+    display: block;
+}
+
+#todays-stats-content .stat-item .stat-value small {
+    font-size: 11px;
+    font-weight: 400;
+    color: var(--text-secondary);
+    display: block;
+    margin-top: 2px;
+}
+
+/* ============================================
+   BREAKDOWN SECTIONS - More Compact Lists
+   ============================================ */
+
+.breakdown-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    padding: 12px;
+    background: transparent;
+}
+
+#todays-stats-content .breakdown-section {
+    background: var(--background-color);
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+}
+
+#todays-stats-content .breakdown-section h4 {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin: 0 0 8px 0;
+}
+
+#todays-stats-content .breakdown-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+#todays-stats-content .breakdown-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--border-color);
+    transition: background 0.2s ease;
+}
+
+#todays-stats-content .breakdown-item:last-child {
+    border-bottom: none;
+}
+
+#todays-stats-content .breakdown-item:hover {
+    padding-left: 4px;
+    transition: padding-left 0.2s ease;
+}
+
+#todays-stats-content .breakdown-label {
+    font-size: 12px;
+    color: var(--text-primary);
+    font-weight: 500;
+}
+
+#todays-stats-content .breakdown-value {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--primary-color);
+    background: rgba(248, 123, 77, 0.1);
+    padding: 2px 8px;
+    border-radius: 4px;
+}
+
+/* ============================================
+   AT A GLANCE - Modern Metric Cards
+   ============================================ */
+
+.glance-grid-two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    padding: 12px;
+}
+
+.glance-item {
+    background: var(--background-color);
+    padding: 14px 12px;
+    border-radius: 8px;
+    text-align: center;
+    border: 1px solid var(--border-color);
+    transition: all 0.2s ease;
+}
+
+.glance-item:hover {
+    border-color: var(--primary-color);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(248, 123, 77, 0.15);
+}
+
+.glance-value {
+    display: block;
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--primary-color);
+    line-height: 1;
+    margin-bottom: 6px;
+}
+
+.glance-label {
+    display: block;
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    line-height: 1.3;
+}
+
+/* ============================================
+   STAFFING INFO - Cleaner Badges
+   ============================================ */
+
+.staffing-info-list {
+    padding: 12px;
+}
+
+.staff-off-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    margin-bottom: 6px;
+    border-radius: 6px;
+    background: var(--background-color);
+    border-left: 3px solid transparent;
+    transition: all 0.2s ease;
+}
+
+.staff-off-item:last-child {
+    margin-bottom: 0;
+}
+
+.staff-off-item:hover {
+    transform: translateX(4px);
+}
+
+.staff-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.staff-status-badge {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 12px;
+    text-transform: capitalize;
+}
+
+.staff-off-item.status-off {
+    border-left-color: var(--primary-color);
+}
+
+.staff-off-item.status-off .staff-status-badge {
+    background: rgba(248, 123, 77, 0.15);
+    color: var(--primary-color);
+}
+
+.staff-off-item.status-sick {
+    border-left-color: var(--danger-color);
+}
+
+.staff-off-item.status-sick .staff-status-badge {
+    background: rgba(239, 68, 68, 0.15);
+    color: var(--danger-color);
+}
+
+.staff-off-item.status-vacation {
+    border-left-color: #3b82f6;
+}
+
+.staff-off-item.status-vacation .staff-status-badge {
+    background: rgba(59, 130, 246, 0.15);
+    color: #3b82f6;
+}
+
+.staff-off-item.status-on {
+    border-left-color: var(--success-color);
+}
+
+.staff-off-item.status-on .staff-status-badge {
+    background: rgba(16, 185, 129, 0.15);
+    color: var(--success-color);
+}
+
+/* ============================================
+   REPORTS - Cleaner, More Compact Design
+   ============================================ */
+
+.second-shift-summary,
+.supervisor-report-summary {
+    margin-top: 16px;
+}
+
+.summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 12px;
+    padding: 12px;
+}
+
+.summary-grid > div {
+    background: var(--background-color);
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+}
+
+.summary-grid h4 {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin: 0 0 8px 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.summary-grid h4 i {
+    font-size: 10px;
+}
+
+.summary-grid ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.summary-grid li {
+    font-size: 12px;
+    padding: 4px 0;
+    color: var(--text-primary);
+}
+
+.summary-grid p {
+    font-size: 12px;
+    color: var(--text-primary);
+    margin: 0;
+    line-height: 1.5;
+}
+
+/* ============================================
+   DASHBOARD NOTES - Subtle, Non-Blocky
+   ============================================ */
+
+.dashboard-notes {
+    padding: 10px 12px;
+    background: rgba(248, 123, 77, 0.08);
+    border-left: 3px solid var(--primary-color);
+    border-radius: 0 6px 6px 0;
+    font-size: 12px;
+    color: var(--text-primary);
+    margin: 0 12px 8px 12px;
+}
+
+.dashboard-notes strong {
+    font-weight: 600;
+    color: var(--primary-color);
+}
+
+/* ============================================
+   SUPERVISOR REPORT CHECKLIST - Modern Design
+   ============================================ */
+
+.checklist-item {
+    padding: 10px 12px;
+    background: var(--background-color);
+    border-radius: 8px;
+    border-left: 3px solid transparent;
+    margin-bottom: 8px;
+    transition: all 0.2s ease;
+}
+
+.checklist-item:hover {
+    transform: translateX(2px);
+}
+
+.checklist-item.success {
+    border-left-color: var(--success-color);
+}
+
+.checklist-item.danger {
+    border-left-color: var(--danger-color);
+}
+
+.checklist-item-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 4px;
+}
+
+.checklist-item-header i {
+    font-size: 16px;
+}
+
+.checklist-item-header i.fa-check-circle {
+    color: var(--success-color);
+}
+
+.checklist-item-header i.fa-times-circle {
+    color: var(--danger-color);
+}
+
+.checklist-item-header strong {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.checklist-item-reason {
+    margin-left: 26px;
+    font-size: 12px;
+    color: var(--text-secondary);
+    font-style: italic;
+}
+
+.win-section,
+.support-section {
+    padding: 12px;
+    background: var(--background-color);
+    border-radius: 8px;
+    border-left: 3px solid transparent;
+    margin-bottom: 12px;
+}
+
+.win-section {
+    border-left-color: var(--warning-color);
+}
+
+.support-section {
+    border-left-color: var(--primary-color);
+}
+
+.win-section h4,
+.support-section h4 {
+    font-size: 12px;
+    font-weight: 600;
+    margin: 0 0 8px 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.win-section p,
+.support-section p {
+    font-size: 13px;
+    color: var(--text-primary);
+    margin: 0;
+    line-height: 1.6;
+}
+
+/* ============================================
+   RESPONSIVE MOBILE VIEW - Completely Different
+   ============================================ */
+
+@media (max-width: 768px) {
+    /* Stack everything vertically on mobile */
+    .dashboard-main-grid {
+        display: flex !important;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .dashboard-main-content,
+    .dashboard-sidebar {
+        width: 100% !important;
+    }
+
+    /* Mobile: Make cards full width with less padding */
+    .card {
+        border-radius: 10px;
+    }
+
+    .card-header {
+        padding: 10px 12px;
+    }
+
+    .card-header h3 {
+        font-size: 13px;
+    }
+
+    /* Mobile: Single column for stats */
+    #todays-stats-content .stats-grid {
+        grid-template-columns: 1fr;
+        gap: 8px;
+        padding: 10px;
+    }
+
+    #todays-stats-content .stat-item {
+        padding: 10px;
+    }
+
+    #todays-stats-content .stat-item .stat-value {
+        font-size: 18px;
+    }
+
+    /* Mobile: Single column for breakdowns */
+    .breakdown-grid {
+        grid-template-columns: 1fr;
+        gap: 10px;
+        padding: 10px;
+    }
+
+    #todays-stats-content .breakdown-section {
+        padding: 10px;
+    }
+
+    /* Mobile: At a Glance - 2x2 grid */
+    .glance-grid-two-col {
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        padding: 10px;
+    }
+
+    .glance-item {
+        padding: 10px 8px;
+    }
+
+    .glance-value {
+        font-size: 22px;
+    }
+
+    .glance-label {
+        font-size: 9px;
+    }
+
+    /* Mobile: Summary grid single column */
+    .summary-grid {
+        grid-template-columns: 1fr;
+        gap: 10px;
+        padding: 10px;
+    }
+
+    /* Mobile: Compact staffing list */
+    .staffing-info-list {
+        padding: 10px;
+    }
+
+    .staff-off-item {
+        padding: 8px 10px;
+        margin-bottom: 4px;
+    }
+
+    .staff-name {
+        font-size: 12px;
+    }
+
+    .staff-status-badge {
+        font-size: 10px;
+        padding: 3px 8px;
+    }
+
+    /* Mobile: Dashboard notes more compact */
+    .dashboard-notes {
+        margin: 0 10px 8px 10px;
+        padding: 8px 10px;
+        font-size: 11px;
+    }
+
+    /* Mobile: Checklist items more compact */
+    .checklist-item {
+        padding: 8px 10px;
+        margin-bottom: 6px;
+    }
+
+    .checklist-item-header strong {
+        font-size: 12px;
+    }
+
+    .checklist-item-reason {
+        font-size: 11px;
+    }
+
+    /* Mobile: Win/Support sections */
+    .win-section,
+    .support-section {
+        padding: 10px;
+        margin-bottom: 10px;
+    }
+
+    .win-section h4,
+    .support-section h4 {
+        font-size: 11px;
+    }
+
+    .win-section p,
+    .support-section p {
+        font-size: 12px;
+    }
+}
+
+/* ============================================
+   MICRO-INTERACTIONS & ANIMATIONS
+   ============================================ */
+
+.card,
+.glance-item,
+.stat-item,
+.breakdown-item,
+.staff-off-item,
+.checklist-item {
+    position: relative;
+}
+
+/* Smooth fade-in for all cards */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.card {
+    animation: fadeIn 0.3s ease-out;
+}
+
+/* Loading skeleton pulse effect */
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+}
+
+.loading-skeleton {
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+/* No entries state styling */
+.no-entries {
+    text-align: center;
+    padding: 24px 16px;
+    color: var(--text-secondary);
+    font-size: 13px;
+    font-style: italic;
+}
+
+/* ============================================
+   UTILITY CLASSES
+   ============================================ */
+
+.compact-section {
+    padding: 12px !important;
+}
+
+.divider {
+    border-top: 1px solid var(--border-color);
+    margin: 12px 0;
+}
+
+.badge-success {
+    background: rgba(16, 185, 129, 0.15);
+    color: var(--success-color);
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.badge-danger {
+    background: rgba(239, 68, 68, 0.15);
+    color: var(--danger-color);
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.badge-warning {
+    background: rgba(245, 158, 11, 0.15);
+    color: var(--warning-color);
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.badge-primary {
+    background: rgba(248, 123, 77, 0.15);
+    color: var(--primary-color);
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+}

@@ -8,6 +8,7 @@ import { getCalculatedScheduleForDay } from '../utils/calendarManager';
 import DailyHoursChart from '../components/dashboard/DailyHoursChart';
 import SupervisorReportForm from '../components/dashboard/SupervisorReportForm';
 import HuddleInfoModal from '../components/team/HuddleInfoModal';
+import '../styles/dashboard-modern.css';
 
 const Dashboard = () => {
   const { currentUser } = useAuth();
@@ -481,69 +482,67 @@ const Dashboard = () => {
                     {dashboardData.supervisorReport.report ? (
                       <>
                         {/* Checklist Items */}
-                        <div style={{ padding: '16px' }}>
-                          <h4 style={{ marginBottom: '16px' }}><i className="fas fa-tasks"></i> Daily Checklist</h4>
-                          <div style={{ display: 'grid', gap: '12px' }}>
+                        <div className="compact-section">
+                          <h4 style={{ marginBottom: '12px', fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                            <i className="fas fa-tasks"></i> Daily Checklist
+                          </h4>
+                          <div>
                             {/* Equipment Deployed */}
-                            <div style={{ padding: '12px', backgroundColor: 'var(--surface-hover)', borderRadius: 'var(--radius-md)', borderLeft: `4px solid ${dashboardData.supervisorReport.report.equipmentDeployed ? 'var(--success-color)' : 'var(--danger-color)'}` }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                                <i className={`fas ${dashboardData.supervisorReport.report.equipmentDeployed ? 'fa-check-circle' : 'fa-times-circle'}`} style={{ color: dashboardData.supervisorReport.report.equipmentDeployed ? 'var(--success-color)' : 'var(--danger-color)' }}></i>
+                            <div className={`checklist-item ${dashboardData.supervisorReport.report.equipmentDeployed ? 'success' : 'danger'}`}>
+                              <div className="checklist-item-header">
+                                <i className={`fas ${dashboardData.supervisorReport.report.equipmentDeployed ? 'fa-check-circle' : 'fa-times-circle'}`}></i>
                                 <strong>Equipment properly deployed at day 2 visits</strong>
                               </div>
                               {!dashboardData.supervisorReport.report.equipmentDeployed && dashboardData.supervisorReport.report.equipmentDeployedReason && (
-                                <p style={{ marginLeft: '28px', fontSize: '14px', color: 'var(--text-secondary)' }}>{dashboardData.supervisorReport.report.equipmentDeployedReason}</p>
+                                <p className="checklist-item-reason">{dashboardData.supervisorReport.report.equipmentDeployedReason}</p>
                               )}
                             </div>
 
                             {/* MIT Lead Forms */}
-                            <div style={{ padding: '12px', backgroundColor: 'var(--surface-hover)', borderRadius: 'var(--radius-md)', borderLeft: `4px solid ${dashboardData.supervisorReport.report.mitLeadFormsSubmitted ? 'var(--success-color)' : 'var(--danger-color)'}` }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                                <i className={`fas ${dashboardData.supervisorReport.report.mitLeadFormsSubmitted ? 'fa-check-circle' : 'fa-times-circle'}`} style={{ color: dashboardData.supervisorReport.report.mitLeadFormsSubmitted ? 'var(--success-color)' : 'var(--danger-color)' }}></i>
+                            <div className={`checklist-item ${dashboardData.supervisorReport.report.mitLeadFormsSubmitted ? 'success' : 'danger'}`}>
+                              <div className="checklist-item-header">
+                                <i className={`fas ${dashboardData.supervisorReport.report.mitLeadFormsSubmitted ? 'fa-check-circle' : 'fa-times-circle'}`}></i>
                                 <strong>MIT Lead visit forms submitted</strong>
                               </div>
                               {!dashboardData.supervisorReport.report.mitLeadFormsSubmitted && dashboardData.supervisorReport.report.mitLeadFormsReason && (
-                                <p style={{ marginLeft: '28px', fontSize: '14px', color: 'var(--text-secondary)' }}>{dashboardData.supervisorReport.report.mitLeadFormsReason}</p>
+                                <p className="checklist-item-reason">{dashboardData.supervisorReport.report.mitLeadFormsReason}</p>
                               )}
                             </div>
 
                             {/* DPT Notes */}
-                            <div style={{ padding: '12px', backgroundColor: 'var(--surface-hover)', borderRadius: 'var(--radius-md)', borderLeft: `4px solid ${dashboardData.supervisorReport.report.dptNotesUpdated ? 'var(--success-color)' : 'var(--danger-color)'}` }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                                <i className={`fas ${dashboardData.supervisorReport.report.dptNotesUpdated ? 'fa-check-circle' : 'fa-times-circle'}`} style={{ color: dashboardData.supervisorReport.report.dptNotesUpdated ? 'var(--success-color)' : 'var(--danger-color)' }}></i>
+                            <div className={`checklist-item ${dashboardData.supervisorReport.report.dptNotesUpdated ? 'success' : 'danger'}`}>
+                              <div className="checklist-item-header">
+                                <i className={`fas ${dashboardData.supervisorReport.report.dptNotesUpdated ? 'fa-check-circle' : 'fa-times-circle'}`}></i>
                                 <strong>DPT notes and WOs fully updated</strong>
                               </div>
                               {!dashboardData.supervisorReport.report.dptNotesUpdated && dashboardData.supervisorReport.report.dptNotesReason && (
-                                <p style={{ marginLeft: '28px', fontSize: '14px', color: 'var(--text-secondary)' }}>{dashboardData.supervisorReport.report.dptNotesReason}</p>
+                                <p className="checklist-item-reason">{dashboardData.supervisorReport.report.dptNotesReason}</p>
                               )}
                             </div>
 
                             {/* Talked to Techs */}
-                            <div style={{ padding: '12px', backgroundColor: 'var(--surface-hover)', borderRadius: 'var(--radius-md)', borderLeft: `4px solid ${dashboardData.supervisorReport.report.talkedToTechs ? 'var(--success-color)' : 'var(--danger-color)'}` }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                                <i className={`fas ${dashboardData.supervisorReport.report.talkedToTechs ? 'fa-check-circle' : 'fa-times-circle'}`} style={{ color: dashboardData.supervisorReport.report.talkedToTechs ? 'var(--success-color)' : 'var(--danger-color)' }}></i>
+                            <div className={`checklist-item ${dashboardData.supervisorReport.report.talkedToTechs ? 'success' : 'danger'}`}>
+                              <div className="checklist-item-header">
+                                <i className={`fas ${dashboardData.supervisorReport.report.talkedToTechs ? 'fa-check-circle' : 'fa-times-circle'}`}></i>
                                 <strong>Talked to all techs working near end of day</strong>
                               </div>
                               {!dashboardData.supervisorReport.report.talkedToTechs && dashboardData.supervisorReport.report.talkedToTechsReason && (
-                                <p style={{ marginLeft: '28px', fontSize: '14px', color: 'var(--text-secondary)' }}>{dashboardData.supervisorReport.report.talkedToTechsReason}</p>
+                                <p className="checklist-item-reason">{dashboardData.supervisorReport.report.talkedToTechsReason}</p>
                               )}
                             </div>
                           </div>
                         </div>
 
                         {/* Win and Support Sections */}
-                        <div style={{ padding: '16px', borderTop: '1px solid var(--border-color)' }}>
-                          <div style={{ marginBottom: '20px' }}>
-                            <h4 style={{ marginBottom: '8px' }}><i className="fas fa-trophy" style={{ color: 'var(--warning-color)' }}></i> Win Today</h4>
-                            <p style={{ padding: '12px', backgroundColor: 'var(--surface-hover)', borderRadius: 'var(--radius-md)', borderLeft: '4px solid var(--warning-color)' }}>
-                              {dashboardData.supervisorReport.report.winToday}
-                            </p>
+                        <div className="compact-section" style={{ borderTop: '1px solid var(--border-color)' }}>
+                          <div className="win-section">
+                            <h4><i className="fas fa-trophy" style={{ color: 'var(--warning-color)' }}></i> Win Today</h4>
+                            <p>{dashboardData.supervisorReport.report.winToday}</p>
                           </div>
                           {dashboardData.supervisorReport.report.supportNeeded && (
-                            <div>
-                              <h4 style={{ marginBottom: '8px' }}><i className="fas fa-hands-helping" style={{ color: 'var(--primary-color)' }}></i> Support Needed</h4>
-                              <p style={{ padding: '12px', backgroundColor: 'var(--surface-hover)', borderRadius: 'var(--radius-md)', borderLeft: '4px solid var(--primary-color)' }}>
-                                {dashboardData.supervisorReport.report.supportNeeded}
-                              </p>
+                            <div className="support-section">
+                              <h4><i className="fas fa-hands-helping" style={{ color: 'var(--primary-color)' }}></i> Support Needed</h4>
+                              <p>{dashboardData.supervisorReport.report.supportNeeded}</p>
                             </div>
                           )}
                         </div>
