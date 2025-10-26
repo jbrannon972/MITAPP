@@ -453,7 +453,7 @@ body {
 }
 
 .chart-container {
-    height: 300px; /* Default */
+    height: 360px; /* Increased to accommodate chart and legend */
     width: 100%;
     padding: 16px;
     background: #fafbfc;
@@ -1281,7 +1281,7 @@ NAVIGATION & RESPONSIVE STYLES
 
 @media (max-width: 768px) {
     .chart-container {
-        height: 200px; /* Shorter on mobile to reduce scrolling */
+        height: 280px; /* Increased to accommodate chart and legend on mobile */
     }
 
     .modal {
