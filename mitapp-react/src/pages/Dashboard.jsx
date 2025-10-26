@@ -6,6 +6,7 @@ import firebaseService from '../services/firebaseService';
 import { getTechsOnRouteToday, getSubTeamsToday, getDailyHoursData } from '../utils/dashboardCalculations';
 import { getCalculatedScheduleForDay } from '../utils/calendarManager';
 import DailyHoursChart from '../components/dashboard/DailyHoursChart';
+import SecondShiftReportForm from '../components/dashboard/SecondShiftReportForm';
 
 const Dashboard = () => {
   const { currentUser } = useAuth();
@@ -13,6 +14,7 @@ const Dashboard = () => {
   const [activeView, setActiveView] = useState('supervisor-dashboard');
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [loading, setLoading] = useState(true);
+  const [showReportForm, setShowReportForm] = useState(false);
   const [dashboardData, setDashboardData] = useState({
     dailyStats: null,
     staffingInfo: [],
@@ -168,6 +170,13 @@ const Dashboard = () => {
                 onChange={(e) => setSelectedDate(e.target.value)}
               />
             </div>
+            <button
+              className="btn btn-info"
+              onClick={() => setShowReportForm(true)}
+              title="Submit Second Shift Report"
+            >
+              <i className="fas fa-moon"></i> Submit 2nd Shift Report
+            </button>
           </div>
         </div>
 
@@ -291,60 +300,114 @@ const Dashboard = () => {
                       {dashboardData.secondShiftReport.report && <span>By: {dashboardData.secondShiftReport.report.submittedBy}</span>}
                     </div>
                     {dashboardData.secondShiftReport.report ? (
-                      <div className="summary-grid">
-                        <div>
-                          <h4>Jobs to Know About</h4>
-                          <ul>
-                            {dashboardData.secondShiftReport.report.nuances && dashboardData.secondShiftReport.report.nuances.length > 0 ? (
-                              dashboardData.secondShiftReport.report.nuances.map((job, idx) => (
-                                <li key={idx}><strong>{job.jobName}:</strong> {job.notes}</li>
-                              ))
-                            ) : (
-                              <li>None</li>
-                            )}
-                          </ul>
+                      <>
+                        {/* Install Windows Left Section */}
+                        {dashboardData.secondShiftReport.report.installWindowsLeft && dashboardData.secondShiftReport.report.installWindows && (
+                          <div style={{ padding: '16px', borderBottom: '1px solid var(--border-color)' }}>
+                            <h4><i className="fas fa-calendar-alt"></i> Install Windows Left</h4>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginTop: '12px' }}>
+                              <div style={{ padding: '12px', backgroundColor: 'var(--background-color)', borderRadius: 'var(--radius-md)', textAlign: 'center' }}>
+                                <div style={{ fontSize: '24px', fontWeight: 'bold', color: 'var(--primary-color)' }}>
+                                  {dashboardData.secondShiftReport.report.installWindows['2-5'] || 0}
+                                </div>
+                                <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>2-5 PM</div>
+                              </div>
+                              <div style={{ padding: '12px', backgroundColor: 'var(--background-color)', borderRadius: 'var(--radius-md)', textAlign: 'center' }}>
+                                <div style={{ fontSize: '24px', fontWeight: 'bold', color: 'var(--primary-color)' }}>
+                                  {dashboardData.secondShiftReport.report.installWindows['5-8'] || 0}
+                                </div>
+                                <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>5-8 PM</div>
+                              </div>
+                              <div style={{ padding: '12px', backgroundColor: 'var(--background-color)', borderRadius: 'var(--radius-md)', textAlign: 'center' }}>
+                                <div style={{ fontSize: '24px', fontWeight: 'bold', color: 'var(--primary-color)' }}>
+                                  {dashboardData.secondShiftReport.report.installWindows['6-9'] || 0}
+                                </div>
+                                <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>6-9 PM</div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Demo Requested Section */}
+                        {dashboardData.secondShiftReport.report.demoRequested && dashboardData.secondShiftReport.report.demoJobs && dashboardData.secondShiftReport.report.demoJobs.length > 0 && (
+                          <div style={{ padding: '16px', borderBottom: '1px solid var(--border-color)' }}>
+                            <h4><i className="fas fa-hammer"></i> Demo Requested</h4>
+                            <ul style={{ marginTop: '8px' }}>
+                              {dashboardData.secondShiftReport.report.demoJobs.map((job, idx) => (
+                                <li key={idx}>
+                                  <strong>{job.jobName}:</strong> {job.notes}
+                                  {job.damageReported && <span style={{ color: 'var(--danger-color)', marginLeft: '8px' }}>(Damage Reported)</span>}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+
+                        {/* Jobs Pushed Section */}
+                        {dashboardData.secondShiftReport.report.jobsPushed && (
+                          <div style={{ padding: '16px', borderBottom: '1px solid var(--border-color)' }}>
+                            <h4><i className="fas fa-arrow-right"></i> Jobs Pushed to Next Day</h4>
+                            <p style={{ fontSize: '18px', fontWeight: 'bold', marginTop: '8px' }}>
+                              {dashboardData.secondShiftReport.report.pushedJobsCount || 0} job(s)
+                            </p>
+                          </div>
+                        )}
+
+                        <div className="summary-grid">
+                          <div>
+                            <h4>Jobs to Know About</h4>
+                            <ul>
+                              {dashboardData.secondShiftReport.report.nuances && dashboardData.secondShiftReport.report.nuances.length > 0 ? (
+                                dashboardData.secondShiftReport.report.nuances.map((job, idx) => (
+                                  <li key={idx}><strong>{job.jobName}:</strong> {job.notes}</li>
+                                ))
+                              ) : (
+                                <li>None</li>
+                              )}
+                            </ul>
+                          </div>
+                          <div>
+                            <h4>Cancelled/Rescheduled</h4>
+                            <ul>
+                              {dashboardData.secondShiftReport.report.cancelledJobs && dashboardData.secondShiftReport.report.cancelledJobs.length > 0 ? (
+                                dashboardData.secondShiftReport.report.cancelledJobs.map((job, idx) => (
+                                  <li key={idx}><strong>{job.jobName}:</strong> {job.notes}</li>
+                                ))
+                              ) : (
+                                <li>None</li>
+                              )}
+                            </ul>
+                          </div>
+                          <div>
+                            <h4>After Hours Jobs</h4>
+                            <ul>
+                              {dashboardData.secondShiftReport.report.afterHoursJobs && dashboardData.secondShiftReport.report.afterHoursJobs.length > 0 ? (
+                                dashboardData.secondShiftReport.report.afterHoursJobs.map((job, idx) => (
+                                  <li key={idx}><strong>{job.jobName}:</strong> {job.reason} <em>(Who: {job.who})</em></li>
+                                ))
+                              ) : (
+                                <li>None</li>
+                              )}
+                            </ul>
+                          </div>
+                          <div>
+                            <h4>Tech Shoutouts</h4>
+                            <p>{dashboardData.secondShiftReport.report.techShoutouts || 'None'}</p>
+                          </div>
+                          <div>
+                            <h4>Tech Concerns</h4>
+                            <p>{dashboardData.secondShiftReport.report.techConcerns || 'None'}</p>
+                          </div>
+                          <div>
+                            <h4>Dept. Shoutouts</h4>
+                            <p>{dashboardData.secondShiftReport.report.deptShoutouts || 'None'}</p>
+                          </div>
+                          <div>
+                            <h4>Dept. Concerns</h4>
+                            <p>{dashboardData.secondShiftReport.report.deptConcerns || 'None'}</p>
+                          </div>
                         </div>
-                        <div>
-                          <h4>Cancelled/Rescheduled</h4>
-                          <ul>
-                            {dashboardData.secondShiftReport.report.cancelledJobs && dashboardData.secondShiftReport.report.cancelledJobs.length > 0 ? (
-                              dashboardData.secondShiftReport.report.cancelledJobs.map((job, idx) => (
-                                <li key={idx}><strong>{job.jobName}:</strong> {job.notes}</li>
-                              ))
-                            ) : (
-                              <li>None</li>
-                            )}
-                          </ul>
-                        </div>
-                        <div>
-                          <h4>After Hours Jobs</h4>
-                          <ul>
-                            {dashboardData.secondShiftReport.report.afterHoursJobs && dashboardData.secondShiftReport.report.afterHoursJobs.length > 0 ? (
-                              dashboardData.secondShiftReport.report.afterHoursJobs.map((job, idx) => (
-                                <li key={idx}><strong>{job.jobName}:</strong> {job.reason} <em>(Who: {job.who})</em></li>
-                              ))
-                            ) : (
-                              <li>None</li>
-                            )}
-                          </ul>
-                        </div>
-                        <div>
-                          <h4>Tech Shoutouts</h4>
-                          <p>{dashboardData.secondShiftReport.report.techShoutouts || 'None'}</p>
-                        </div>
-                        <div>
-                          <h4>Tech Concerns</h4>
-                          <p>{dashboardData.secondShiftReport.report.techConcerns || 'None'}</p>
-                        </div>
-                        <div>
-                          <h4>Dept. Shoutouts</h4>
-                          <p>{dashboardData.secondShiftReport.report.deptShoutouts || 'None'}</p>
-                        </div>
-                        <div>
-                          <h4>Dept. Concerns</h4>
-                          <p>{dashboardData.secondShiftReport.report.deptConcerns || 'None'}</p>
-                        </div>
-                      </div>
+                      </>
                     ) : (
                       <p className="no-entries">No report was submitted.</p>
                     )}
@@ -486,6 +549,17 @@ const Dashboard = () => {
           </div>
         </div>
       </div>
+
+      {/* Second Shift Report Form Modal */}
+      {showReportForm && (
+        <SecondShiftReportForm
+          onClose={() => setShowReportForm(false)}
+          onSubmitSuccess={() => {
+            setShowReportForm(false);
+            loadDashboardData(); // Reload dashboard to show new report
+          }}
+        />
+      )}
     </Layout>
   );
 };
