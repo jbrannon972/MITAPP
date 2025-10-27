@@ -429,8 +429,9 @@ const KanbanCalendar = ({
   };
 
   /**
-   * Recalculate all job timings for a tech's route after a job is removed
-   * This ensures jobs automatically shift up and maintain proper drive time spacing
+   * Recalculate all job timings for a tech's route
+   * IMPORTANT: Respects the current order of jobs in the array - does NOT sort!
+   * This allows arrow buttons to reorder jobs by swapping array positions.
    */
   const recalculateRouteTimings = async (techId, routes) => {
     const techRoute = routes[techId];
@@ -442,17 +443,14 @@ const KanbanCalendar = ({
     const officeAddress = offices[tech?.office || 'office_1']?.address;
     const mapboxService = getMapboxService();
 
-    // Sort jobs chronologically by current start time
-    const sortedJobs = [...techRoute.jobs].sort((a, b) => {
-      const aTime = timeToMinutes(a.startTime || a.timeframeStart);
-      const bTime = timeToMinutes(b.startTime || b.timeframeStart);
-      return aTime - bTime;
-    });
+    // Use jobs in their CURRENT order - do NOT sort!
+    // The order has been set by arrow buttons or drag-drop
+    const jobsInOrder = [...techRoute.jobs];
 
     const recalculatedJobs = [];
 
-    for (let i = 0; i < sortedJobs.length; i++) {
-      const job = sortedJobs[i];
+    for (let i = 0; i < jobsInOrder.length; i++) {
+      const job = jobsInOrder[i];
       let startTime;
       let driveMinutes = 0;
 
