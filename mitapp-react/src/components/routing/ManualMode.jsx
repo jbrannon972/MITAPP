@@ -15,7 +15,8 @@ const ManualMode = ({
   onUpdateJobs,
   onRefresh,
   selectedDate,
-  onImportCSV
+  onImportCSV,
+  scheduleForDay
 }) => {
   const [jobs, setJobs] = useState(initialJobs);
   const [routes, setRoutes] = useState(initialRoutes);
@@ -64,6 +65,18 @@ const ManualMode = ({
     if (type.includes('maintenance') || type.includes('maint')) return 'var(--success-color)'; // Green
     if (type.includes('inspection') || type.includes('check')) return 'var(--info-color)'; // Cyan
     return 'var(--text-secondary)'; // Gray for other/unknown
+  };
+
+  // Check if a tech is marked as off for the day
+  const isTechOff = (techId) => {
+    if (!scheduleForDay || !scheduleForDay.staff) return false;
+
+    const staffEntry = scheduleForDay.staff.find(s => s.id === techId);
+    if (!staffEntry) return false;
+
+    // Consider tech "off" if status is off, vacation, sick, or no-call-no-show
+    const offStatuses = ['off', 'vacation', 'sick', 'no-call-no-show'];
+    return offStatuses.includes(staffEntry.status?.toLowerCase());
   };
 
   // Initialize map
@@ -1126,6 +1139,7 @@ const ManualMode = ({
               const jobCount = techRoute?.jobs?.length || 0;
               const totalHours = techRoute?.jobs?.reduce((sum, j) => sum + j.duration, 0) || 0;
               const isSelected = selectedTech === tech.id;
+              const isOff = isTechOff(tech.id);
 
               return (
                 <div
@@ -1136,11 +1150,16 @@ const ManualMode = ({
                   style={{
                     marginBottom: '6px',
                     padding: '8px',
-                    backgroundColor: isSelected ? 'var(--status-in-progress-bg)' : (jobCount > 0 ? 'var(--active-bg)' : 'var(--surface-secondary)'),
-                    border: isSelected ? '2px solid var(--info-color)' : '2px dashed #e5e7eb',
+                    backgroundColor: isOff
+                      ? 'rgba(239, 68, 68, 0.15)'
+                      : (isSelected ? 'var(--status-in-progress-bg)' : (jobCount > 0 ? 'var(--active-bg)' : 'var(--surface-secondary)')),
+                    border: isOff
+                      ? '2px solid var(--danger-color)'
+                      : (isSelected ? '2px solid var(--info-color)' : '2px dashed #e5e7eb'),
                     borderRadius: '6px',
                     cursor: 'pointer',
-                    transition: 'all 0.2s'
+                    transition: 'all 0.2s',
+                    opacity: isOff ? 0.8 : 1
                   }}
                 >
                   <div style={{
@@ -1155,9 +1174,25 @@ const ManualMode = ({
                         fontSize: '12px',
                         whiteSpace: 'nowrap',
                         overflow: 'hidden',
-                        textOverflow: 'ellipsis'
+                        textOverflow: 'ellipsis',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px'
                       }}>
-                        {tech.name}
+                        <span>{tech.name}</span>
+                        {isOff && (
+                          <span style={{
+                            backgroundColor: 'var(--danger-color)',
+                            color: 'white',
+                            padding: '1px 4px',
+                            borderRadius: '3px',
+                            fontSize: '8px',
+                            fontWeight: '700',
+                            flexShrink: 0
+                          }}>
+                            OFF
+                          </span>
+                        )}
                       </div>
                       <div style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>
                         {offices[tech.office]?.shortName}

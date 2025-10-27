@@ -6,6 +6,7 @@ import { useData } from '../contexts/DataContext';
 import { useAuth } from '../contexts/AuthContext';
 import firebaseService from '../services/firebaseService';
 import { getMapboxService, initMapboxService } from '../services/mapboxService';
+import { getCalculatedScheduleForDay } from '../utils/calendarManager';
 import {
   optimizeRoute,
   balanceWorkload,
@@ -17,7 +18,7 @@ import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 
 const Routing = () => {
-  const { staffingData } = useData();
+  const { staffingData, unifiedTechnicianData } = useData();
   const { currentUser } = useAuth();
   const [activeView, setActiveView] = useState('routing');
   const [jobs, setJobs] = useState([]);
@@ -30,6 +31,7 @@ const Routing = () => {
   const [mapboxToken, setMapboxToken] = useState(localStorage.getItem('mapboxToken') || 'pk.eyJ1IjoiamJyYW5ub245NzIiLCJhIjoiY204NXN2Z2w2Mms4ODJrb2tvemV2ZnlicyJ9.84JYhRSUAF5_-vvdebw-TA');
   const [selectedTech, setSelectedTech] = useState(null);
   const [activeUsers, setActiveUsers] = useState([]);
+  const [scheduleForDay, setScheduleForDay] = useState(null);
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const markersRef = useRef([]);
@@ -102,6 +104,28 @@ const Routing = () => {
       firebaseService.removePresence('routing', selectedDate, currentUser.uid);
     };
   }, [selectedDate, currentUser, staffingData]);
+
+  // Fetch schedule data for selected date
+  useEffect(() => {
+    const fetchSchedule = async () => {
+      if (!unifiedTechnicianData || unifiedTechnicianData.length === 0) return;
+
+      try {
+        const dateObj = new Date(selectedDate + 'T12:00:00');
+        const monthlySchedules = await firebaseService.getScheduleDataForMonth(
+          dateObj.getFullYear(),
+          dateObj.getMonth()
+        );
+        const schedule = getCalculatedScheduleForDay(dateObj, monthlySchedules, unifiedTechnicianData);
+        setScheduleForDay(schedule);
+      } catch (error) {
+        console.error('Error fetching schedule:', error);
+        setScheduleForDay(null);
+      }
+    };
+
+    fetchSchedule();
+  }, [selectedDate, unifiedTechnicianData]);
 
   // Re-enrich routes when staffing data changes (to add emails to existing routes)
   useEffect(() => {
@@ -755,6 +779,7 @@ const Routing = () => {
         selectedDate={selectedDate}
         onImportCSV={() => setShowImportModal(true)}
         activeUsers={activeUsers}
+        scheduleForDay={scheduleForDay}
       />
     );
   };
@@ -774,6 +799,7 @@ const Routing = () => {
         onUpdateJobs={saveJobs}
         selectedDate={selectedDate}
         activeUsers={activeUsers}
+        scheduleForDay={scheduleForDay}
       />
     );
   };

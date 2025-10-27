@@ -10,7 +10,8 @@ const KanbanCalendar = ({
   offices,
   onUpdateRoutes,
   onUpdateJobs,
-  selectedDate
+  selectedDate,
+  scheduleForDay
 }) => {
   // Local state for instant UI updates
   const [localJobs, setLocalJobs] = useState(initialJobs);
@@ -316,6 +317,18 @@ const KanbanCalendar = ({
     }
   };
 
+  // Check if a tech is marked as off for the day
+  const isTechOff = (techId) => {
+    if (!scheduleForDay || !scheduleForDay.staff) return false;
+
+    const staffEntry = scheduleForDay.staff.find(s => s.id === techId);
+    if (!staffEntry) return false;
+
+    // Consider tech "off" if status is off, vacation, sick, or no-call-no-show
+    const offStatuses = ['off', 'vacation', 'sick', 'no-call-no-show'];
+    return offStatuses.includes(staffEntry.status?.toLowerCase());
+  };
+
   // Calculate optimal start time based on drive time (ignoring drag position)
   const calculateOptimalStartTime = async (job, targetTechId) => {
     const techRoute = localRoutes[targetTechId];
@@ -491,65 +504,36 @@ const KanbanCalendar = ({
       return;
     }
 
+    // Don't allow reordering within same tech via drag - use arrows instead
+    if (sourceTechId === targetTechId && sourceTechId) {
+      setDraggedJob(null);
+      return;
+    }
+
     const updatedRoutes = { ...localRoutes };
 
-    // Check if reordering within same tech
-    const isSameTechReorder = sourceTechId === targetTechId && sourceTechId;
+    // MOVING TO DIFFERENT TECH OR UNASSIGNING
 
-    if (isSameTechReorder) {
-      // REORDERING WITHIN SAME TECH - handle specially
-      const scrollContainer = scrollContainerRef.current;
-      const scrollTop = scrollContainer ? scrollContainer.scrollTop : 0;
-      const dropYPos = e.clientY - scrollContainer.getBoundingClientRect().top + scrollTop - 80;
-      const dropTime = getTimeFromY(dropYPos);
-      const dropMinutes = timeToMinutes(dropTime);
+    // Calculate start time based on drive time
+    const startTime = targetTechId
+      ? await calculateOptimalStartTime(job, targetTechId)
+      : (job.startTime || job.timeframeStart);
 
-      // Get all jobs except the one being moved
-      const otherJobs = updatedRoutes[sourceTechId].jobs.filter(j => j.id !== job.id);
+    const startMinutes = timeToMinutes(startTime);
+    const endMinutes = startMinutes + (job.duration * 60);
+    const endTime = minutesToTime(endMinutes);
 
-      // Sort by start time
-      const sortedJobs = otherJobs.sort((a, b) => {
-        const aTime = timeToMinutes(a.startTime || a.timeframeStart);
-        const bTime = timeToMinutes(b.startTime || b.timeframeStart);
-        return aTime - bTime;
-      });
+    const updatedJob = {
+      ...job,
+      startTime,
+      endTime,
+      assignedTech: targetTechId,
+      status: targetTechId ? 'assigned' : 'unassigned'
+    };
 
-      // Find insertion point based on drop position
-      let insertIndex = sortedJobs.findIndex(j => timeToMinutes(j.startTime) > dropMinutes);
-      if (insertIndex === -1) insertIndex = sortedJobs.length;
-
-      // Insert job at new position
-      sortedJobs.splice(insertIndex, 0, job);
-
-      // Update route with new order
-      updatedRoutes[sourceTechId].jobs = sortedJobs;
-
-      // Recalculate ALL jobs in new order
-      updatedRoutes[sourceTechId] = await recalculateRouteTimings(sourceTechId, updatedRoutes);
-
-    } else {
-      // MOVING TO DIFFERENT TECH OR UNASSIGNING
-
-      // Calculate start time based on drive time
-      const startTime = targetTechId
-        ? await calculateOptimalStartTime(job, targetTechId)
-        : (job.startTime || job.timeframeStart);
-
-      const startMinutes = timeToMinutes(startTime);
-      const endMinutes = startMinutes + (job.duration * 60);
-      const endTime = minutesToTime(endMinutes);
-
-      const updatedJob = {
-        ...job,
-        startTime,
-        endTime,
-        assignedTech: targetTechId,
-        status: targetTechId ? 'assigned' : 'unassigned'
-      };
-
-      if (sourceTechId) {
-        // Remove job from source tech
-        updatedRoutes[sourceTechId] = {
+    if (sourceTechId) {
+      // Remove job from source tech
+      updatedRoutes[sourceTechId] = {
           ...updatedRoutes[sourceTechId],
           jobs: updatedRoutes[sourceTechId].jobs.filter(j => j.id !== job.id)
         };
@@ -674,6 +658,82 @@ const KanbanCalendar = ({
   const handleJobClick = (job) => {
     setSelectedJob({...job});
     setShowJobModal(true);
+  };
+
+  // Move job up in the sequence (earlier in the day)
+  const handleMoveJobUp = async (job, techId) => {
+    const updatedRoutes = { ...localRoutes };
+    if (!updatedRoutes[techId]) return;
+
+    // Get jobs sorted by time
+    const jobs = [...updatedRoutes[techId].jobs].sort((a, b) => {
+      const aTime = timeToMinutes(a.startTime || a.timeframeStart);
+      const bTime = timeToMinutes(b.startTime || b.timeframeStart);
+      return aTime - bTime;
+    });
+
+    const currentIndex = jobs.findIndex(j => j.id === job.id);
+    if (currentIndex <= 0) return; // Already at top
+
+    // Swap with previous job
+    const temp = jobs[currentIndex];
+    jobs[currentIndex] = jobs[currentIndex - 1];
+    jobs[currentIndex - 1] = temp;
+
+    // Update route with new order
+    updatedRoutes[techId].jobs = jobs;
+
+    // Recalculate all job timings
+    updatedRoutes[techId] = await recalculateRouteTimings(techId, updatedRoutes);
+
+    // Update global jobs list
+    const updatedJobs = localJobs.map(j => {
+      const recalculatedJob = updatedRoutes[techId].jobs.find(rj => rj.id === j.id && rj.type !== 'secondTechAssignment');
+      return recalculatedJob || j;
+    });
+
+    setLocalRoutes(updatedRoutes);
+    setLocalJobs(updatedJobs);
+    await onUpdateRoutes(updatedRoutes);
+    await onUpdateJobs(updatedJobs);
+  };
+
+  // Move job down in the sequence (later in the day)
+  const handleMoveJobDown = async (job, techId) => {
+    const updatedRoutes = { ...localRoutes };
+    if (!updatedRoutes[techId]) return;
+
+    // Get jobs sorted by time
+    const jobs = [...updatedRoutes[techId].jobs].sort((a, b) => {
+      const aTime = timeToMinutes(a.startTime || a.timeframeStart);
+      const bTime = timeToMinutes(b.startTime || b.timeframeStart);
+      return aTime - bTime;
+    });
+
+    const currentIndex = jobs.findIndex(j => j.id === job.id);
+    if (currentIndex === -1 || currentIndex >= jobs.length - 1) return; // Already at bottom
+
+    // Swap with next job
+    const temp = jobs[currentIndex];
+    jobs[currentIndex] = jobs[currentIndex + 1];
+    jobs[currentIndex + 1] = temp;
+
+    // Update route with new order
+    updatedRoutes[techId].jobs = jobs;
+
+    // Recalculate all job timings
+    updatedRoutes[techId] = await recalculateRouteTimings(techId, updatedRoutes);
+
+    // Update global jobs list
+    const updatedJobs = localJobs.map(j => {
+      const recalculatedJob = updatedRoutes[techId].jobs.find(rj => rj.id === j.id && rj.type !== 'secondTechAssignment');
+      return recalculatedJob || j;
+    });
+
+    setLocalRoutes(updatedRoutes);
+    setLocalJobs(updatedJobs);
+    await onUpdateRoutes(updatedRoutes);
+    await onUpdateJobs(updatedJobs);
   };
 
   const handleSaveJobDetails = async () => {
@@ -963,6 +1023,7 @@ const KanbanCalendar = ({
             const totalHours = techJobs.filter(j => j.type !== 'secondTechAssignment').reduce((sum, j) => sum + j.duration, 0);
             const isDragOver = dragOverTech === tech.id;
             const isDragging = draggedTech === tech.id;
+            const isOff = isTechOff(tech.id);
 
             return (
               <div
@@ -970,12 +1031,18 @@ const KanbanCalendar = ({
                 style={{
                   width: '150px',
                   flexShrink: 0,
-                  backgroundColor: isDragOver ? 'var(--status-in-progress-bg)' : 'var(--surface-color)',
-                  border: isDragging ? '2px solid var(--warning-color)' : (isDragOver ? '2px solid var(--info-color)' : '1px solid #e5e7eb'),
+                  backgroundColor: isOff
+                    ? 'rgba(239, 68, 68, 0.1)'
+                    : (isDragOver ? 'var(--status-in-progress-bg)' : 'var(--surface-color)'),
+                  border: isOff
+                    ? '2px solid var(--danger-color)'
+                    : (isDragging ? '2px solid var(--warning-color)' : (isDragOver ? '2px solid var(--info-color)' : '1px solid #e5e7eb')),
                   borderRadius: '8px',
-                  opacity: isDragging ? 0.5 : 1,
+                  opacity: isDragging ? 0.5 : (isOff ? 0.7 : 1),
                   transition: 'all 0.15s ease',
-                  boxShadow: isDragOver ? '0 4px 12px rgba(59, 130, 246, 0.2)' : 'none',
+                  boxShadow: isOff
+                    ? '0 2px 8px rgba(239, 68, 68, 0.2)'
+                    : (isDragOver ? '0 4px 12px rgba(59, 130, 246, 0.2)' : 'none'),
                   height: 'fit-content',
                   minHeight: `${timelineHeight + 90}px`
                 }}
@@ -1015,6 +1082,18 @@ const KanbanCalendar = ({
                     <h4 style={{ margin: 0, fontSize: '11px', fontWeight: '600', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {tech.name}
                     </h4>
+                    {isOff && (
+                      <span style={{
+                        backgroundColor: 'var(--danger-color)',
+                        color: 'white',
+                        padding: '2px 4px',
+                        borderRadius: '3px',
+                        fontSize: '8px',
+                        fontWeight: '700'
+                      }}>
+                        OFF
+                      </span>
+                    )}
                     <i className="fas fa-map-marked-alt" style={{ color: 'var(--info-color)', fontSize: '10px' }}></i>
                   </div>
                   <div style={{ marginTop: '4px', display: 'flex', gap: '6px', fontSize: '9px', fontWeight: '500' }}>
@@ -1089,9 +1168,21 @@ const KanbanCalendar = ({
                   ))}
 
                   {/* Jobs */}
-                  {techJobs.map((job) => {
+                  {techJobs.map((job, jobIndex) => {
                     const yPos = job.startTime ? getYPosition(job.startTime) : 0;
                     const height = job.duration * pixelsPerHour;
+
+                    // Get sorted primary jobs (exclude second tech assignments) for arrow display
+                    const primaryJobs = techJobs.filter(j => j.type !== 'secondTechAssignment')
+                      .sort((a, b) => {
+                        const aTime = timeToMinutes(a.startTime || a.timeframeStart);
+                        const bTime = timeToMinutes(b.startTime || b.timeframeStart);
+                        return aTime - bTime;
+                      });
+                    const jobPositionIndex = primaryJobs.findIndex(j => j.id === job.id);
+                    const isFirstJob = jobPositionIndex === 0;
+                    const isLastJob = jobPositionIndex === primaryJobs.length - 1;
+                    const showArrows = job.type !== 'secondTechAssignment' && primaryJobs.length > 1;
 
                     return (
                       <div
@@ -1159,26 +1250,79 @@ const KanbanCalendar = ({
                           // Primary job display
                           <>
                             <div style={{ fontWeight: '600', fontSize: '10px', marginBottom: '2px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
                                 {job.customerName}
                               </span>
-                              {isOutsideTimeframe(job) && (
-                                <span
-                                  style={{
-                                    backgroundColor: 'var(--danger-color)',
-                                    color: 'white',
-                                    padding: '1px 4px',
-                                    borderRadius: '3px',
-                                    fontSize: '8px',
-                                    fontWeight: '700',
-                                    marginLeft: '4px',
-                                    flexShrink: 0
-                                  }}
-                                  title={`Timeframe Conflict!\nRequested: ${job.timeframeStart} - ${job.timeframeEnd}\nScheduled Arrival: ${job.startTime}`}
-                                >
-                                  ⚠
-                                </span>
-                              )}
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '2px', marginLeft: '4px' }}>
+                                {showArrows && (
+                                  <div style={{ display: 'flex', gap: '1px' }}>
+                                    {!isFirstJob && (
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleMoveJobUp(job, tech.id);
+                                        }}
+                                        style={{
+                                          background: 'var(--info-color)',
+                                          border: 'none',
+                                          color: 'white',
+                                          padding: '2px 4px',
+                                          borderRadius: '3px',
+                                          cursor: 'pointer',
+                                          fontSize: '8px',
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          justifyContent: 'center',
+                                          lineHeight: '1'
+                                        }}
+                                        title="Move job earlier"
+                                      >
+                                        <i className="fas fa-chevron-up"></i>
+                                      </button>
+                                    )}
+                                    {!isLastJob && (
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleMoveJobDown(job, tech.id);
+                                        }}
+                                        style={{
+                                          background: 'var(--info-color)',
+                                          border: 'none',
+                                          color: 'white',
+                                          padding: '2px 4px',
+                                          borderRadius: '3px',
+                                          cursor: 'pointer',
+                                          fontSize: '8px',
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          justifyContent: 'center',
+                                          lineHeight: '1'
+                                        }}
+                                        title="Move job later"
+                                      >
+                                        <i className="fas fa-chevron-down"></i>
+                                      </button>
+                                    )}
+                                  </div>
+                                )}
+                                {isOutsideTimeframe(job) && (
+                                  <span
+                                    style={{
+                                      backgroundColor: 'var(--danger-color)',
+                                      color: 'white',
+                                      padding: '1px 4px',
+                                      borderRadius: '3px',
+                                      fontSize: '8px',
+                                      fontWeight: '700',
+                                      flexShrink: 0
+                                    }}
+                                    title={`Timeframe Conflict!\nRequested: ${job.timeframeStart} - ${job.timeframeEnd}\nScheduled Arrival: ${job.startTime}`}
+                                  >
+                                    ⚠
+                                  </span>
+                                )}
+                              </div>
                             </div>
                             <div style={{ fontSize: '9px', color: 'var(--text-secondary)' }}>
                               {job.startTime && job.endTime && (
