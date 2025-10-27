@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useData } from '../../contexts/DataContext';
 import { format } from 'date-fns';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import firebaseService from '../../services/firebaseService';
 
 const HuddleInfoModal = ({ isOpen, onClose, selectedDate = new Date() }) => {
@@ -167,7 +169,7 @@ const HuddleInfoModal = ({ isOpen, onClose, selectedDate = new Date() }) => {
             <>
               {/* Huddle Content Section */}
               <div className="huddle-content-section">
-                {visibleCategories.length === 0 ? (
+                {visibleCategories.length === 0 && (!huddleContent?.referenceLinks || huddleContent.referenceLinks.length === 0) ? (
                   <div className="no-content">
                     <p>No huddle information available for this date.</p>
                     <p style={{ fontSize: '0.9em', color: '#666' }}>
@@ -175,14 +177,41 @@ const HuddleInfoModal = ({ isOpen, onClose, selectedDate = new Date() }) => {
                     </p>
                   </div>
                 ) : (
-                  visibleCategories.map(([key, category]) => (
-                    <div key={key} className="huddle-category">
-                      <h3>{getCategoryTitle(key)}</h3>
-                      <div className="category-content">
-                        {category.content}
+                  <>
+                    {visibleCategories.map(([key, category]) => (
+                      <div key={key} className="huddle-category">
+                        <h3>{getCategoryTitle(key)}</h3>
+                        <div className="category-content markdown-content">
+                          <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                            {category.content}
+                          </ReactMarkdown>
+                        </div>
                       </div>
-                    </div>
-                  ))
+                    ))}
+
+                    {/* Reference Links */}
+                    {huddleContent?.referenceLinks && huddleContent.referenceLinks.length > 0 && (
+                      <div className="huddle-reference-links">
+                        <h3>
+                          <i className="fas fa-link"></i> Reference Links
+                        </h3>
+                        <div className="reference-links-display">
+                          {huddleContent.referenceLinks.map((link, index) => (
+                            <a
+                              key={index}
+                              href={link.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="reference-link-card"
+                            >
+                              <i className="fas fa-external-link-alt"></i>
+                              <span>{link.title || link.url}</span>
+                            </a>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
 

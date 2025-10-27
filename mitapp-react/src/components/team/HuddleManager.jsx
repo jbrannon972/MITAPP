@@ -1,7 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { format, addDays, startOfDay } from 'date-fns';
+import { format, addDays } from 'date-fns';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import firebaseService from '../../services/firebaseService';
+import { downloadCsvTemplate, parseCsvFile } from '../../utils/huddleCsvUtils';
 
 const HuddleManager = () => {
   const { currentUser } = useAuth();
@@ -14,9 +17,13 @@ const HuddleManager = () => {
     huddleTopic: { content: '', visible: true },
     weekendStaffing: { content: '', visible: true }
   });
+  const [referenceLinks, setReferenceLinks] = useState([]);
+  const [activePreviewTab, setActivePreviewTab] = useState(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState(null);
+  const [importing, setImporting] = useState(false);
+  const fileInputRef = useRef(null);
 
   const dateStr = format(selectedDate, 'yyyy-MM-dd');
 
@@ -32,6 +39,7 @@ const HuddleManager = () => {
 
       if (content && content.categories) {
         setHuddleContent(content.categories);
+        setReferenceLinks(content.referenceLinks || []);
       } else {
         // Reset to default empty content
         setHuddleContent({
@@ -42,6 +50,7 @@ const HuddleManager = () => {
           huddleTopic: { content: '', visible: true },
           weekendStaffing: { content: '', visible: true }
         });
+        setReferenceLinks([]);
       }
     } catch (error) {
       console.error('Error loading huddle content:', error);
@@ -76,6 +85,7 @@ const HuddleManager = () => {
       const huddleData = {
         date: dateStr,
         categories: huddleContent,
+        referenceLinks: referenceLinks,
         createdBy: currentUser.userId,
         createdByName: currentUser.username,
         updatedAt: new Date().toISOString()
@@ -102,6 +112,7 @@ const HuddleManager = () => {
 
       if (previousContent && previousContent.categories) {
         setHuddleContent(previousContent.categories);
+        setReferenceLinks(previousContent.referenceLinks || []);
         alert(`Content copied from ${format(previousDate, 'MMMM d, yyyy')}`);
       } else {
         alert('No content found for the previous day.');
@@ -124,6 +135,74 @@ const HuddleManager = () => {
         huddleTopic: { content: '', visible: true },
         weekendStaffing: { content: '', visible: true }
       });
+      setReferenceLinks([]);
+    }
+  };
+
+  // Reference Links Functions
+  const addReferenceLink = () => {
+    setReferenceLinks([...referenceLinks, { title: '', url: '' }]);
+  };
+
+  const updateReferenceLink = (index, field, value) => {
+    const updated = [...referenceLinks];
+    updated[index][field] = value;
+    setReferenceLinks(updated);
+  };
+
+  const removeReferenceLink = (index) => {
+    setReferenceLinks(referenceLinks.filter((_, i) => i !== index));
+  };
+
+  // CSV Import Functions
+  const handleCsvImport = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    setImporting(true);
+    try {
+      const fileContent = await file.text();
+      const huddleDataArray = parseCsvFile(fileContent);
+
+      if (huddleDataArray.length === 0) {
+        alert('No valid data found in CSV file.');
+        return;
+      }
+
+      // Save all imported huddles to Firestore
+      let successCount = 0;
+      let errorCount = 0;
+
+      for (const huddleData of huddleDataArray) {
+        try {
+          await firebaseService.saveDocument('hou_huddle_content', huddleData.date, {
+            date: huddleData.date,
+            categories: huddleData.categories,
+            referenceLinks: huddleData.referenceLinks || [],
+            createdBy: currentUser.userId,
+            createdByName: currentUser.username,
+            updatedAt: new Date().toISOString(),
+            importedAt: new Date().toISOString()
+          });
+          successCount++;
+        } catch (error) {
+          console.error(`Error saving huddle for ${huddleData.date}:`, error);
+          errorCount++;
+        }
+      }
+
+      alert(`CSV Import Complete!\n\nSuccessfully imported: ${successCount} huddles\nErrors: ${errorCount}`);
+
+      // Reload current date if it was in the import
+      loadHuddleContent();
+    } catch (error) {
+      console.error('Error importing CSV:', error);
+      alert(`Error importing CSV: ${error.message}`);
+    } finally {
+      setImporting(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     }
   };
 
@@ -142,10 +221,32 @@ const HuddleManager = () => {
         <div className="header-left">
           <h2>Manage Huddle Information</h2>
           <p className="subtitle">
-            Pre-fill huddle content for supervisors. Only visible categories with content will be shown.
+            Pre-fill huddle content for supervisors. Supports <strong>Markdown</strong> formatting (bullet points, bold, links, etc.)
           </p>
         </div>
         <div className="header-actions">
+          <button
+            className="btn btn-secondary"
+            onClick={downloadCsvTemplate}
+            title="Download CSV template for bulk import"
+          >
+            <i className="fas fa-download"></i> Download Template
+          </button>
+          <button
+            className="btn btn-secondary"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={importing}
+            title="Import huddles from CSV"
+          >
+            <i className="fas fa-upload"></i> {importing ? 'Importing...' : 'Import CSV'}
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".csv"
+            onChange={handleCsvImport}
+            style={{ display: 'none' }}
+          />
           <button
             className="btn btn-secondary"
             onClick={copyFromPreviousDay}
@@ -191,24 +292,90 @@ const HuddleManager = () => {
                     <span className="category-icon">{icon}</span>
                     <h3>{label}</h3>
                   </div>
-                  <label className="visibility-toggle">
-                    <input
-                      type="checkbox"
-                      checked={huddleContent[key]?.visible ?? true}
-                      onChange={() => toggleVisibility(key)}
-                    />
-                    <span>Visible to Supervisors</span>
-                  </label>
+                  <div className="category-controls">
+                    <button
+                      className={`btn btn-sm ${activePreviewTab === key ? 'btn-primary' : 'btn-secondary'}`}
+                      onClick={() => setActivePreviewTab(activePreviewTab === key ? null : key)}
+                    >
+                      {activePreviewTab === key ? 'Hide Preview' : 'Show Preview'}
+                    </button>
+                    <label className="visibility-toggle">
+                      <input
+                        type="checkbox"
+                        checked={huddleContent[key]?.visible ?? true}
+                        onChange={() => toggleVisibility(key)}
+                      />
+                      <span>Visible to Supervisors</span>
+                    </label>
+                  </div>
                 </div>
+
                 <textarea
                   value={huddleContent[key]?.content ?? ''}
                   onChange={(e) => updateContent(key, e.target.value)}
-                  placeholder={`Enter ${label.toLowerCase()}...`}
+                  placeholder={`Enter ${label.toLowerCase()}...\n\nMarkdown supported:\n- Bullet points\n- **Bold text**\n- [Link text](https://example.com)`}
                   className="category-textarea"
                   rows="4"
                 />
+
+                {activePreviewTab === key && huddleContent[key]?.content && (
+                  <div className="markdown-preview">
+                    <h4>Preview:</h4>
+                    <div className="markdown-content">
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                        {huddleContent[key].content}
+                      </ReactMarkdown>
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
+          </div>
+
+          {/* Reference Links Section */}
+          <div className="reference-links-section">
+            <div className="section-header">
+              <h3>
+                <i className="fas fa-link"></i> Reference Links
+              </h3>
+              <button className="btn btn-secondary btn-sm" onClick={addReferenceLink}>
+                <i className="fas fa-plus"></i> Add Link
+              </button>
+            </div>
+
+            {referenceLinks.length === 0 ? (
+              <p className="no-links-message">
+                No reference links added. Click "Add Link" to include documents or resources.
+              </p>
+            ) : (
+              <div className="reference-links-list">
+                {referenceLinks.map((link, index) => (
+                  <div key={index} className="reference-link-item">
+                    <input
+                      type="text"
+                      placeholder="Link Title (e.g., Safety Document)"
+                      value={link.title}
+                      onChange={(e) => updateReferenceLink(index, 'title', e.target.value)}
+                      className="link-title-input"
+                    />
+                    <input
+                      type="url"
+                      placeholder="URL (e.g., https://example.com/doc.pdf)"
+                      value={link.url}
+                      onChange={(e) => updateReferenceLink(index, 'url', e.target.value)}
+                      className="link-url-input"
+                    />
+                    <button
+                      className="btn btn-danger btn-sm"
+                      onClick={() => removeReferenceLink(index)}
+                      title="Remove link"
+                    >
+                      <i className="fas fa-trash"></i>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Save Section */}

@@ -2648,3 +2648,285 @@ input:checked + .slider:before {
     padding: 4px 8px;
     border-radius: 12px;
 }
+
+/* ========================================
+   Markdown & Advanced Huddle Features
+   ======================================== */
+
+/* Markdown Content Rendering */
+.markdown-content {
+    line-height: 1.7;
+}
+
+.markdown-content p {
+    margin-bottom: 12px;
+}
+
+.markdown-content ul,
+.markdown-content ol {
+    margin: 12px 0;
+    padding-left: 24px;
+}
+
+.markdown-content li {
+    margin-bottom: 6px;
+}
+
+.markdown-content strong {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.markdown-content em {
+    font-style: italic;
+}
+
+.markdown-content a {
+    color: var(--primary-color);
+    text-decoration: underline;
+}
+
+.markdown-content a:hover {
+    color: var(--primary-dark);
+}
+
+.markdown-content code {
+    background-color: #f1f5f9;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.9em;
+}
+
+.markdown-content pre {
+    background-color: #f1f5f9;
+    padding: 12px;
+    border-radius: var(--radius-sm);
+    overflow-x: auto;
+    margin: 12px 0;
+}
+
+.markdown-content blockquote {
+    border-left: 4px solid var(--primary-color);
+    padding-left: 16px;
+    margin: 12px 0;
+    color: var(--text-secondary);
+}
+
+.markdown-content h1,
+.markdown-content h2,
+.markdown-content h3 {
+    margin-top: 16px;
+    margin-bottom: 8px;
+    font-family: 'Outfit', sans-serif;
+}
+
+.markdown-content table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 12px 0;
+}
+
+.markdown-content th,
+.markdown-content td {
+    border: 1px solid var(--border-color);
+    padding: 8px;
+    text-align: left;
+}
+
+.markdown-content th {
+    background-color: var(--background-color);
+    font-weight: 600;
+}
+
+/* Markdown Preview in HuddleManager */
+.markdown-preview {
+    margin-top: 12px;
+    padding: 16px;
+    background-color: var(--background-color);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-color);
+}
+
+.markdown-preview h4 {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Category Controls */
+.category-controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.btn-sm {
+    padding: 6px 12px;
+    font-size: 13px;
+}
+
+/* Reference Links Section in HuddleManager */
+.reference-links-section {
+    background: var(--surface-color);
+    padding: 24px;
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--border-color);
+    margin-bottom: 24px;
+}
+
+.reference-links-section .section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.reference-links-section h3 {
+    font-family: 'Outfit', sans-serif;
+    font-size: 18px;
+    color: var(--text-primary);
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.no-links-message {
+    color: var(--text-secondary);
+    font-size: 14px;
+    text-align: center;
+    padding: 20px;
+}
+
+.reference-links-list {
+    display: grid;
+    gap: 12px;
+}
+
+.reference-link-item {
+    display: grid;
+    grid-template-columns: 1fr 2fr auto;
+    gap: 12px;
+    align-items: center;
+    padding: 12px;
+    background: var(--background-color);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-color);
+}
+
+.link-title-input,
+.link-url-input {
+    padding: 8px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+}
+
+.link-title-input:focus,
+.link-url-input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(248, 123, 77, 0.1);
+}
+
+/* Reference Links Display in Modal */
+.huddle-reference-links {
+    margin-top: 24px;
+    padding-top: 24px;
+    border-top: 2px solid var(--border-color);
+}
+
+.huddle-reference-links h3 {
+    font-family: 'Outfit', sans-serif;
+    font-size: 18px;
+    color: var(--text-primary);
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.reference-links-display {
+    display: grid;
+    gap: 12px;
+}
+
+.reference-link-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+    color: white;
+    text-decoration: none;
+    border-radius: var(--radius-sm);
+    transition: transform 0.2s, box-shadow 0.2s;
+    box-shadow: var(--shadow-sm);
+}
+
+.reference-link-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.reference-link-card i {
+    font-size: 16px;
+}
+
+.reference-link-card span {
+    font-weight: 500;
+    flex: 1;
+}
+
+/* Mobile Responsiveness for Huddle Features */
+@media (max-width: 768px) {
+    .huddle-manager-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .header-actions {
+        width: 100%;
+        flex-wrap: wrap;
+    }
+
+    .header-actions button {
+        flex: 1;
+        min-width: 140px;
+    }
+
+    .date-picker-section {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .category-controls {
+        flex-direction: column;
+        align-items: flex-start;
+        width: 100%;
+    }
+
+    .category-controls button {
+        width: 100%;
+    }
+
+    .reference-link-item {
+        grid-template-columns: 1fr;
+    }
+
+    .reference-links-section .section-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    .reference-links-section .btn {
+        width: 100%;
+    }
+}
