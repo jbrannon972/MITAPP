@@ -585,6 +585,12 @@ const KanbanCalendar = ({
   const handleSaveJobDetails = async () => {
     if (!selectedJob) return;
 
+    // Track if second tech changed
+    const originalJob = localJobs.find(j => j.id === selectedJob.id);
+    const secondTechChanged = originalJob?.demoTech !== selectedJob.demoTech;
+    const oldSecondTech = originalJob?.demoTech;
+    const newSecondTech = selectedJob.demoTech;
+
     const updatedJobs = localJobs.map(j => {
       if (j.id === selectedJob.id) {
         return selectedJob;
@@ -593,6 +599,8 @@ const KanbanCalendar = ({
     });
 
     const updatedRoutes = { ...localRoutes };
+
+    // Update primary job in primary tech's route
     if (selectedJob.assignedTech && updatedRoutes[selectedJob.assignedTech]) {
       updatedRoutes[selectedJob.assignedTech].jobs = updatedRoutes[selectedJob.assignedTech].jobs.map(j => {
         if (j.id === selectedJob.id) {
@@ -600,6 +608,58 @@ const KanbanCalendar = ({
         }
         return j;
       });
+    }
+
+    // Handle second tech assignment changes
+    if (secondTechChanged) {
+      // Remove old second tech assignment
+      if (oldSecondTech) {
+        const oldSecondTechObj = techs.find(t => t.name === oldSecondTech);
+        if (oldSecondTechObj && updatedRoutes[oldSecondTechObj.id]) {
+          updatedRoutes[oldSecondTechObj.id].jobs = updatedRoutes[oldSecondTechObj.id].jobs.filter(
+            j => !(j.type === 'secondTechAssignment' && j.primaryJobId === selectedJob.id)
+          );
+        }
+      }
+
+      // Add new second tech assignment
+      if (newSecondTech && selectedJob.requiresTwoTechs) {
+        const newSecondTechObj = techs.find(t => t.name === newSecondTech);
+        if (newSecondTechObj) {
+          if (!updatedRoutes[newSecondTechObj.id]) {
+            updatedRoutes[newSecondTechObj.id] = {
+              tech: newSecondTechObj,
+              jobs: []
+            };
+          }
+
+          // Calculate second tech's time window
+          let duration = selectedJob.duration;
+          if (selectedJob.secondTechDuration === 'partial' && selectedJob.secondTechHours) {
+            duration = selectedJob.secondTechHours;
+          }
+
+          // Create second tech assignment (defaults to same start time as primary, but can be dragged)
+          const secondTechAssignment = {
+            id: `${selectedJob.id}_secondtech_${Date.now()}`,
+            type: 'secondTechAssignment',
+            primaryJobId: selectedJob.id,
+            primaryTechId: selectedJob.assignedTech,
+            primaryTechName: techs.find(t => t.id === selectedJob.assignedTech)?.name || 'Unknown',
+            customerName: selectedJob.customerName,
+            address: selectedJob.address,
+            jobType: selectedJob.jobType,
+            startTime: selectedJob.startTime,
+            endTime: minutesToTime(timeToMinutes(selectedJob.startTime) + (duration * 60)),
+            duration: duration,
+            isPartial: selectedJob.secondTechDuration === 'partial',
+            assignedTech: newSecondTechObj.id,
+            status: 'assigned'
+          };
+
+          updatedRoutes[newSecondTechObj.id].jobs.push(secondTechAssignment);
+        }
+      }
     }
 
     setLocalJobs(updatedJobs);
@@ -792,47 +852,11 @@ const KanbanCalendar = ({
           {techs.map(tech => {
             const techRoute = localRoutes[tech.id];
 
-            // Get jobs assigned to this tech
-            const primaryJobs = techRoute?.jobs || [];
+            // Get all jobs assigned to this tech (both primary jobs and second tech assignments)
+            const techJobs = techRoute?.jobs || [];
 
-            // Also get jobs where this tech is the second tech
-            const secondTechJobs = [];
-            Object.values(localRoutes).forEach(route => {
-              route.jobs?.forEach(job => {
-                // Check if this tech is the second tech on this job and it's not already in primary jobs
-                if (job.demoTech === tech.name && !primaryJobs.find(pj => pj.id === job.id)) {
-                  // Calculate second tech's specific time window
-                  let secondTechStartTime = job.startTime;
-                  let secondTechEndTime = job.endTime;
-                  let secondTechDuration = job.duration;
-
-                  if (job.secondTechDuration === 'partial' && job.secondTechHours) {
-                    // Partial time: arrive at start, leave after their hours
-                    const startMinutes = timeToMinutes(job.startTime);
-                    const endMinutes = startMinutes + (job.secondTechHours * 60);
-                    secondTechEndTime = minutesToTime(endMinutes);
-                    secondTechDuration = job.secondTechHours;
-                  }
-
-                  secondTechJobs.push({
-                    ...job,
-                    id: `${job.id}_secondtech`, // Unique ID for second tech event
-                    originalJobId: job.id, // Track original job ID
-                    startTime: secondTechStartTime,
-                    endTime: secondTechEndTime,
-                    duration: secondTechDuration,
-                    isSecondTech: true, // Mark this so we can style differently
-                    primaryTech: route.tech?.name, // Track who the primary tech is
-                    primaryTechId: route.tech?.id // Track primary tech ID for reference
-                  });
-                }
-              });
-            });
-
-            // Combine both sets of jobs
-            const techJobs = [...primaryJobs, ...secondTechJobs];
-
-            const totalHours = primaryJobs.reduce((sum, j) => sum + j.duration, 0);
+            // Calculate total hours (only primary jobs, not second tech assignments)
+            const totalHours = techJobs.filter(j => j.type !== 'secondTechAssignment').reduce((sum, j) => sum + j.duration, 0);
             const isDragOver = dragOverTech === tech.id;
             const isDragging = draggedTech === tech.id;
 
@@ -968,11 +992,11 @@ const KanbanCalendar = ({
                     return (
                       <div
                         key={job.id}
-                        draggable={!job.isSecondTech}
-                        onDragStart={(e) => !job.isSecondTech && handleJobDragStart(e, job, tech.id)}
+                        draggable={true}
+                        onDragStart={(e) => handleJobDragStart(e, job, tech.id)}
                         onClick={(e) => {
                           e.stopPropagation();
-                          if (!job.isSecondTech) {
+                          if (job.type !== 'secondTechAssignment') {
                             handleJobClick(job);
                           }
                         }}
@@ -983,15 +1007,15 @@ const KanbanCalendar = ({
                           right: '4px',
                           minHeight: `${Math.max(height, 40)}px`,
                           padding: '6px',
-                          backgroundColor: job.isSecondTech ? 'var(--status-pending-bg)' : 'var(--surface-color)',
-                          border: job.isSecondTech ? '2px dashed var(--purple-color)' : `2px solid ${getJobTypeColor(job.jobType)}`,
-                          borderLeft: job.isSecondTech ? '4px solid var(--purple-color)' : `4px solid ${getJobTypeColor(job.jobType)}`,
+                          backgroundColor: job.type === 'secondTechAssignment' ? 'var(--status-pending-bg)' : 'var(--surface-color)',
+                          border: job.type === 'secondTechAssignment' ? '2px dashed var(--purple-color)' : `2px solid ${getJobTypeColor(job.jobType)}`,
+                          borderLeft: job.type === 'secondTechAssignment' ? '4px solid var(--purple-color)' : `4px solid ${getJobTypeColor(job.jobType)}`,
                           borderRadius: '4px',
-                          cursor: job.isSecondTech ? 'default' : 'grab',
+                          cursor: 'grab',
                           transition: 'all 0.15s ease',
-                          boxShadow: job.isSecondTech ? '0 2px 4px rgba(0,0,0,0.15)' : '0 1px 2px rgba(0,0,0,0.1)',
+                          boxShadow: job.type === 'secondTechAssignment' ? '0 2px 4px rgba(0,0,0,0.15)' : '0 1px 2px rgba(0,0,0,0.1)',
                           overflow: 'hidden',
-                          opacity: job.isSecondTech ? 0.9 : 1
+                          opacity: job.type === 'secondTechAssignment' ? 0.9 : 1
                         }}
                         onMouseEnter={(e) => {
                           e.currentTarget.style.transform = 'translateX(2px)';
@@ -1004,11 +1028,11 @@ const KanbanCalendar = ({
                           e.currentTarget.style.zIndex = '1';
                         }}
                       >
-                        {job.isSecondTech ? (
-                          // Second tech event display
+                        {job.type === 'secondTechAssignment' ? (
+                          // Second tech assignment display
                           <>
                             <div style={{ fontWeight: '600', fontSize: '10px', marginBottom: '4px', color: 'var(--purple-color)' }}>
-                              <i className="fas fa-handshake"></i> Meeting {job.primaryTech}
+                              <i className="fas fa-handshake"></i> Meeting {job.primaryTechName}
                             </div>
                             <div style={{ fontSize: '9px', color: 'var(--text-secondary)', marginBottom: '3px' }}>
                               <strong>{job.customerName}</strong>
@@ -1019,7 +1043,7 @@ const KanbanCalendar = ({
                             <div style={{ fontSize: '9px', color: 'var(--success-color)', fontWeight: '600' }}>
                               <i className="fas fa-clock"></i> {job.startTime} - {job.endTime} ({job.duration}h)
                             </div>
-                            {job.secondTechDuration === 'partial' && (
+                            {job.isPartial && (
                               <div style={{ fontSize: '8px', color: 'var(--warning-color)', marginTop: '2px', fontStyle: 'italic' }}>
                                 Heavy lifting only
                               </div>
