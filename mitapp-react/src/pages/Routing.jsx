@@ -299,8 +299,9 @@ const Routing = () => {
 
   const saveJobs = async (jobsData) => {
     try {
-      // Update local state immediately for instant UI feedback
-      setJobs(jobsData);
+      // Don't do optimistic update - let Firebase subscription handle it
+      // This prevents race conditions with child component's local state
+      console.log('📤 Saving jobs to Firebase...', jobsData.length, 'jobs');
 
       // Save to Firebase with metadata for conflict tracking
       if (currentUser) {
@@ -323,6 +324,7 @@ const Routing = () => {
           lastUpdated: new Date().toISOString()
         });
       }
+      console.log('✅ Jobs saved to Firebase');
     } catch (error) {
       console.error('Error saving jobs:', error);
       alert('Error saving jobs. Please try again.');
@@ -403,8 +405,9 @@ const Routing = () => {
 
   const saveRoutes = async (routesData) => {
     try {
-      // Update local state immediately for instant UI feedback
-      setRoutes(routesData);
+      // Don't do optimistic update - let Firebase subscription handle it
+      // This prevents race conditions with child component's local state
+      console.log('📤 Saving routes to Firebase...', Object.keys(routesData).length, 'routes');
 
       // Save to Firebase with metadata for conflict tracking
       if (currentUser) {
@@ -427,6 +430,7 @@ const Routing = () => {
           lastUpdated: new Date().toISOString()
         });
       }
+      console.log('✅ Routes saved to Firebase');
     } catch (error) {
       console.error('Error saving routes:', error);
     }

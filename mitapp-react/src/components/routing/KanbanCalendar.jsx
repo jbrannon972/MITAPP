@@ -57,16 +57,32 @@ const KanbanCalendar = ({
   // Sync with parent when props change - but only if data is actually different
   // This prevents overwriting local changes that are being saved
   useEffect(() => {
+    console.log('🔄 Jobs useEffect fired', {
+      isUpdating: isUpdatingRef.current,
+      localJobsCount: localJobs.length,
+      initialJobsCount: initialJobs.length,
+      areEqual: deepEqual(localJobs, initialJobs)
+    });
     if (!isUpdatingRef.current && !deepEqual(localJobs, initialJobs)) {
-      console.log('Syncing jobs from parent (data changed)');
+      console.log('✅ Syncing jobs from parent (data changed)');
       setLocalJobs(initialJobs);
+    } else {
+      console.log('⏭️ Skipping jobs sync');
     }
   }, [initialJobs]);
 
   useEffect(() => {
+    console.log('🔄 Routes useEffect fired', {
+      isUpdating: isUpdatingRef.current,
+      localRoutesKeys: Object.keys(localRoutes).length,
+      initialRoutesKeys: Object.keys(initialRoutes).length,
+      areEqual: deepEqual(localRoutes, initialRoutes)
+    });
     if (!isUpdatingRef.current && !deepEqual(localRoutes, initialRoutes)) {
-      console.log('Syncing routes from parent (data changed)');
+      console.log('✅ Syncing routes from parent (data changed)');
       setLocalRoutes(initialRoutes);
+    } else {
+      console.log('⏭️ Skipping routes sync');
     }
   }, [initialRoutes]);
 
@@ -706,6 +722,8 @@ const KanbanCalendar = ({
 
   // Move job up in the sequence (earlier in the day)
   const handleMoveJobUp = async (job, techId) => {
+    console.log('⬆️ handleMoveJobUp called', { jobId: job.id, techId });
+
     const updatedRoutes = { ...localRoutes };
     if (!updatedRoutes[techId]) return;
 
@@ -717,21 +735,29 @@ const KanbanCalendar = ({
     });
 
     const currentIndex = jobs.findIndex(j => j.id === job.id);
-    if (currentIndex <= 0) return; // Already at top
+    console.log('📍 Current index:', currentIndex, 'of', jobs.length);
+
+    if (currentIndex <= 0) {
+      console.log('⚠️ Already at top, returning');
+      return; // Already at top
+    }
 
     // Set flag to prevent useEffect syncs during update
     isUpdatingRef.current = true;
+    console.log('🚩 Set isUpdatingRef = true');
 
     try {
       // Swap with previous job
       const temp = jobs[currentIndex];
       jobs[currentIndex] = jobs[currentIndex - 1];
       jobs[currentIndex - 1] = temp;
+      console.log('🔄 Swapped jobs');
 
       // Update route with new order
       updatedRoutes[techId].jobs = jobs;
 
       // Recalculate all job timings
+      console.log('⏱️ Recalculating route timings...');
       updatedRoutes[techId] = await recalculateRouteTimings(techId, updatedRoutes);
 
       // Update global jobs list
@@ -740,20 +766,29 @@ const KanbanCalendar = ({
         return recalculatedJob || j;
       });
 
+      console.log('💾 Setting local state...');
       setLocalRoutes(updatedRoutes);
       setLocalJobs(updatedJobs);
+
+      console.log('☁️ Calling parent update functions...');
       await onUpdateRoutes(updatedRoutes);
       await onUpdateJobs(updatedJobs);
+      console.log('✅ Move up complete');
+    } catch (error) {
+      console.error('❌ Error in handleMoveJobUp:', error);
     } finally {
       // Clear flag after a brief delay to allow Firebase sync to complete
       setTimeout(() => {
         isUpdatingRef.current = false;
+        console.log('🏁 Cleared isUpdatingRef after 100ms');
       }, 100);
     }
   };
 
   // Move job down in the sequence (later in the day)
   const handleMoveJobDown = async (job, techId) => {
+    console.log('⬇️ handleMoveJobDown called', { jobId: job.id, techId });
+
     const updatedRoutes = { ...localRoutes };
     if (!updatedRoutes[techId]) return;
 
@@ -765,21 +800,29 @@ const KanbanCalendar = ({
     });
 
     const currentIndex = jobs.findIndex(j => j.id === job.id);
-    if (currentIndex === -1 || currentIndex >= jobs.length - 1) return; // Already at bottom
+    console.log('📍 Current index:', currentIndex, 'of', jobs.length);
+
+    if (currentIndex === -1 || currentIndex >= jobs.length - 1) {
+      console.log('⚠️ Already at bottom, returning');
+      return; // Already at bottom
+    }
 
     // Set flag to prevent useEffect syncs during update
     isUpdatingRef.current = true;
+    console.log('🚩 Set isUpdatingRef = true');
 
     try {
       // Swap with next job
       const temp = jobs[currentIndex];
       jobs[currentIndex] = jobs[currentIndex + 1];
       jobs[currentIndex + 1] = temp;
+      console.log('🔄 Swapped jobs');
 
       // Update route with new order
       updatedRoutes[techId].jobs = jobs;
 
       // Recalculate all job timings
+      console.log('⏱️ Recalculating route timings...');
       updatedRoutes[techId] = await recalculateRouteTimings(techId, updatedRoutes);
 
       // Update global jobs list
@@ -788,14 +831,21 @@ const KanbanCalendar = ({
         return recalculatedJob || j;
       });
 
+      console.log('💾 Setting local state...');
       setLocalRoutes(updatedRoutes);
       setLocalJobs(updatedJobs);
+
+      console.log('☁️ Calling parent update functions...');
       await onUpdateRoutes(updatedRoutes);
       await onUpdateJobs(updatedJobs);
+      console.log('✅ Move down complete');
+    } catch (error) {
+      console.error('❌ Error in handleMoveJobDown:', error);
     } finally {
       // Clear flag after a brief delay to allow Firebase sync to complete
       setTimeout(() => {
         isUpdatingRef.current = false;
+        console.log('🏁 Cleared isUpdatingRef after 100ms');
       }, 100);
     }
   };
