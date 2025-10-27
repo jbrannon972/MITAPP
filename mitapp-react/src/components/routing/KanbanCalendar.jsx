@@ -292,6 +292,19 @@ const KanbanCalendar = ({
     return minutesToTime(roundedMinutes);
   };
 
+  // Check if job arrival is outside its timeframe window
+  const isOutsideTimeframe = (job) => {
+    if (!job.timeframeStart || !job.timeframeEnd || !job.startTime) {
+      return false;
+    }
+
+    const startMinutes = timeToMinutes(job.startTime);
+    const windowStart = timeToMinutes(job.timeframeStart);
+    const windowEnd = timeToMinutes(job.timeframeEnd);
+
+    return startMinutes < windowStart || startMinutes > windowEnd;
+  };
+
   // Calculate optimal start time based on drive time (ignoring drag position)
   const calculateOptimalStartTime = async (job, targetTechId) => {
     const techRoute = localRoutes[targetTechId];
@@ -495,17 +508,45 @@ const KanbanCalendar = ({
 
       // Recalculate remaining jobs' timings to shift them up
       updatedRoutes[sourceTechId] = await recalculateRouteTimings(sourceTechId, updatedRoutes);
+
+      // If job is being removed (not just reassigned), clean up second tech assignments
+      if (!targetTechId && job.type !== 'secondTechAssignment') {
+        // Remove any second tech assignments linked to this primary job
+        Object.keys(updatedRoutes).forEach(techId => {
+          if (updatedRoutes[techId]?.jobs) {
+            updatedRoutes[techId].jobs = updatedRoutes[techId].jobs.filter(
+              j => !(j.type === 'secondTechAssignment' && j.primaryJobId === job.id)
+            );
+          }
+        });
+      }
     }
 
-    if (targetTechId) {
-      const targetTech = techs.find(t => t.id === targetTechId);
-      if (!updatedRoutes[targetTechId]) {
-        updatedRoutes[targetTechId] = {
-          tech: targetTech,
-          jobs: []
-        };
+    // Handle second tech assignment being dragged
+    if (job.type === 'secondTechAssignment') {
+      // Second tech assignments can be moved but stay linked to primary
+      if (targetTechId) {
+        const targetTech = techs.find(t => t.id === targetTechId);
+        if (!updatedRoutes[targetTechId]) {
+          updatedRoutes[targetTechId] = {
+            tech: targetTech,
+            jobs: []
+          };
+        }
+        updatedRoutes[targetTechId].jobs.push(updatedJob);
       }
-      updatedRoutes[targetTechId].jobs.push(updatedJob);
+    } else {
+      // Regular job being assigned
+      if (targetTechId) {
+        const targetTech = techs.find(t => t.id === targetTechId);
+        if (!updatedRoutes[targetTechId]) {
+          updatedRoutes[targetTechId] = {
+            tech: targetTech,
+            jobs: []
+          };
+        }
+        updatedRoutes[targetTechId].jobs.push(updatedJob);
+      }
     }
 
     // Update the global jobs list with recalculated times
@@ -1031,8 +1072,10 @@ const KanbanCalendar = ({
                         {job.type === 'secondTechAssignment' ? (
                           // Second tech assignment display
                           <>
-                            <div style={{ fontWeight: '600', fontSize: '10px', marginBottom: '4px', color: 'var(--purple-color)' }}>
-                              <i className="fas fa-handshake"></i> Meeting {job.primaryTechName}
+                            <div style={{ fontWeight: '600', fontSize: '10px', marginBottom: '4px', color: 'var(--purple-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <span>
+                                <i className="fas fa-handshake"></i> Meeting {job.primaryTechName}
+                              </span>
                             </div>
                             <div style={{ fontSize: '9px', color: 'var(--text-secondary)', marginBottom: '3px' }}>
                               <strong>{job.customerName}</strong>
@@ -1052,12 +1095,31 @@ const KanbanCalendar = ({
                         ) : (
                           // Primary job display
                           <>
-                            <div style={{ fontWeight: '600', fontSize: '10px', marginBottom: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                              {job.customerName}
+                            <div style={{ fontWeight: '600', fontSize: '10px', marginBottom: '2px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {job.customerName}
+                              </span>
+                              {isOutsideTimeframe(job) && (
+                                <span
+                                  style={{
+                                    backgroundColor: 'var(--danger-color)',
+                                    color: 'white',
+                                    padding: '1px 4px',
+                                    borderRadius: '3px',
+                                    fontSize: '8px',
+                                    fontWeight: '700',
+                                    marginLeft: '4px',
+                                    flexShrink: 0
+                                  }}
+                                  title={`Outside timeframe window (${job.timeframeStart}-${job.timeframeEnd})`}
+                                >
+                                  ⚠
+                                </span>
+                              )}
                             </div>
                             <div style={{ fontSize: '9px', color: 'var(--text-secondary)' }}>
                               {job.startTime && job.endTime && (
-                                <div style={{ color: 'var(--success-color)', fontWeight: '600', marginBottom: '2px' }}>
+                                <div style={{ color: isOutsideTimeframe(job) ? 'var(--danger-color)' : 'var(--success-color)', fontWeight: '600', marginBottom: '2px' }}>
                                   <i className="fas fa-clock"></i> {job.startTime} - {job.endTime}
                                 </div>
                               )}
