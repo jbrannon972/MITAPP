@@ -60,7 +60,7 @@ const TechnicianCard = ({
               onEdit();
             }}
             title="Edit Member"
-            style={{ position: 'absolute', top: '4px', right: '28px', padding: '2px 6px', fontSize: '10px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '3px', cursor: 'pointer' }}
+            style={{ position: 'absolute', top: '4px', right: '28px', padding: '2px 6px', fontSize: '10px', backgroundColor: 'var(--info-color)', color: 'var(--surface-color)', border: 'none', borderRadius: '3px', cursor: 'pointer' }}
           >
             <i className="fas fa-edit"></i>
           </button>

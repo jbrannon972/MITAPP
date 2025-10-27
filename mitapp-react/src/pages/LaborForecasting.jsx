@@ -203,7 +203,7 @@ const LaborForecasting = () => {
                     <td>{formatCurrency(month.totalLaborSpend)}</td>
                   </tr>
                 ))}
-                <tr style={{ fontWeight: 'bold', backgroundColor: '#f3f4f6' }}>
+                <tr style={{ fontWeight: 'bold', backgroundColor: 'var(--surface-tertiary)' }}>
                   <td>TOTALS</td>
                   <td>-</td>
                   <td>-</td>
@@ -307,7 +307,7 @@ const LaborForecasting = () => {
                   const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
 
                   return (
-                    <tr key={day} style={{ backgroundColor: isWeekend ? '#f9fafb' : 'white' }}>
+                    <tr key={day} style={{ backgroundColor: 'var(--surface-color)' }}>
                       <td><strong>{day}</strong></td>
                       <td>{dayName}</td>
                       <td>{activeJobs}</td>
@@ -350,7 +350,7 @@ const LaborForecasting = () => {
             <div className="metric-header">
               <h3><i className="fas fa-exclamation-triangle"></i> Understaffed Days</h3>
             </div>
-            <div className="metric-value" style={{ color: '#ef4444' }}>
+            <div className="metric-value" style={{ color: 'var(--danger-color)' }}>
               {dailyData.filter(d => d.delta < 0).length}
             </div>
             <div className="metric-label">Days Below Need</div>
@@ -360,7 +360,7 @@ const LaborForecasting = () => {
             <div className="metric-header">
               <h3><i className="fas fa-check-circle"></i> Overstaffed Days</h3>
             </div>
-            <div className="metric-value" style={{ color: '#10b981' }}>
+            <div className="metric-value" style={{ color: 'var(--success-color)' }}>
               {dailyData.filter(d => d.delta > 2).length}
             </div>
             <div className="metric-label">Days Above Need</div>

@@ -174,7 +174,7 @@ const KanbanCalendar = ({
 
     // Add office marker
     const officeEl = document.createElement('div');
-    officeEl.innerHTML = `<div style="background-color: #10b981; color: white; width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 16px; border: 3px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.3);"><i class="fas fa-home"></i></div>`;
+    officeEl.innerHTML = `<div style="background-color: var(--success-color); color: var(--surface-color); width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 16px; border: 3px solid var(--surface-color); box-shadow: 0 2px 8px rgba(0,0,0,0.3);"><i class="fas fa-home"></i></div>`;
     new mapboxgl.Marker(officeEl)
       .setLngLat([officeCoords.lng, officeCoords.lat])
       .setPopup(new mapboxgl.Popup({ offset: 25 })
@@ -187,7 +187,7 @@ const KanbanCalendar = ({
         coordinates.push([job.coordinates.lng, job.coordinates.lat]);
 
         const el = document.createElement('div');
-        el.innerHTML = `<div style="background-color: #3b82f6; color: white; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 14px; border: 3px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.3); cursor: pointer;">${idx + 1}</div>`;
+        el.innerHTML = `<div style="background-color: var(--info-color); color: var(--surface-color); width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 14px; border: 3px solid var(--surface-color); box-shadow: 0 2px 8px rgba(0,0,0,0.3); cursor: pointer;">${idx + 1}</div>`;
 
         new mapboxgl.Marker(el)
           .setLngLat([job.coordinates.lng, job.coordinates.lat])
@@ -223,7 +223,7 @@ const KanbanCalendar = ({
           'line-cap': 'round'
         },
         paint: {
-          'line-color': '#3b82f6',
+          'line-color': 'var(--info-color)',
           'line-width': 4,
           'line-opacity': 0.75
         }
@@ -259,13 +259,13 @@ const KanbanCalendar = ({
 
   const getJobTypeColor = (jobType) => {
     const type = jobType.toLowerCase();
-    if (type.includes('install')) return '#8b5cf6';
-    if (type.includes('demo prep') || type.includes('demo-prep')) return '#f59e0b';
+    if (type.includes('install')) return 'var(--purple-color)';
+    if (type.includes('demo prep') || type.includes('demo-prep')) return 'var(--warning-color)';
     if (type.includes('demo') && !type.includes('check')) return '#ec4899';
-    if (type.includes('service') || type.includes('repair')) return '#3b82f6';
-    if (type.includes('maintenance') || type.includes('maint')) return '#10b981';
+    if (type.includes('service') || type.includes('repair')) return 'var(--info-color)';
+    if (type.includes('maintenance') || type.includes('maint')) return 'var(--success-color)';
     if (type.includes('inspection') || type.includes('check')) return '#06b6d4';
-    return '#6b7280';
+    return 'var(--text-secondary)';
   };
 
   const timeToMinutes = (timeStr) => {
@@ -533,7 +533,7 @@ const KanbanCalendar = ({
       <div style={{
         marginBottom: '8px',
         padding: '8px 12px',
-        backgroundColor: '#f9fafb',
+        backgroundColor: 'var(--surface-secondary)',
         borderRadius: '6px',
         border: '1px solid #e5e7eb',
         display: 'flex',
@@ -545,17 +545,17 @@ const KanbanCalendar = ({
           <h3 style={{ margin: 0, marginBottom: '2px', fontSize: '14px', fontWeight: '600' }}>
             <i className="fas fa-calendar-day"></i> Timeline - {selectedDate}
           </h3>
-          <p style={{ margin: 0, fontSize: '11px', color: '#6b7280' }}>
+          <p style={{ margin: 0, fontSize: '11px', color: 'var(--text-secondary)' }}>
             Drop jobs to auto-schedule • Click job to edit • Click tech name for map
           </p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           {isCalculatingDrive && (
-            <span style={{ fontSize: '11px', color: '#f59e0b' }}>
+            <span style={{ fontSize: '11px', color: 'var(--warning-color)' }}>
               <i className="fas fa-spinner fa-spin"></i> Calculating...
             </span>
           )}
-          <div style={{ fontSize: '12px', fontWeight: '500', color: '#3b82f6' }}>
+          <div style={{ fontSize: '12px', fontWeight: '500', color: 'var(--info-color)' }}>
             {localJobs.filter(j => j.assignedTech).length} / {localJobs.length} assigned
           </div>
         </div>
@@ -568,7 +568,7 @@ const KanbanCalendar = ({
           flex: 1,
           overflow: 'auto',
           position: 'relative',
-          backgroundColor: '#f9fafb'
+          backgroundColor: 'var(--surface-secondary)'
         }}
       >
         <div style={{
@@ -584,7 +584,7 @@ const KanbanCalendar = ({
             position: 'sticky',
             left: '8px',
             zIndex: 10,
-            backgroundColor: '#ffffff',
+            backgroundColor: 'var(--surface-color)',
             borderRadius: '6px',
             border: '1px solid #e5e7eb',
             height: 'fit-content'
@@ -597,10 +597,10 @@ const KanbanCalendar = ({
               borderBottom: '2px solid #e5e7eb',
               fontSize: '10px',
               fontWeight: '600',
-              color: '#6b7280',
+              color: 'var(--text-secondary)',
               position: 'sticky',
               top: 0,
-              backgroundColor: '#ffffff'
+              backgroundColor: 'var(--surface-color)'
             }}>
               TIME
             </div>
@@ -613,7 +613,7 @@ const KanbanCalendar = ({
                 paddingTop: '2px',
                 borderTop: idx === 0 ? 'none' : '1px solid #f3f4f6',
                 fontSize: '10px',
-                color: '#6b7280',
+                color: 'var(--text-secondary)',
                 fontWeight: '500'
               }}>
                 {time}
@@ -629,8 +629,8 @@ const KanbanCalendar = ({
               position: 'sticky',
               left: '66px',
               zIndex: 9,
-              backgroundColor: dragOverTech === 'unassigned' ? '#fef3c7' : '#ffffff',
-              border: dragOverTech === 'unassigned' ? '2px solid #f59e0b' : '1px solid #e5e7eb',
+              backgroundColor: dragOverTech === 'unassigned' ? 'var(--status-pending-bg)' : 'var(--surface-color)',
+              border: dragOverTech === 'unassigned' ? '2px solid var(--warning-color)' : '1px solid #e5e7eb',
               borderRadius: '8px',
               transition: 'all 0.15s ease',
               boxShadow: dragOverTech === 'unassigned' ? '0 4px 12px rgba(245, 158, 11, 0.2)' : 'none',
@@ -644,7 +644,7 @@ const KanbanCalendar = ({
             <div style={{
               padding: '8px',
               borderBottom: '2px solid #e5e7eb',
-              backgroundColor: '#f9fafb',
+              backgroundColor: 'var(--surface-secondary)',
               position: 'sticky',
               top: 0,
               height: '60px',
@@ -655,7 +655,7 @@ const KanbanCalendar = ({
               <h4 style={{ margin: 0, fontSize: '12px', fontWeight: '600', marginBottom: '2px' }}>
                 <i className="fas fa-inbox"></i> Unassigned
               </h4>
-              <p style={{ margin: 0, fontSize: '10px', color: '#6b7280' }}>
+              <p style={{ margin: 0, fontSize: '10px', color: 'var(--text-secondary)' }}>
                 {unassignedJobs.length} jobs
               </p>
             </div>
@@ -670,7 +670,7 @@ const KanbanCalendar = ({
                   style={{
                     marginBottom: '4px',
                     padding: '6px',
-                    backgroundColor: '#ffffff',
+                    backgroundColor: 'var(--surface-color)',
                     border: `2px solid ${getJobTypeColor(job.jobType)}`,
                     borderRadius: '6px',
                     cursor: 'grab',
@@ -689,11 +689,11 @@ const KanbanCalendar = ({
                   <div style={{ fontWeight: '600', fontSize: '11px', marginBottom: '2px' }}>
                     {job.customerName}
                   </div>
-                  <div style={{ fontSize: '9px', color: '#6b7280' }}>
+                  <div style={{ fontSize: '9px', color: 'var(--text-secondary)' }}>
                     <div>{job.jobType}</div>
                     <div style={{ marginTop: '2px' }}>{job.duration}h</div>
                     {job.requiresTwoTechs && (
-                      <div style={{ color: '#f59e0b', marginTop: '2px', fontWeight: '500' }}>
+                      <div style={{ color: 'var(--warning-color)', marginTop: '2px', fontWeight: '500' }}>
                         <i className="fas fa-users"></i> 2 Techs
                       </div>
                     )}
@@ -717,8 +717,8 @@ const KanbanCalendar = ({
                 style={{
                   width: '150px',
                   flexShrink: 0,
-                  backgroundColor: isDragOver ? '#dbeafe' : '#ffffff',
-                  border: isDragging ? '2px solid #f59e0b' : (isDragOver ? '2px solid #3b82f6' : '1px solid #e5e7eb'),
+                  backgroundColor: isDragOver ? 'var(--status-in-progress-bg)' : 'var(--surface-color)',
+                  border: isDragging ? '2px solid var(--warning-color)' : (isDragOver ? '2px solid var(--info-color)' : '1px solid #e5e7eb'),
                   borderRadius: '8px',
                   opacity: isDragging ? 0.5 : 1,
                   transition: 'all 0.15s ease',
@@ -746,7 +746,7 @@ const KanbanCalendar = ({
                     padding: '8px',
                     borderBottom: '2px solid #e5e7eb',
                     cursor: 'pointer',
-                    backgroundColor: '#f9fafb',
+                    backgroundColor: 'var(--surface-secondary)',
                     position: 'sticky',
                     top: 0,
                     zIndex: 1,
@@ -758,15 +758,15 @@ const KanbanCalendar = ({
                   title="Click to view route map"
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '2px' }}>
-                    <i className="fas fa-grip-vertical" style={{ color: '#9ca3af', fontSize: '9px' }}></i>
+                    <i className="fas fa-grip-vertical" style={{ color: 'var(--text-muted)', fontSize: '9px' }}></i>
                     <h4 style={{ margin: 0, fontSize: '11px', fontWeight: '600', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {tech.name}
                     </h4>
-                    <i className="fas fa-map-marked-alt" style={{ color: '#3b82f6', fontSize: '10px' }}></i>
+                    <i className="fas fa-map-marked-alt" style={{ color: 'var(--info-color)', fontSize: '10px' }}></i>
                   </div>
                   <div style={{ marginTop: '4px', display: 'flex', gap: '6px', fontSize: '9px', fontWeight: '500' }}>
-                    <span style={{ color: '#3b82f6' }}>{techJobs.length}j</span>
-                    <span style={{ color: '#10b981' }}>{totalHours.toFixed(1)}h</span>
+                    <span style={{ color: 'var(--info-color)' }}>{techJobs.length}j</span>
+                    <span style={{ color: 'var(--success-color)' }}>{totalHours.toFixed(1)}h</span>
                   </div>
                 </div>
 
@@ -815,7 +815,7 @@ const KanbanCalendar = ({
                           right: '4px',
                           minHeight: `${Math.max(height, 40)}px`,
                           padding: '6px',
-                          backgroundColor: '#ffffff',
+                          backgroundColor: 'var(--surface-color)',
                           border: `2px solid ${getJobTypeColor(job.jobType)}`,
                           borderLeft: `4px solid ${getJobTypeColor(job.jobType)}`,
                           borderRadius: '4px',
@@ -838,20 +838,20 @@ const KanbanCalendar = ({
                         <div style={{ fontWeight: '600', fontSize: '10px', marginBottom: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {job.customerName}
                         </div>
-                        <div style={{ fontSize: '9px', color: '#6b7280' }}>
+                        <div style={{ fontSize: '9px', color: 'var(--text-secondary)' }}>
                           {job.startTime && job.endTime && (
-                            <div style={{ color: '#059669', fontWeight: '600', marginBottom: '2px' }}>
+                            <div style={{ color: 'var(--success-color)', fontWeight: '600', marginBottom: '2px' }}>
                               <i className="fas fa-clock"></i> {job.startTime} - {job.endTime}
                             </div>
                           )}
                           <div>{job.duration}h{job.travelTime > 0 && ` • ${job.travelTime}m`}</div>
                           {job.requiresTwoTechs && (
-                            <div style={{ color: '#f59e0b', marginTop: '2px', fontWeight: '500' }}>
+                            <div style={{ color: 'var(--warning-color)', marginTop: '2px', fontWeight: '500' }}>
                               <i className="fas fa-users"></i> 2
                             </div>
                           )}
                           {job.demoTech && (
-                            <div style={{ color: '#8b5cf6', fontSize: '8px', marginTop: '1px' }}>
+                            <div style={{ color: 'var(--purple-color)', fontSize: '8px', marginTop: '1px' }}>
                               + {job.demoTech}
                             </div>
                           )}
@@ -870,21 +870,21 @@ const KanbanCalendar = ({
                         right: '4px',
                         minHeight: '50px',
                         padding: '8px',
-                        backgroundColor: '#f0fdf4',
-                        border: '2px solid #10b981',
-                        borderLeft: '4px solid #10b981',
+                        backgroundColor: 'var(--success-bg)',
+                        border: '2px solid var(--success-color)',
+                        borderLeft: '4px solid var(--success-color)',
                         borderRadius: '4px',
                         boxShadow: '0 2px 4px rgba(16, 185, 129, 0.2)',
                         pointerEvents: 'none'
                       }}
                     >
                       <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '3px' }}>
-                        <i className="fas fa-home" style={{ color: '#10b981', fontSize: '10px' }}></i>
-                        <div style={{ fontWeight: '600', fontSize: '10px', color: '#065f46' }}>
+                        <i className="fas fa-home" style={{ color: 'var(--success-color)', fontSize: '10px' }}></i>
+                        <div style={{ fontWeight: '600', fontSize: '10px', color: 'var(--success-color)' }}>
                           Return to Office
                         </div>
                       </div>
-                      <div style={{ fontSize: '9px', color: '#065f46' }}>
+                      <div style={{ fontSize: '9px', color: 'var(--success-color)' }}>
                         <div style={{ fontWeight: '600', marginBottom: '2px' }}>
                           <i className="fas fa-clock"></i> {returnToOfficeTimes[tech.id].time}
                         </div>
@@ -925,7 +925,7 @@ const KanbanCalendar = ({
               <div style={{ display: 'grid', gap: '16px' }}>
                 <div>
                   <strong style={{ fontSize: '14px' }}>{selectedJob.customerName}</strong>
-                  <p style={{ margin: '4px 0', fontSize: '12px', color: '#6b7280' }}>{selectedJob.address}</p>
+                  <p style={{ margin: '4px 0', fontSize: '12px', color: 'var(--text-secondary)' }}>{selectedJob.address}</p>
                 </div>
 
                 <div className="form-group">

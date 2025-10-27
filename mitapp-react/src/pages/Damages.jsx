@@ -1,9 +1,12 @@
 import { useState, useEffect } from 'react';
 import Layout from '../components/common/Layout';
 import firebaseService from '../services/firebaseService';
+import notificationService from '../services/notificationService';
+import { useAuth } from '../contexts/AuthContext';
 import { exportToCSV, prepareDamagesDataForExport } from '../utils/exportUtils';
 
 const Damages = () => {
+  const { currentUser } = useAuth();
   const [damages, setDamages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -98,7 +101,14 @@ const Damages = () => {
         await firebaseService.updateDocument('hou_damages', editingDamage.id, damageData);
       } else {
         // Add new damage
-        await firebaseService.addDocument('hou_damages', damageData);
+        const newDamageId = await firebaseService.addDocument('hou_damages', damageData);
+
+        // Notify managers of new damage report
+        const damageWithId = { ...damageData, id: newDamageId };
+        await notificationService.notifyManagersOfDamage(
+          damageWithId,
+          currentUser?.username || 'A user'
+        );
       }
 
       alert(editingDamage ? 'Damage report updated successfully!' : 'Damage report added successfully!');
@@ -202,7 +212,7 @@ const Damages = () => {
               </div>
             </div>
             {(searchTerm || statusFilter !== 'all') && (
-              <div style={{ marginTop: '12px', fontSize: '14px', color: '#6b7280' }}>
+              <div style={{ marginTop: '12px', fontSize: '14px', color: 'var(--text-secondary)' }}>
                 Showing {filteredDamages.length} of {damages.length} reports
               </div>
             )}
@@ -290,7 +300,7 @@ const Damages = () => {
               <div className="modal-body">
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                   <div className="form-group">
-                    <label htmlFor="date">Date <span style={{ color: 'red' }}>*</span></label>
+                    <label htmlFor="date">Date <span style={{ color: 'var(--danger-color)' }}>*</span></label>
                     <input
                       type="date"
                       id="date"
@@ -367,7 +377,7 @@ const Damages = () => {
                     />
                   </div>
                   <div className="form-group" style={{ gridColumn: '1 / -1' }}>
-                    <label htmlFor="description">Description <span style={{ color: 'red' }}>*</span></label>
+                    <label htmlFor="description">Description <span style={{ color: 'var(--danger-color)' }}>*</span></label>
                     <textarea
                       id="description"
                       name="description"

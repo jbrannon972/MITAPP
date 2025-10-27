@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Layout from '../components/common/Layout';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -23,6 +23,32 @@ const Settings = () => {
     compactView: false
   });
 
+  // Load theme from localStorage on mount
+  useEffect(() => {
+    const savedSettings = localStorage.getItem('appSettings');
+    if (savedSettings) {
+      try {
+        const parsed = JSON.parse(savedSettings);
+        setAppSettings(prev => ({ ...prev, ...parsed }));
+        // Apply theme immediately
+        if (parsed.theme === 'dark') {
+          document.body.classList.add('dark-mode');
+        }
+      } catch (error) {
+        console.error('Error loading settings:', error);
+      }
+    }
+  }, []);
+
+  // Apply theme changes to document body
+  useEffect(() => {
+    if (appSettings.theme === 'dark') {
+      document.body.classList.add('dark-mode');
+    } else {
+      document.body.classList.remove('dark-mode');
+    }
+  }, [appSettings.theme]);
+
   const [passwordData, setPasswordData] = useState({
     currentPassword: '',
     newPassword: '',
@@ -42,8 +68,19 @@ const Settings = () => {
     setProfileData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleAppSettingChange = (setting) => {
-    setAppSettings(prev => ({ ...prev, [setting]: !prev[setting] }));
+  const handleAppSettingChange = (setting, value) => {
+    setAppSettings(prev => {
+      const newSettings = typeof value !== 'undefined'
+        ? { ...prev, [setting]: value }
+        : { ...prev, [setting]: !prev[setting] };
+
+      // Auto-save theme changes immediately
+      if (setting === 'theme') {
+        localStorage.setItem('appSettings', JSON.stringify(newSettings));
+      }
+
+      return newSettings;
+    });
   };
 
   const handleSaveProfile = async () => {
@@ -204,9 +241,9 @@ const Settings = () => {
             onChange={handleProfileChange}
             placeholder="your.email@company.com"
             disabled
-            style={{ backgroundColor: '#f3f4f6', cursor: 'not-allowed' }}
+            style={{ backgroundColor: 'var(--surface-tertiary)', cursor: 'not-allowed' }}
           />
-          <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>Email cannot be changed</p>
+          <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px' }}>Email cannot be changed</p>
         </div>
 
         <div style={{ marginBottom: '20px' }}>
@@ -266,11 +303,32 @@ const Settings = () => {
       <div style={{ maxWidth: '600px' }}>
         <div style={{ marginBottom: '24px' }}>
           <h4 style={{ marginBottom: '16px' }}>Appearance</h4>
-          <div style={{ padding: '16px', backgroundColor: '#f9fafb', borderRadius: '6px', marginBottom: '12px' }}>
+
+          {/* Dark Mode Toggle */}
+          <div style={{ padding: '16px', backgroundColor: 'var(--surface-color)', border: '1px solid var(--border-color)', borderRadius: '6px', marginBottom: '12px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <strong>Dark Mode</strong>
+                <p style={{ fontSize: '14px', color: 'var(--text-secondary)', margin: '4px 0 0 0' }}>
+                  Toggle between light and dark theme
+                </p>
+              </div>
+              <label className="switch">
+                <input
+                  type="checkbox"
+                  checked={appSettings.theme === 'dark'}
+                  onChange={(e) => handleAppSettingChange('theme', e.target.checked ? 'dark' : 'light')}
+                />
+                <span className="slider round"></span>
+              </label>
+            </div>
+          </div>
+
+          <div style={{ padding: '16px', backgroundColor: 'var(--surface-color)', border: '1px solid var(--border-color)', borderRadius: '6px', marginBottom: '12px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
                 <strong>Compact View</strong>
-                <p style={{ fontSize: '14px', color: '#6b7280', margin: '4px 0 0 0' }}>
+                <p style={{ fontSize: '14px', color: 'var(--text-secondary)', margin: '4px 0 0 0' }}>
                   Show more data in less space
                 </p>
               </div>
@@ -288,11 +346,11 @@ const Settings = () => {
 
         <div style={{ marginBottom: '24px' }}>
           <h4 style={{ marginBottom: '16px' }}>Notifications</h4>
-          <div style={{ padding: '16px', backgroundColor: '#f9fafb', borderRadius: '6px', marginBottom: '12px' }}>
+          <div style={{ padding: '16px', backgroundColor: 'var(--surface-color)', border: '1px solid var(--border-color)', borderRadius: '6px', marginBottom: '12px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
                 <strong>Enable Notifications</strong>
-                <p style={{ fontSize: '14px', color: '#6b7280', margin: '4px 0 0 0' }}>
+                <p style={{ fontSize: '14px', color: 'var(--text-secondary)', margin: '4px 0 0 0' }}>
                   Receive in-app notifications
                 </p>
               </div>
@@ -307,11 +365,11 @@ const Settings = () => {
             </div>
           </div>
 
-          <div style={{ padding: '16px', backgroundColor: '#f9fafb', borderRadius: '6px', marginBottom: '12px' }}>
+          <div style={{ padding: '16px', backgroundColor: 'var(--surface-color)', border: '1px solid var(--border-color)', borderRadius: '6px', marginBottom: '12px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
                 <strong>Email Notifications</strong>
-                <p style={{ fontSize: '14px', color: '#6b7280', margin: '4px 0 0 0' }}>
+                <p style={{ fontSize: '14px', color: 'var(--text-secondary)', margin: '4px 0 0 0' }}>
                   Receive email updates
                 </p>
               </div>
@@ -329,11 +387,11 @@ const Settings = () => {
 
         <div style={{ marginBottom: '24px' }}>
           <h4 style={{ marginBottom: '16px' }}>Data</h4>
-          <div style={{ padding: '16px', backgroundColor: '#f9fafb', borderRadius: '6px', marginBottom: '12px' }}>
+          <div style={{ padding: '16px', backgroundColor: 'var(--surface-color)', border: '1px solid var(--border-color)', borderRadius: '6px', marginBottom: '12px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
                 <strong>Auto-Save</strong>
-                <p style={{ fontSize: '14px', color: '#6b7280', margin: '4px 0 0 0' }}>
+                <p style={{ fontSize: '14px', color: 'var(--text-secondary)', margin: '4px 0 0 0' }}>
                   Automatically save changes
                 </p>
               </div>
@@ -366,7 +424,7 @@ const Settings = () => {
       <div style={{ maxWidth: '600px' }}>
         <div style={{ marginBottom: '24px' }}>
           <h4 style={{ marginBottom: '16px' }}>Export Data</h4>
-          <p style={{ color: '#6b7280', marginBottom: '16px' }}>
+          <p style={{ color: 'var(--text-secondary)', marginBottom: '16px' }}>
             Export all your data to CSV or JSON format for backup or analysis.
           </p>
           <div style={{ display: 'flex', gap: '12px' }}>
@@ -379,9 +437,9 @@ const Settings = () => {
           </div>
         </div>
 
-        <div style={{ marginBottom: '24px', paddingTop: '24px', borderTop: '1px solid #e5e7eb' }}>
+        <div style={{ marginBottom: '24px', paddingTop: '24px', borderTop: '1px solid var(--border-color)' }}>
           <h4 style={{ marginBottom: '16px' }}>Backup & Restore</h4>
-          <p style={{ color: '#6b7280', marginBottom: '16px' }}>
+          <p style={{ color: 'var(--text-secondary)', marginBottom: '16px' }}>
             Create a complete backup of all application data or restore from a previous backup.
           </p>
           <div style={{ display: 'flex', gap: '12px' }}>
@@ -394,11 +452,11 @@ const Settings = () => {
           </div>
         </div>
 
-        <div style={{ marginBottom: '24px', paddingTop: '24px', borderTop: '1px solid #e5e7eb' }}>
-          <h4 style={{ marginBottom: '16px', color: '#ef4444' }}>
+        <div style={{ marginBottom: '24px', paddingTop: '24px', borderTop: '1px solid var(--border-color)' }}>
+          <h4 style={{ marginBottom: '16px', color: 'var(--danger-color)' }}>
             <i className="fas fa-exclamation-triangle"></i> Danger Zone
           </h4>
-          <p style={{ color: '#6b7280', marginBottom: '16px' }}>
+          <p style={{ color: 'var(--text-secondary)', marginBottom: '16px' }}>
             These actions cannot be undone. Please proceed with caution.
           </p>
           <button className="btn btn-danger">
@@ -413,45 +471,45 @@ const Settings = () => {
     <div>
       <h3 style={{ marginBottom: '24px', fontSize: '20px' }}>About MIT App</h3>
       <div style={{ maxWidth: '600px' }}>
-        <div style={{ padding: '24px', backgroundColor: '#f9fafb', borderRadius: '8px', marginBottom: '24px' }}>
+        <div style={{ padding: '24px', backgroundColor: 'var(--surface-secondary)', borderRadius: '8px', marginBottom: '24px' }}>
           <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-            <i className="fas fa-hard-hat" style={{ fontSize: '64px', color: '#3b82f6', marginBottom: '16px' }}></i>
+            <i className="fas fa-hard-hat" style={{ fontSize: '64px', color: 'var(--info-color)', marginBottom: '16px' }}></i>
             <h2 style={{ margin: 0, marginBottom: '8px' }}>MIT Management App</h2>
-            <p style={{ color: '#6b7280', margin: 0 }}>Version 2.0.0</p>
+            <p style={{ color: 'var(--text-secondary)', margin: 0 }}>Version 2.0.0</p>
           </div>
 
-          <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '20px' }}>
+          <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '20px' }}>
             <h4 style={{ marginBottom: '16px' }}>Features</h4>
             <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
               <li style={{ padding: '8px 0', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <i className="fas fa-check-circle" style={{ color: '#10b981' }}></i>
+                <i className="fas fa-check-circle" style={{ color: 'var(--success-color)' }}></i>
                 Fleet Management with real-time tracking
               </li>
               <li style={{ padding: '8px 0', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <i className="fas fa-check-circle" style={{ color: '#10b981' }}></i>
+                <i className="fas fa-check-circle" style={{ color: 'var(--success-color)' }}></i>
                 Equipment & Tools Inventory
               </li>
               <li style={{ padding: '8px 0', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <i className="fas fa-check-circle" style={{ color: '#10b981' }}></i>
+                <i className="fas fa-check-circle" style={{ color: 'var(--success-color)' }}></i>
                 Damage Tracking & Cost Analysis
               </li>
               <li style={{ padding: '8px 0', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <i className="fas fa-check-circle" style={{ color: '#10b981' }}></i>
+                <i className="fas fa-check-circle" style={{ color: 'var(--success-color)' }}></i>
                 Team & Zone Management
               </li>
               <li style={{ padding: '8px 0', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <i className="fas fa-check-circle" style={{ color: '#10b981' }}></i>
+                <i className="fas fa-check-circle" style={{ color: 'var(--success-color)' }}></i>
                 Labor Forecasting & Planning
               </li>
               <li style={{ padding: '8px 0', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <i className="fas fa-check-circle" style={{ color: '#10b981' }}></i>
+                <i className="fas fa-check-circle" style={{ color: 'var(--success-color)' }}></i>
                 Comprehensive Reporting & Analytics
               </li>
             </ul>
           </div>
 
-          <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '20px', marginTop: '20px' }}>
-            <p style={{ fontSize: '14px', color: '#6b7280', margin: 0, textAlign: 'center' }}>
+          <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '20px', marginTop: '20px' }}>
+            <p style={{ fontSize: '14px', color: 'var(--text-secondary)', margin: 0, textAlign: 'center' }}>
               © 2024 MIT Management App. All rights reserved.
             </p>
           </div>
@@ -459,23 +517,23 @@ const Settings = () => {
 
         <div style={{ marginTop: '24px' }}>
           <h4 style={{ marginBottom: '16px' }}>System Information</h4>
-          <div style={{ backgroundColor: '#f9fafb', padding: '16px', borderRadius: '6px' }}>
+          <div style={{ backgroundColor: 'var(--surface-secondary)', padding: '16px', borderRadius: '6px' }}>
             <table style={{ width: '100%', borderSpacing: '0 8px' }}>
               <tbody>
                 <tr>
-                  <td style={{ color: '#6b7280', paddingRight: '16px' }}>Last Updated:</td>
+                  <td style={{ color: 'var(--text-secondary)', paddingRight: '16px' }}>Last Updated:</td>
                   <td style={{ fontWeight: '500' }}>{new Date().toLocaleDateString()}</td>
                 </tr>
                 <tr>
-                  <td style={{ color: '#6b7280', paddingRight: '16px' }}>Platform:</td>
+                  <td style={{ color: 'var(--text-secondary)', paddingRight: '16px' }}>Platform:</td>
                   <td style={{ fontWeight: '500' }}>Web Application</td>
                 </tr>
                 <tr>
-                  <td style={{ color: '#6b7280', paddingRight: '16px' }}>Database:</td>
+                  <td style={{ color: 'var(--text-secondary)', paddingRight: '16px' }}>Database:</td>
                   <td style={{ fontWeight: '500' }}>Firebase Firestore</td>
                 </tr>
                 <tr>
-                  <td style={{ color: '#6b7280', paddingRight: '16px' }}>Browser:</td>
+                  <td style={{ color: 'var(--text-secondary)', paddingRight: '16px' }}>Browser:</td>
                   <td style={{ fontWeight: '500' }}>{navigator.userAgent.split(' ').slice(-1)[0]}</td>
                 </tr>
               </tbody>
@@ -530,15 +588,15 @@ const Settings = () => {
                     style={{
                       padding: '12px 16px',
                       cursor: 'pointer',
-                      borderBottom: '1px solid #e5e7eb',
-                      backgroundColor: activeSection === section.id ? '#eff6ff' : 'transparent',
-                      color: activeSection === section.id ? '#3b82f6' : '#374151',
+                      borderBottom: '1px solid var(--border-color)',
+                      backgroundColor: activeSection === section.id ? 'var(--active-bg)' : 'transparent',
+                      color: activeSection === section.id ? 'var(--info-color)' : 'var(--text-primary)',
                       fontWeight: activeSection === section.id ? '600' : '400',
                       transition: 'all 0.2s'
                     }}
                     onMouseEnter={(e) => {
                       if (activeSection !== section.id) {
-                        e.target.style.backgroundColor = '#f9fafb';
+                        e.target.style.backgroundColor = 'var(--surface-secondary)';
                       }
                     }}
                     onMouseLeave={(e) => {

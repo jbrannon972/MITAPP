@@ -47,61 +47,102 @@ export const getSubTeamsToday = async (date, staffingData, firebaseService, cale
 
 export const getDailyHoursData = async (date, monthlyData, staffingData, firebaseService, calendarManager, unifiedTechnicianData) => {
   const month = date.getMonth();
-  const data = monthlyData[month];
+  const monthData = monthlyData[month];
 
-  if (!data) {
+  if (!monthData) {
     return {
+      totalTechHours: 0,
+      totalLaborHours: 0,
+      dtHours: 0,
+      hoursAvailable: 0,
+      dtHoursAvailable: 0,
+      subHours: 0,
+      availableHoursGoal: 0,
       potentialNewJobs: 0,
-      inefficientDemoHours: 0,
-      dailyHoursData: []
+      inefficientDemoHours: 0
     };
   }
 
+  // Get daily stats from Firebase (from analyzer CSV upload)
+  const dateString = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  const stats = await firebaseService.getDailyStats(dateString);
+
+  // Calculate sub team prep hours
+  const subTeamCount = stats ? stats.subTeamCount || 0 : 0;
+  const subPrepTime = subTeamCount * 1.5;
+  let totalLaborHours = (stats ? stats.totalLaborHours || 0 : 0) + subPrepTime;
+  const totalTechHours = (stats ? stats.totalTechHours || 0 : 0) + subPrepTime;
+  const dtHours = stats ? stats.dtLaborHours || 0 : 0; // Total DT hours requested
+
+  // Get techs working today
+  const techsOnRoute = await getTechsOnRouteToday(date, staffingData, firebaseService, calendarManager, unifiedTechnicianData);
+  const demoTechsOnRoute = await getDemoTechsOnRouteToday(date, staffingData, firebaseService, calendarManager, unifiedTechnicianData);
+
+  const driveTime = monthData.averageDriveTime || 0;
+  const otHours = monthData.otHoursPerTechPerDay || 0;
+
+  const hoursPerTech = (8 - driveTime + otHours);
+  const hoursAvailable = techsOnRoute * hoursPerTech;
+  const dtHoursAvailable = demoTechsOnRoute * hoursPerTech; // Total available from our DTs
+
+  // Get sub-contractor hours
+  const subHours = stats && stats.subContractorJobs
+    ? stats.subContractorJobs.reduce((acc, job) => acc + (job.demoHours || 0), 0)
+    : 0;
+
+  // Calculate forecast for new jobs
+  const dayOfWeek = date.getDay();
+  let newJobsToday = 0;
+
+  // Get average install duration (using hoursPerAppointment or default to 3.5)
+  const avgInstallDuration = monthData.hoursPerAppointment || 3.5;
+
+  const totalRequestedHours = totalLaborHours + dtHours;
+  const availableHoursGoal = totalRequestedHours + (newJobsToday * avgInstallDuration);
+
+  const baseWorkSurplus = hoursAvailable - totalLaborHours;
+  const surplusHoursForNewInstalls = baseWorkSurplus;
+
+  let potentialNewJobs = 0;
+  if (surplusHoursForNewInstalls > 0 && avgInstallDuration > 0) {
+    potentialNewJobs = Math.floor(surplusHoursForNewInstalls / avgInstallDuration);
+  }
+
+  // Calculate inefficient demo hours
+  const internalDemoHoursNeeded = Math.max(0, dtHours - subHours);
+  const inefficientDemoHours = Math.max(0, dtHoursAvailable - internalDemoHoursNeeded);
+
+  return {
+    totalTechHours,
+    totalLaborHours,
+    dtHours,
+    hoursAvailable,
+    dtHoursAvailable,
+    subHours,
+    availableHoursGoal,
+    potentialNewJobs,
+    inefficientDemoHours
+  };
+};
+
+// Helper function to get demo techs working today
+export const getDemoTechsOnRouteToday = async (date, staffingData, firebaseService, calendarManager, unifiedTechnicianData) => {
   const monthlySchedules = await firebaseService.getScheduleDataForMonth(date.getFullYear(), date.getMonth());
   const allTechs = unifiedTechnicianData || getAllTechnicians(staffingData);
   const schedule = calendarManager.getCalculatedScheduleForDay(date, monthlySchedules, allTechs);
 
-  // Calculate techs working
-  const mitTechs = allTechs.filter(t => t.role === 'MIT Tech' && !t.inTraining);
-  const demoTechs = allTechs.filter(t => t.role === 'Demo Tech');
+  // Get all demo techs
+  const demoTechs = allTechs.filter(s => s && s.role === 'Demo Tech');
 
-  let mitTechsWorking = 0;
   let demoTechsWorking = 0;
-
-  mitTechs.forEach(tech => {
-    const entry = schedule.staff.find(s => s.id === tech.id);
-    if (entry && entry.status === 'on') mitTechsWorking++;
+  demoTechs.forEach(dt => {
+    const staffEntry = schedule.staff.find(s => s.id === dt.id);
+    if (staffEntry && staffEntry.status === 'on') {
+      demoTechsWorking++;
+    }
   });
 
-  demoTechs.forEach(tech => {
-    const entry = schedule.staff.find(s => s.id === tech.id);
-    if (entry && entry.status === 'on') demoTechsWorking++;
-  });
-
-  const driveTime = data.averageDriveTime || 0;
-  const otHours = data.otHoursPerTechPerDay || 0;
-  const hoursPerRoute = (8 - driveTime) + otHours;
-
-  const totalMitHours = mitTechsWorking * hoursPerRoute;
-  const totalDemoHours = demoTechsWorking * 8;
-
-  const hoursPerJob = data.hoursPerAppointment || 8;
-  const potentialNewJobs = Math.floor(totalMitHours / hoursPerJob);
-
-  // Calculate inefficient demo hours
-  const demoPairs = Math.floor(demoTechsWorking / 2);
-  const oddDemoTech = demoTechsWorking % 2;
-  const inefficientDemoHours = oddDemoTech * 8;
-
-  return {
-    potentialNewJobs,
-    inefficientDemoHours,
-    totalMitHours,
-    totalDemoHours,
-    mitTechsWorking,
-    demoTechsWorking,
-    demoPairs
-  };
+  return demoTechsWorking;
 };
 
 export const getAllTechnicians = (staffingData) => {

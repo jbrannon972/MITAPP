@@ -61,8 +61,8 @@ const InstallDpt = () => {
         </div>
 
         {activeReport === 'second-shift' && (
-          <div className="card" style={{ marginTop: '24px', backgroundColor: '#eff6ff', border: '1px solid #3b82f6' }}>
-            <div className="card-header" style={{ backgroundColor: '#dbeafe' }}>
+          <div className="card" style={{ marginTop: '24px', backgroundColor: 'var(--active-bg)', border: '1px solid #3b82f6' }}>
+            <div className="card-header" style={{ backgroundColor: 'var(--status-in-progress-bg)' }}>
               <h3><i className="fas fa-moon"></i> Second Shift Report</h3>
             </div>
             <div style={{ padding: '20px' }}>
@@ -86,7 +86,7 @@ const InstallDpt = () => {
             </div>
             <div style={{ padding: '20px' }}>
               <p>Install Window Report functionality coming soon.</p>
-              <p style={{ marginTop: '12px', color: '#6b7280' }}>
+              <p style={{ marginTop: '12px', color: 'var(--text-secondary)' }}>
                 This will show scheduled install windows and help track installation timing.
               </p>
             </div>
@@ -96,7 +96,7 @@ const InstallDpt = () => {
         <div className="card" style={{ marginTop: activeReport ? '24px' : '0' }}>
           <div className="card-header">
             <h3><i className="fas fa-exclamation-triangle"></i> Jobs Missing Install Records</h3>
-            <span style={{ fontSize: '14px', color: '#6b7280' }}>
+            <span style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>
               {jobsWithoutInstalls.length} jobs need attention
             </span>
           </div>
@@ -175,7 +175,7 @@ const InstallDpt = () => {
               </div>
             </div>
 
-            <div style={{ marginTop: '20px', padding: '16px', backgroundColor: '#f3f4f6', borderRadius: '8px' }}>
+            <div style={{ marginTop: '20px', padding: '16px', backgroundColor: 'var(--surface-tertiary)', borderRadius: '8px' }}>
               <h4 style={{ marginBottom: '8px' }}><i className="fas fa-lightbulb"></i> Quick Actions</h4>
               <ul style={{ marginLeft: '20px', lineHeight: '1.8' }}>
                 <li>Review jobs missing install records in the table above</li>

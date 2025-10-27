@@ -552,9 +552,9 @@ const Calendar = () => {
 
         {/* Admin Status Indicator */}
         {isCalendarAdmin && (
-          <div className="card" style={{ marginBottom: '16px', backgroundColor: '#dcfce7', borderLeft: '4px solid #10b981' }}>
+          <div className="card" style={{ marginBottom: '16px', backgroundColor: 'var(--status-resolved-bg)', borderLeft: '4px solid var(--success-color)' }}>
             <div style={{ padding: '12px 16px' }}>
-              <i className="fas fa-user-shield" style={{ color: '#10b981', marginRight: '8px' }}></i>
+              <i className="fas fa-user-shield" style={{ color: 'var(--success-color)', marginRight: '8px' }}></i>
               <strong>Calendar Admin Mode Active</strong> - Click on any day to edit schedules
             </div>
           </div>

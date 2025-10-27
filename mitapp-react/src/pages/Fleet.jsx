@@ -267,7 +267,7 @@ const Fleet = () => {
               </div>
             </div>
             {(searchTerm || statusFilter !== 'all') && (
-              <div style={{ marginTop: '12px', fontSize: '14px', color: '#6b7280' }}>
+              <div style={{ marginTop: '12px', fontSize: '14px', color: 'var(--text-secondary)' }}>
                 Showing {filteredVehicles.length} of {fleetData.length} vehicles
               </div>
             )}
@@ -276,10 +276,10 @@ const Fleet = () => {
 
         {/* Bulk Actions Bar */}
         {showBulkActions && (
-          <div className="card" style={{ backgroundColor: '#eff6ff', borderColor: '#3b82f6' }}>
+          <div className="card" style={{ backgroundColor: 'var(--active-bg)', borderColor: 'var(--info-color)' }}>
             <div style={{ padding: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <i className="fas fa-check-circle" style={{ color: '#3b82f6', fontSize: '20px' }}></i>
+                <i className="fas fa-check-circle" style={{ color: 'var(--info-color)', fontSize: '20px' }}></i>
                 <span style={{ fontWeight: '500' }}>{selectedVehicles.length} vehicle(s) selected</span>
               </div>
               <div style={{ display: 'flex', gap: '8px' }}>
@@ -406,7 +406,7 @@ const Fleet = () => {
               <div className="modal-body">
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                   <div className="form-group">
-                    <label htmlFor="truckNumber">Truck Number <span style={{ color: 'red' }}>*</span></label>
+                    <label htmlFor="truckNumber">Truck Number <span style={{ color: 'var(--danger-color)' }}>*</span></label>
                     <input
                       type="text"
                       id="truckNumber"

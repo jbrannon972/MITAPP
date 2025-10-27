@@ -234,7 +234,7 @@ const Equipment = () => {
               </div>
             </div>
             {(searchTerm || statusFilter !== 'all') && (
-              <div style={{ marginTop: '12px', fontSize: '14px', color: '#6b7280' }}>
+              <div style={{ marginTop: '12px', fontSize: '14px', color: 'var(--text-secondary)' }}>
                 Showing {filteredEquipment.length} of {equipmentData.length} items
               </div>
             )}
@@ -243,10 +243,10 @@ const Equipment = () => {
 
         {/* Bulk Actions Bar */}
         {showBulkActions && (
-          <div className="card" style={{ backgroundColor: '#eff6ff', borderColor: '#3b82f6' }}>
+          <div className="card" style={{ backgroundColor: 'var(--active-bg)', borderColor: 'var(--info-color)' }}>
             <div style={{ padding: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <i className="fas fa-check-circle" style={{ color: '#3b82f6', fontSize: '20px' }}></i>
+                <i className="fas fa-check-circle" style={{ color: 'var(--info-color)', fontSize: '20px' }}></i>
                 <span style={{ fontWeight: '500' }}>{selectedItems.length} item(s) selected</span>
               </div>
               <div style={{ display: 'flex', gap: '8px' }}>
@@ -385,7 +385,7 @@ const Equipment = () => {
                     />
                   </div>
                   <div className="form-group">
-                    <label htmlFor="name">Name <span style={{ color: 'red' }}>*</span></label>
+                    <label htmlFor="name">Name <span style={{ color: 'var(--danger-color)' }}>*</span></label>
                     <input
                       type="text"
                       id="name"

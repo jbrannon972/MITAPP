@@ -247,7 +247,7 @@ const Reports = () => {
           alignItems: 'center',
           justifyContent: 'center',
           minHeight: '400px',
-          color: '#9ca3af'
+          color: 'var(--text-muted)'
         }}>
           <i className="fas fa-file-alt" style={{ fontSize: '64px', marginBottom: '20px' }}></i>
           <p style={{ fontSize: '18px' }}>Select a report from the left to get started.</p>
@@ -267,7 +267,7 @@ const Reports = () => {
           paddingBottom: '16px',
           borderBottom: '2px solid #e5e7eb'
         }}>
-          <i className={`fas ${report.icon}`} style={{ fontSize: '24px', color: '#3b82f6' }}></i>
+          <i className={`fas ${report.icon}`} style={{ fontSize: '24px', color: 'var(--info-color)' }}></i>
           <h2 style={{ margin: 0 }}>{report.name}</h2>
         </div>
 
@@ -326,8 +326,8 @@ const Reports = () => {
             </div>
             <div style={{ padding: '20px' }}>
               {reportData.message ? (
-                <div style={{ padding: '40px', textAlign: 'center', color: '#6b7280' }}>
-                  <i className="fas fa-info-circle" style={{ fontSize: '48px', marginBottom: '16px', color: '#3b82f6' }}></i>
+                <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                  <i className="fas fa-info-circle" style={{ fontSize: '48px', marginBottom: '16px', color: 'var(--info-color)' }}></i>
                   <p style={{ fontSize: '16px' }}>{reportData.message}</p>
                 </div>
               ) : (
@@ -360,7 +360,7 @@ const Reports = () => {
                         {Object.entries(reportData.statusBreakdown).map(([status, count]) => (
                           <div key={status} style={{
                             padding: '12px 16px',
-                            backgroundColor: '#f3f4f6',
+                            backgroundColor: 'var(--surface-tertiary)',
                             borderRadius: '6px',
                             display: 'flex',
                             justifyContent: 'space-between',
@@ -368,8 +368,8 @@ const Reports = () => {
                           }}>
                             <span style={{ fontWeight: '500' }}>{status}</span>
                             <span style={{
-                              backgroundColor: '#3b82f6',
-                              color: 'white',
+                              backgroundColor: 'var(--info-color)',
+                              color: 'var(--surface-color)',
                               padding: '4px 12px',
                               borderRadius: '12px',
                               fontSize: '14px',
@@ -389,7 +389,7 @@ const Reports = () => {
                         {Object.entries(reportData.categoryBreakdown).map(([category, count]) => (
                           <div key={category} style={{
                             padding: '12px 16px',
-                            backgroundColor: '#f3f4f6',
+                            backgroundColor: 'var(--surface-tertiary)',
                             borderRadius: '6px',
                             display: 'flex',
                             justifyContent: 'space-between',
@@ -397,8 +397,8 @@ const Reports = () => {
                           }}>
                             <span style={{ fontWeight: '500' }}>{category}</span>
                             <span style={{
-                              backgroundColor: '#10b981',
-                              color: 'white',
+                              backgroundColor: 'var(--success-color)',
+                              color: 'var(--surface-color)',
                               padding: '4px 12px',
                               borderRadius: '12px',
                               fontSize: '14px',
@@ -418,7 +418,7 @@ const Reports = () => {
                         {Object.entries(reportData.roleBreakdown).map(([role, count]) => (
                           <div key={role} style={{
                             padding: '12px 16px',
-                            backgroundColor: '#f3f4f6',
+                            backgroundColor: 'var(--surface-tertiary)',
                             borderRadius: '6px',
                             display: 'flex',
                             justifyContent: 'space-between',
@@ -426,8 +426,8 @@ const Reports = () => {
                           }}>
                             <span style={{ fontWeight: '500' }}>{role}</span>
                             <span style={{
-                              backgroundColor: '#8b5cf6',
-                              color: 'white',
+                              backgroundColor: 'var(--purple-color)',
+                              color: 'var(--surface-color)',
                               padding: '4px 12px',
                               borderRadius: '12px',
                               fontSize: '14px',
@@ -447,7 +447,7 @@ const Reports = () => {
                         {Object.entries(reportData.costByStatus).map(([status, cost]) => (
                           <div key={status} style={{
                             padding: '12px 16px',
-                            backgroundColor: '#f3f4f6',
+                            backgroundColor: 'var(--surface-tertiary)',
                             borderRadius: '6px',
                             display: 'flex',
                             justifyContent: 'space-between',
@@ -455,8 +455,8 @@ const Reports = () => {
                           }}>
                             <span style={{ fontWeight: '500' }}>{status}</span>
                             <span style={{
-                              backgroundColor: '#ef4444',
-                              color: 'white',
+                              backgroundColor: 'var(--danger-color)',
+                              color: 'var(--surface-color)',
                               padding: '4px 12px',
                               borderRadius: '12px',
                               fontSize: '14px',
@@ -503,15 +503,15 @@ const Reports = () => {
                     style={{
                       padding: '12px 16px',
                       cursor: 'pointer',
-                      borderBottom: '1px solid #e5e7eb',
-                      backgroundColor: selectedReport === report.id ? '#eff6ff' : 'transparent',
-                      color: selectedReport === report.id ? '#3b82f6' : '#374151',
+                      borderBottom: '1px solid var(--border-color)',
+                      backgroundColor: selectedReport === report.id ? 'var(--active-bg)' : 'transparent',
+                      color: selectedReport === report.id ? 'var(--info-color)' : 'var(--text-primary)',
                       fontWeight: selectedReport === report.id ? '600' : '400',
                       transition: 'all 0.2s'
                     }}
                     onMouseEnter={(e) => {
                       if (selectedReport !== report.id) {
-                        e.target.style.backgroundColor = '#f9fafb';
+                        e.target.style.backgroundColor = 'var(--surface-secondary)';
                       }
                     }}
                     onMouseLeave={(e) => {

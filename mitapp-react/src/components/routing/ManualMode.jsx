@@ -57,13 +57,13 @@ const ManualMode = ({
   // Color mapping for different job types
   const getJobTypeColor = (jobType) => {
     const type = jobType.toLowerCase();
-    if (type.includes('install')) return '#8b5cf6'; // Purple
-    if (type.includes('demo prep') || type.includes('demo-prep')) return '#f59e0b'; // Orange
-    if (type.includes('demo') && !type.includes('check')) return '#ec4899'; // Pink
-    if (type.includes('service') || type.includes('repair')) return '#3b82f6'; // Blue
-    if (type.includes('maintenance') || type.includes('maint')) return '#10b981'; // Green
-    if (type.includes('inspection') || type.includes('check')) return '#06b6d4'; // Cyan
-    return '#6b7280'; // Gray for other/unknown
+    if (type.includes('install')) return 'var(--purple-color)'; // Purple
+    if (type.includes('demo prep') || type.includes('demo-prep')) return 'var(--warning-color)'; // Orange
+    if (type.includes('demo') && !type.includes('check')) return 'var(--danger-color)'; // Pink
+    if (type.includes('service') || type.includes('repair')) return 'var(--info-color)'; // Blue
+    if (type.includes('maintenance') || type.includes('maint')) return 'var(--success-color)'; // Green
+    if (type.includes('inspection') || type.includes('check')) return 'var(--info-color)'; // Cyan
+    return 'var(--text-secondary)'; // Gray for other/unknown
   };
 
   // Initialize map
@@ -113,7 +113,7 @@ const ManualMode = ({
 
       Object.values(officeLocations).forEach(office => {
         const el = document.createElement('div');
-        el.innerHTML = `<div style="background-color: #3b82f6; color: white; padding: 6px 10px; border-radius: 4px; font-weight: bold; font-size: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.2);"><i class="fas fa-building"></i> ${office.name}</div>`;
+        el.innerHTML = `<div style="background-color: var(--info-color); color: var(--surface-color); padding: 6px 10px; border-radius: 4px; font-weight: bold; font-size: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.2);"><i class="fas fa-building"></i> ${office.name}</div>`;
 
         const marker = new mapboxgl.Marker(el)
           .setLngLat([office.lng, office.lat])
@@ -151,7 +151,7 @@ const ManualMode = ({
 
         // Override with status colors
         if (buildingRoute.some(j => j.id === job.id)) {
-          markerColor = '#fbbf24'; // Bright yellow for in building route
+          markerColor = 'var(--warning-color)'; // Bright yellow for in building route
         } else if (job.assignedTech && !showAllJobs) {
           continue; // Skip assigned jobs if not showing all
         } else if (job.assignedTech) {
@@ -164,7 +164,7 @@ const ManualMode = ({
         el.innerHTML = `
           <div class="job-marker" style="
             background-color: ${markerColor};
-            color: white;
+            color: var(--surface-color);
             width: 32px;
             height: 32px;
             border-radius: 50%;
@@ -173,7 +173,7 @@ const ManualMode = ({
             justify-content: center;
             font-weight: bold;
             font-size: 14px;
-            border: 3px solid white;
+            border: 3px solid var(--surface-color);
             box-shadow: 0 2px 8px rgba(0,0,0,0.3);
             transition: transform 0.2s;
           ">
@@ -235,7 +235,7 @@ const ManualMode = ({
             el.innerHTML = `
               <div style="
                 background-color: ${getJobTypeColor(job.jobType)};
-                color: white;
+                color: var(--surface-color);
                 width: 32px;
                 height: 32px;
                 border-radius: 50%;
@@ -244,7 +244,7 @@ const ManualMode = ({
                 justify-content: center;
                 font-weight: bold;
                 font-size: 14px;
-                border: 3px solid white;
+                border: 3px solid var(--surface-color);
                 box-shadow: 0 2px 8px rgba(0,0,0,0.4);
               ">${idx + 1}</div>
             `;
@@ -292,7 +292,7 @@ const ManualMode = ({
               'line-cap': 'round'
             },
             paint: {
-              'line-color': '#3b82f6',
+              'line-color': 'var(--info-color)',
               'line-width': 4,
               'line-opacity': 0.75
             }
@@ -655,15 +655,15 @@ const ManualMode = ({
         alignItems: 'center',
         marginBottom: '12px',
         padding: '12px 16px',
-        backgroundColor: '#f9fafb',
+        backgroundColor: 'var(--surface-secondary)',
         borderRadius: '6px',
         border: '1px solid #e5e7eb'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
           <h3 style={{ margin: 0, fontSize: '16px' }}>Manual Route Builder</h3>
-          <div style={{ fontSize: '13px', color: '#6b7280' }}>
-            <span style={{ fontWeight: '600', color: '#10b981' }}>{unassignedCount}</span> unassigned •
-            <span style={{ fontWeight: '600', color: '#3b82f6', marginLeft: '4px' }}>{assignedCount}</span> assigned
+          <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
+            <span style={{ fontWeight: '600', color: 'var(--success-color)' }}>{unassignedCount}</span> unassigned •
+            <span style={{ fontWeight: '600', color: 'var(--info-color)', marginLeft: '4px' }}>{assignedCount}</span> assigned
           </div>
         </div>
 
@@ -737,7 +737,7 @@ const ManualMode = ({
             gap: '8px',
             cursor: 'pointer',
             padding: '6px 12px',
-            backgroundColor: 'white',
+            backgroundColor: 'var(--surface-color)',
             borderRadius: '4px',
             border: '2px solid #e5e7eb',
             fontSize: '13px',
@@ -770,7 +770,7 @@ const ManualMode = ({
               position: 'absolute',
               bottom: '16px',
               left: '16px',
-              backgroundColor: 'white',
+              backgroundColor: 'var(--surface-color)',
               padding: '16px',
               borderRadius: '8px',
               boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
@@ -787,7 +787,7 @@ const ManualMode = ({
                 paddingBottom: '12px',
                 borderBottom: '2px solid #e5e7eb'
               }}>
-                <h4 style={{ margin: 0, color: '#f59e0b' }}>
+                <h4 style={{ margin: 0, color: 'var(--warning-color)' }}>
                   <i className="fas fa-route"></i> Building Route ({buildingRoute.length})
                 </h4>
                 <button
@@ -805,13 +805,13 @@ const ManualMode = ({
                 style={{
                   cursor: 'grab',
                   padding: '8px',
-                  backgroundColor: '#fef3c7',
+                  backgroundColor: 'var(--status-pending-bg)',
                   borderRadius: '6px',
                   marginBottom: '8px',
-                  border: '2px dashed #f59e0b'
+                  border: '2px dashed var(--warning-color)'
                 }}
               >
-                <div style={{ fontSize: '12px', color: '#92400e', marginBottom: '8px', fontWeight: '500' }}>
+                <div style={{ fontSize: '12px', color: 'var(--warning-color)', marginBottom: '8px', fontWeight: '500' }}>
                   <i className="fas fa-hand-paper"></i> Drag this route to a tech
                 </div>
               </div>
@@ -821,20 +821,20 @@ const ManualMode = ({
                   key={job.id}
                   style={{
                     padding: '10px',
-                    backgroundColor: '#f9fafb',
+                    backgroundColor: 'var(--surface-secondary)',
                     borderRadius: '6px',
                     marginBottom: '6px',
-                    borderLeft: '3px solid #f59e0b',
+                    borderLeft: '3px solid var(--warning-color)',
                     fontSize: '13px'
                   }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
                     <div style={{ flex: 1 }}>
                       <strong>{idx + 1}. {job.customerName}</strong>
-                      <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '4px' }}>
+                      <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '4px' }}>
                         {job.jobType} • {job.duration}h
                         {job.requiresTwoTechs && (
-                          <span style={{ color: '#f59e0b', marginLeft: '6px' }}>
+                          <span style={{ color: 'var(--warning-color)', marginLeft: '6px' }}>
                             <i className="fas fa-users"></i> 2 Techs
                           </span>
                         )}
@@ -856,7 +856,7 @@ const ManualMode = ({
                 paddingTop: '12px',
                 borderTop: '1px solid #e5e7eb',
                 fontSize: '12px',
-                color: '#6b7280'
+                color: 'var(--text-secondary)'
               }}>
                 Total: {buildingRoute.reduce((sum, j) => sum + j.duration, 0).toFixed(1)}h
               </div>
@@ -868,7 +868,7 @@ const ManualMode = ({
             position: 'absolute',
             top: '12px',
             left: '12px',
-            backgroundColor: 'white',
+            backgroundColor: 'var(--surface-color)',
             padding: '10px',
             borderRadius: '6px',
             boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
@@ -879,27 +879,27 @@ const ManualMode = ({
             <div style={{ fontWeight: '600', marginBottom: '6px' }}>Job Types</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#8b5cf6' }}></div>
+                <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: 'var(--purple-color)' }}></div>
                 <span>Install</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#ec4899' }}></div>
+                <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: 'var(--danger-color)' }}></div>
                 <span>Demo</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#3b82f6' }}></div>
+                <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: 'var(--info-color)' }}></div>
                 <span>Service</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#10b981' }}></div>
+                <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: 'var(--success-color)' }}></div>
                 <span>Maint</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#06b6d4' }}></div>
+                <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: 'var(--info-color)' }}></div>
                 <span>Inspect</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#fbbf24' }}></div>
+                <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: 'var(--warning-color)' }}></div>
                 <span>Building</span>
               </div>
             </div>
@@ -924,54 +924,54 @@ const ManualMode = ({
                 top: '50%',
                 left: '50%',
                 transform: 'translate(-50%, -50%)',
-                backgroundColor: 'white',
+                backgroundColor: 'var(--surface-color)',
                 padding: '16px',
                 borderRadius: '8px',
                 boxShadow: '0 8px 24px rgba(0,0,0,0.25)',
                 maxWidth: '400px',
                 zIndex: 1000,
-                border: '2px solid #3b82f6'
+                border: '2px solid var(--info-color)'
               }}
             >
               <div style={{ marginBottom: '12px' }}>
-                <strong style={{ fontSize: '16px', color: '#1f2937' }}>{hoveredJob.customerName}</strong>
+                <strong style={{ fontSize: '16px', color: 'var(--text-primary)' }}>{hoveredJob.customerName}</strong>
               </div>
-              <div style={{ fontSize: '13px', color: '#374151', lineHeight: '1.6' }}>
+              <div style={{ fontSize: '13px', color: 'var(--text-primary)', lineHeight: '1.6' }}>
                 <div style={{ marginBottom: '6px', display: 'flex', alignItems: 'start' }}>
-                  <i className="fas fa-map-marker-alt" style={{ width: '20px', marginTop: '2px', color: '#3b82f6' }}></i>
+                  <i className="fas fa-map-marker-alt" style={{ width: '20px', marginTop: '2px', color: 'var(--info-color)' }}></i>
                   <span>{hoveredJob.address}</span>
                 </div>
                 <div style={{ marginBottom: '6px', display: 'flex', alignItems: 'center' }}>
-                  <i className="fas fa-wrench" style={{ width: '20px', color: '#8b5cf6' }}></i>
+                  <i className="fas fa-wrench" style={{ width: '20px', color: 'var(--purple-color)' }}></i>
                   <span>{hoveredJob.jobType}</span>
                 </div>
                 <div style={{ marginBottom: '6px', display: 'flex', alignItems: 'center' }}>
-                  <i className="fas fa-hourglass-half" style={{ width: '20px', color: '#f59e0b' }}></i>
+                  <i className="fas fa-hourglass-half" style={{ width: '20px', color: 'var(--warning-color)' }}></i>
                   <span style={{ fontWeight: '600' }}>Duration: {hoveredJob.duration}h</span>
                 </div>
                 <div style={{ marginBottom: '6px', display: 'flex', alignItems: 'center' }}>
-                  <i className="fas fa-clock" style={{ width: '20px', color: '#10b981' }}></i>
+                  <i className="fas fa-clock" style={{ width: '20px', color: 'var(--success-color)' }}></i>
                   <span style={{ fontWeight: '600' }}>TF: {hoveredJob.timeframeStart} - {hoveredJob.timeframeEnd}</span>
                 </div>
                 {hoveredJob.phone && (
                   <div style={{ marginBottom: '6px', display: 'flex', alignItems: 'center' }}>
-                    <i className="fas fa-phone" style={{ width: '20px', color: '#06b6d4' }}></i>
+                    <i className="fas fa-phone" style={{ width: '20px', color: 'var(--info-color)' }}></i>
                     <span>{hoveredJob.phone}</span>
                   </div>
                 )}
                 {hoveredJob.description && (
-                  <div style={{ marginTop: '12px', padding: '10px', backgroundColor: '#f3f4f6', borderRadius: '6px', borderLeft: '3px solid #3b82f6' }}>
-                    <strong style={{ fontSize: '12px', color: '#6b7280' }}>Notes:</strong>
-                    <div style={{ fontSize: '12px', marginTop: '4px', color: '#374151' }}>{hoveredJob.description}</div>
+                  <div style={{ marginTop: '12px', padding: '10px', backgroundColor: '#f3f4f6', borderRadius: '6px', borderLeft: '3px solid var(--info-color)' }}>
+                    <strong style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Notes:</strong>
+                    <div style={{ fontSize: '12px', marginTop: '4px', color: 'var(--text-primary)' }}>{hoveredJob.description}</div>
                   </div>
                 )}
                 {hoveredJob.requiresTwoTechs && (
-                  <div style={{ marginTop: '12px', padding: '8px', backgroundColor: '#fef3c7', color: '#92400e', borderRadius: '6px', fontWeight: '600', textAlign: 'center', border: '2px solid #f59e0b' }}>
+                  <div style={{ marginTop: '12px', padding: '8px', backgroundColor: 'var(--status-pending-bg)', color: 'var(--warning-color)', borderRadius: '6px', fontWeight: '600', textAlign: 'center', border: '2px solid var(--warning-color)' }}>
                     <i className="fas fa-users"></i> Requires 2 Technicians
                   </div>
                 )}
               </div>
-              <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #e5e7eb', fontSize: '11px', color: '#6b7280', textAlign: 'center' }}>
+              <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #e5e7eb', fontSize: '11px', color: 'var(--text-secondary)', textAlign: 'center' }}>
                 Click marker to add to route
               </div>
             </div>
@@ -983,7 +983,7 @@ const ManualMode = ({
               position: 'absolute',
               top: '12px',
               right: '12px',
-              backgroundColor: 'white',
+              backgroundColor: 'var(--surface-color)',
               padding: '12px',
               borderRadius: '6px',
               boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
@@ -1010,7 +1010,7 @@ const ManualMode = ({
                     border: 'none',
                     cursor: 'pointer',
                     padding: '2px',
-                    color: '#6b7280'
+                    color: 'var(--text-secondary)'
                   }}
                 >
                   <i className="fas fa-times"></i>
@@ -1021,7 +1021,7 @@ const ManualMode = ({
                   key={job.id}
                   style={{
                     padding: '6px',
-                    backgroundColor: '#f9fafb',
+                    backgroundColor: 'var(--surface-secondary)',
                     borderRadius: '4px',
                     marginBottom: '4px',
                     borderLeft: `3px solid ${getJobTypeColor(job.jobType)}`,
@@ -1031,22 +1031,22 @@ const ManualMode = ({
                   <div style={{ fontWeight: '600', marginBottom: '2px' }}>
                     {idx + 1}. {job.customerName}
                   </div>
-                  <div style={{ color: '#6b7280', fontSize: '10px' }}>
+                  <div style={{ color: 'var(--text-secondary)', fontSize: '10px' }}>
                     {job.startTime && (
-                      <div style={{ marginBottom: '2px', color: '#059669', fontWeight: '600' }}>
+                      <div style={{ marginBottom: '2px', color: 'var(--success-color)', fontWeight: '600' }}>
                         <i className="fas fa-clock"></i> {job.startTime} - {job.endTime}
                       </div>
                     )}
                     <div>
                       {job.jobType} • {job.duration}h
                       {job.requiresTwoTechs && (
-                        <span style={{ color: '#f59e0b', marginLeft: '4px' }}>
+                        <span style={{ color: 'var(--warning-color)', marginLeft: '4px' }}>
                           <i className="fas fa-users"></i>
                         </span>
                       )}
                     </div>
                     {job.travelTime > 0 && (
-                      <div style={{ color: '#f59e0b', fontSize: '9px', marginTop: '2px' }}>
+                      <div style={{ color: 'var(--warning-color)', fontSize: '9px', marginTop: '2px' }}>
                         <i className="fas fa-car"></i> {job.travelTime}min drive
                       </div>
                     )}
@@ -1079,8 +1079,8 @@ const ManualMode = ({
                   style={{
                     marginBottom: '6px',
                     padding: '8px',
-                    backgroundColor: isSelected ? '#dbeafe' : (jobCount > 0 ? '#eff6ff' : '#f9fafb'),
-                    border: isSelected ? '2px solid #3b82f6' : '2px dashed #e5e7eb',
+                    backgroundColor: isSelected ? 'var(--status-in-progress-bg)' : (jobCount > 0 ? 'var(--active-bg)' : 'var(--surface-secondary)'),
+                    border: isSelected ? '2px solid var(--info-color)' : '2px dashed #e5e7eb',
                     borderRadius: '6px',
                     cursor: 'pointer',
                     transition: 'all 0.2s'
@@ -1102,7 +1102,7 @@ const ManualMode = ({
                       }}>
                         {tech.name}
                       </div>
-                      <div style={{ fontSize: '10px', color: '#6b7280' }}>
+                      <div style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>
                         {offices[tech.office]?.shortName}
                       </div>
                     </div>
@@ -1110,14 +1110,14 @@ const ManualMode = ({
                       <div style={{
                         fontSize: '10px',
                         fontWeight: '600',
-                        color: '#3b82f6',
+                        color: 'var(--info-color)',
                         textAlign: 'right',
                         marginLeft: '8px'
                       }}>
                         <div style={{ fontSize: '11px' }}>{jobCount} job{jobCount !== 1 ? 's' : ''}</div>
                         <div>{totalHours.toFixed(1)}h work</div>
                         {techRoute.jobs.length > 0 && techRoute.jobs[techRoute.jobs.length - 1].endTime && (
-                          <div style={{ fontSize: '9px', color: '#059669', marginTop: '2px' }}>
+                          <div style={{ fontSize: '9px', color: 'var(--success-color)', marginTop: '2px' }}>
                             Return: {(() => {
                               const lastJob = techRoute.jobs[techRoute.jobs.length - 1];
                               const endMinutes = parseInt(lastJob.endTime.split(':')[0]) * 60 + parseInt(lastJob.endTime.split(':')[1]);
@@ -1156,7 +1156,7 @@ const ManualMode = ({
                             height: '8px',
                             borderRadius: '50%',
                             backgroundColor: getJobTypeColor(job.jobType),
-                            border: job.requiresTwoTechs ? '1px solid #f59e0b' : 'none'
+                            border: job.requiresTwoTechs ? '1px solid var(--warning-color)' : 'none'
                           }}
                           title={`${job.jobType} - ${job.duration}h`}
                         />
@@ -1167,7 +1167,7 @@ const ManualMode = ({
                   {(!techRoute || !techRoute.jobs || techRoute.jobs.length === 0) && (
                     <div style={{
                       fontSize: '10px',
-                      color: '#9ca3af',
+                      color: 'var(--text-muted)',
                       fontStyle: 'italic',
                       textAlign: 'center',
                       marginTop: '4px'
@@ -1209,7 +1209,7 @@ const ManualMode = ({
               <div className="form-group">
                 <label htmlFor="googleClientId">
                   Google OAuth Client ID
-                  <span style={{ marginLeft: '8px', fontSize: '12px', color: '#6b7280' }}>
+                  <span style={{ marginLeft: '8px', fontSize: '12px', color: 'var(--text-secondary)' }}>
                     (Required for calendar integration)
                   </span>
                 </label>
@@ -1224,17 +1224,17 @@ const ManualMode = ({
                 />
               </div>
 
-              <div style={{ padding: '12px', backgroundColor: '#eff6ff', borderRadius: '6px', fontSize: '13px', marginTop: '16px' }}>
+              <div style={{ padding: '12px', backgroundColor: 'var(--active-bg)', borderRadius: '6px', fontSize: '13px', marginTop: '16px' }}>
                 <strong>Step 2: Configure Tech Emails</strong>
-                <p style={{ margin: '8px 0 0 0', color: '#6b7280' }}>
+                <p style={{ margin: '8px 0 0 0', color: 'var(--text-secondary)' }}>
                   Make sure each technician in the Team section has their Gmail address configured.
                   This is used to push events to their Google Calendar.
                 </p>
               </div>
 
-              <div style={{ padding: '12px', backgroundColor: '#fef3c7', borderRadius: '6px', fontSize: '13px', marginTop: '12px' }}>
+              <div style={{ padding: '12px', backgroundColor: 'var(--status-pending-bg)', borderRadius: '6px', fontSize: '13px', marginTop: '12px' }}>
                 <strong>⚠️ Important:</strong>
-                <p style={{ margin: '8px 0 0 0', color: '#92400e' }}>
+                <p style={{ margin: '8px 0 0 0', color: 'var(--warning-color)' }}>
                   Users will need to authorize access to their Google Calendar the first time you push routes.
                 </p>
               </div>
