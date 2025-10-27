@@ -356,6 +356,79 @@ const KanbanCalendar = ({
     }
   };
 
+  /**
+   * Recalculate all job timings for a tech's route after a job is removed
+   * This ensures jobs automatically shift up and maintain proper drive time spacing
+   */
+  const recalculateRouteTimings = async (techId, routes) => {
+    const techRoute = routes[techId];
+    if (!techRoute || !techRoute.jobs || techRoute.jobs.length === 0) {
+      return techRoute;
+    }
+
+    const tech = techs.find(t => t.id === techId);
+    const officeAddress = offices[tech?.office || 'office_1']?.address;
+    const mapboxService = getMapboxService();
+
+    // Sort jobs chronologically by current start time
+    const sortedJobs = [...techRoute.jobs].sort((a, b) => {
+      const aTime = timeToMinutes(a.startTime || a.timeframeStart);
+      const bTime = timeToMinutes(b.startTime || b.timeframeStart);
+      return aTime - bTime;
+    });
+
+    const recalculatedJobs = [];
+
+    for (let i = 0; i < sortedJobs.length; i++) {
+      const job = sortedJobs[i];
+      let startTime;
+      let driveMinutes = 0;
+
+      if (i === 0) {
+        // First job: calculate from office
+        const shiftStart = '08:15';
+        if (officeAddress && job.address) {
+          try {
+            const result = await mapboxService.getDrivingDistance(officeAddress, job.address);
+            driveMinutes = Math.ceil(result.durationMinutes || 20);
+          } catch (error) {
+            driveMinutes = 20;
+          }
+        }
+        startTime = minutesToTime(timeToMinutes(shiftStart) + driveMinutes);
+      } else {
+        // Subsequent jobs: calculate from previous job
+        const prevJob = recalculatedJobs[i - 1];
+        if (prevJob.address && job.address) {
+          try {
+            const result = await mapboxService.getDrivingDistance(prevJob.address, job.address);
+            driveMinutes = Math.ceil(result.durationMinutes || 20);
+          } catch (error) {
+            driveMinutes = 20;
+          }
+        }
+        const prevEndMinutes = timeToMinutes(prevJob.endTime);
+        startTime = minutesToTime(prevEndMinutes + driveMinutes);
+      }
+
+      const startMinutes = timeToMinutes(startTime);
+      const endMinutes = startMinutes + (job.duration * 60);
+      const endTime = minutesToTime(endMinutes);
+
+      recalculatedJobs.push({
+        ...job,
+        startTime,
+        endTime,
+        travelTime: driveMinutes
+      });
+    }
+
+    return {
+      ...techRoute,
+      jobs: recalculatedJobs
+    };
+  };
+
   const handleJobDragStart = (e, job, sourceTechId) => {
     setDraggedJob({ job, sourceTechId });
     e.dataTransfer.effectAllowed = 'move';
@@ -414,10 +487,14 @@ const KanbanCalendar = ({
     const updatedRoutes = { ...localRoutes };
 
     if (sourceTechId) {
+      // Remove job from source tech
       updatedRoutes[sourceTechId] = {
         ...updatedRoutes[sourceTechId],
         jobs: updatedRoutes[sourceTechId].jobs.filter(j => j.id !== job.id)
       };
+
+      // Recalculate remaining jobs' timings to shift them up
+      updatedRoutes[sourceTechId] = await recalculateRouteTimings(sourceTechId, updatedRoutes);
     }
 
     if (targetTechId) {
@@ -431,9 +508,17 @@ const KanbanCalendar = ({
       updatedRoutes[targetTechId].jobs.push(updatedJob);
     }
 
+    // Update the global jobs list with recalculated times
     const updatedJobs = localJobs.map(j => {
       if (j.id === job.id) {
         return updatedJob;
+      }
+      // Update times for jobs that were recalculated
+      if (sourceTechId && updatedRoutes[sourceTechId]) {
+        const recalculatedJob = updatedRoutes[sourceTechId].jobs.find(rj => rj.id === j.id);
+        if (recalculatedJob) {
+          return recalculatedJob;
+        }
       }
       return j;
     });
@@ -716,10 +801,29 @@ const KanbanCalendar = ({
               route.jobs?.forEach(job => {
                 // Check if this tech is the second tech on this job and it's not already in primary jobs
                 if (job.demoTech === tech.name && !primaryJobs.find(pj => pj.id === job.id)) {
+                  // Calculate second tech's specific time window
+                  let secondTechStartTime = job.startTime;
+                  let secondTechEndTime = job.endTime;
+                  let secondTechDuration = job.duration;
+
+                  if (job.secondTechDuration === 'partial' && job.secondTechHours) {
+                    // Partial time: arrive at start, leave after their hours
+                    const startMinutes = timeToMinutes(job.startTime);
+                    const endMinutes = startMinutes + (job.secondTechHours * 60);
+                    secondTechEndTime = minutesToTime(endMinutes);
+                    secondTechDuration = job.secondTechHours;
+                  }
+
                   secondTechJobs.push({
                     ...job,
+                    id: `${job.id}_secondtech`, // Unique ID for second tech event
+                    originalJobId: job.id, // Track original job ID
+                    startTime: secondTechStartTime,
+                    endTime: secondTechEndTime,
+                    duration: secondTechDuration,
                     isSecondTech: true, // Mark this so we can style differently
-                    primaryTech: route.tech?.name // Track who the primary tech is
+                    primaryTech: route.tech?.name, // Track who the primary tech is
+                    primaryTechId: route.tech?.id // Track primary tech ID for reference
                   });
                 }
               });
@@ -883,11 +987,11 @@ const KanbanCalendar = ({
                           border: job.isSecondTech ? '2px dashed var(--purple-color)' : `2px solid ${getJobTypeColor(job.jobType)}`,
                           borderLeft: job.isSecondTech ? '4px solid var(--purple-color)' : `4px solid ${getJobTypeColor(job.jobType)}`,
                           borderRadius: '4px',
-                          cursor: job.isSecondTech ? 'default' : 'pointer',
+                          cursor: job.isSecondTech ? 'default' : 'grab',
                           transition: 'all 0.15s ease',
-                          boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
+                          boxShadow: job.isSecondTech ? '0 2px 4px rgba(0,0,0,0.15)' : '0 1px 2px rgba(0,0,0,0.1)',
                           overflow: 'hidden',
-                          opacity: job.isSecondTech ? 0.85 : 1
+                          opacity: job.isSecondTech ? 0.9 : 1
                         }}
                         onMouseEnter={(e) => {
                           e.currentTarget.style.transform = 'translateX(2px)';
@@ -900,34 +1004,54 @@ const KanbanCalendar = ({
                           e.currentTarget.style.zIndex = '1';
                         }}
                       >
-                        <div style={{ fontWeight: '600', fontSize: '10px', marginBottom: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {job.customerName}
-                        </div>
-                        {job.isSecondTech && (
-                          <div style={{ fontSize: '8px', color: 'var(--purple-color)', fontWeight: '600', marginBottom: '2px' }}>
-                            <i className="fas fa-user-friends"></i> Helping {job.primaryTech}
-                            {job.secondTechDuration === 'partial' && ` (${job.secondTechHours || 1}h only)`}
-                          </div>
+                        {job.isSecondTech ? (
+                          // Second tech event display
+                          <>
+                            <div style={{ fontWeight: '600', fontSize: '10px', marginBottom: '4px', color: 'var(--purple-color)' }}>
+                              <i className="fas fa-handshake"></i> Meeting {job.primaryTech}
+                            </div>
+                            <div style={{ fontSize: '9px', color: 'var(--text-secondary)', marginBottom: '3px' }}>
+                              <strong>{job.customerName}</strong>
+                            </div>
+                            <div style={{ fontSize: '8px', color: 'var(--text-secondary)', marginBottom: '2px' }}>
+                              {job.address}
+                            </div>
+                            <div style={{ fontSize: '9px', color: 'var(--success-color)', fontWeight: '600' }}>
+                              <i className="fas fa-clock"></i> {job.startTime} - {job.endTime} ({job.duration}h)
+                            </div>
+                            {job.secondTechDuration === 'partial' && (
+                              <div style={{ fontSize: '8px', color: 'var(--warning-color)', marginTop: '2px', fontStyle: 'italic' }}>
+                                Heavy lifting only
+                              </div>
+                            )}
+                          </>
+                        ) : (
+                          // Primary job display
+                          <>
+                            <div style={{ fontWeight: '600', fontSize: '10px', marginBottom: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {job.customerName}
+                            </div>
+                            <div style={{ fontSize: '9px', color: 'var(--text-secondary)' }}>
+                              {job.startTime && job.endTime && (
+                                <div style={{ color: 'var(--success-color)', fontWeight: '600', marginBottom: '2px' }}>
+                                  <i className="fas fa-clock"></i> {job.startTime} - {job.endTime}
+                                </div>
+                              )}
+                              <div>{job.duration}h{job.travelTime > 0 && ` • ${job.travelTime}m`}</div>
+                              {job.requiresTwoTechs && (
+                                <div style={{ color: 'var(--warning-color)', marginTop: '2px', fontWeight: '500' }}>
+                                  <i className="fas fa-users"></i> 2
+                                </div>
+                              )}
+                              {job.demoTech && (
+                                <div style={{ color: 'var(--purple-color)', fontSize: '8px', marginTop: '1px' }}>
+                                  + {job.demoTech}
+                                  {job.secondTechDuration === 'partial' && ` (${job.secondTechHours || 1}h)`}
+                                </div>
+                              )}
+                            </div>
+                          </>
                         )}
-                        <div style={{ fontSize: '9px', color: 'var(--text-secondary)' }}>
-                          {job.startTime && job.endTime && (
-                            <div style={{ color: 'var(--success-color)', fontWeight: '600', marginBottom: '2px' }}>
-                              <i className="fas fa-clock"></i> {job.startTime} - {job.endTime}
-                            </div>
-                          )}
-                          <div>{job.duration}h{job.travelTime > 0 && ` • ${job.travelTime}m`}</div>
-                          {job.requiresTwoTechs && !job.isSecondTech && (
-                            <div style={{ color: 'var(--warning-color)', marginTop: '2px', fontWeight: '500' }}>
-                              <i className="fas fa-users"></i> 2
-                            </div>
-                          )}
-                          {job.demoTech && !job.isSecondTech && (
-                            <div style={{ color: 'var(--purple-color)', fontSize: '8px', marginTop: '1px' }}>
-                              + {job.demoTech}
-                              {job.secondTechDuration === 'partial' && ` (${job.secondTechHours || 1}h)`}
-                            </div>
-                          )}
-                        </div>
                       </div>
                     );
                   })}
