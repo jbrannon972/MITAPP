@@ -679,12 +679,14 @@ const Routing = () => {
 
   const renderRoutingView = () => {
     const leadTechs = getLeadTechs();
+    const demoTechs = getDemoTechs();
+    const allTechs = [...leadTechs, ...demoTechs];
 
     return (
       <ManualMode
         jobs={jobs}
         routes={routes}
-        techs={leadTechs}
+        techs={allTechs}
         offices={offices}
         mapboxToken={mapboxToken}
         onUpdateRoutes={saveRoutes}
@@ -698,12 +700,14 @@ const Routing = () => {
 
   const renderKanbanView = () => {
     const leadTechs = getLeadTechs();
+    const demoTechs = getDemoTechs();
+    const allTechs = [...leadTechs, ...demoTechs];
 
     return (
       <KanbanCalendar
         jobs={jobs}
         routes={routes}
-        techs={leadTechs}
+        techs={allTechs}
         offices={offices}
         onUpdateRoutes={saveRoutes}
         onUpdateJobs={saveJobs}

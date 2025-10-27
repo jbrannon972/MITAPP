@@ -292,60 +292,67 @@ const KanbanCalendar = ({
     return minutesToTime(roundedMinutes);
   };
 
-  // Calculate optimal start time with drive time intelligence
-  const calculateOptimalStartTime = async (job, targetTechId, droppedYPos) => {
+  // Calculate optimal start time based on drive time (ignoring drag position)
+  const calculateOptimalStartTime = async (job, targetTechId) => {
     const techRoute = localRoutes[targetTechId];
     const techJobs = techRoute?.jobs || [];
 
+    // If no jobs, start from office at 8:15 AM + drive time to first job
     if (techJobs.length === 0) {
       const shiftStart = '08:15';
-      const droppedTime = getTimeFromY(droppedYPos);
-      const shiftMinutes = timeToMinutes(shiftStart);
-      const droppedMinutes = timeToMinutes(droppedTime);
-      return minutesToTime(Math.max(shiftMinutes, droppedMinutes));
+      const targetTech = techs.find(t => t.id === targetTechId);
+      const officeAddress = offices[targetTech?.office || 'office_1']?.address;
+
+      if (!officeAddress || !job.address) {
+        // No office address or job address, just use 8:15
+        return shiftStart;
+      }
+
+      // Calculate drive time from office to job
+      setIsCalculatingDrive(true);
+      try {
+        const mapboxService = getMapboxService();
+        const result = await mapboxService.getDrivingDistance(officeAddress, job.address);
+        const driveMinutes = Math.ceil(result.durationMinutes || 20);
+
+        const shiftMinutes = timeToMinutes(shiftStart);
+        const calculatedStartMinutes = shiftMinutes + driveMinutes;
+
+        setIsCalculatingDrive(false);
+        return minutesToTime(calculatedStartMinutes);
+      } catch (error) {
+        console.error('Drive time error:', error);
+        setIsCalculatingDrive(false);
+        return minutesToTime(timeToMinutes(shiftStart) + 20);
+      }
     }
 
-    const droppedTime = getTimeFromY(droppedYPos);
-    const droppedMinutes = timeToMinutes(droppedTime);
-
+    // If jobs exist, ALWAYS add to the end (after the last job chronologically)
     const sortedJobs = [...techJobs].sort((a, b) => {
       const aTime = timeToMinutes(a.startTime || a.timeframeStart);
       const bTime = timeToMinutes(b.startTime || b.timeframeStart);
       return aTime - bTime;
     });
 
-    let previousJob = null;
-    for (let i = sortedJobs.length - 1; i >= 0; i--) {
-      const jobEndMinutes = timeToMinutes(sortedJobs[i].endTime || sortedJobs[i].timeframeEnd);
-      if (jobEndMinutes <= droppedMinutes) {
-        previousJob = sortedJobs[i];
-        break;
-      }
-    }
+    const lastJob = sortedJobs[sortedJobs.length - 1];
 
-    if (!previousJob) {
-      return minutesToTime(Math.max(timeToMinutes('08:15'), droppedMinutes));
-    }
-
-    // Calculate drive time
+    // Calculate drive time from last job to new job
     setIsCalculatingDrive(true);
     try {
       const mapboxService = getMapboxService();
-      const result = await mapboxService.getDrivingDistance(previousJob.address, job.address);
+      const result = await mapboxService.getDrivingDistance(lastJob.address, job.address);
       const driveMinutes = Math.ceil(result.durationMinutes || 20);
 
-      const prevEndMinutes = timeToMinutes(previousJob.endTime);
-      const calculatedStartMinutes = prevEndMinutes + driveMinutes;
+      const lastJobEndMinutes = timeToMinutes(lastJob.endTime || lastJob.timeframeEnd);
+      const calculatedStartMinutes = lastJobEndMinutes + driveMinutes;
 
       setIsCalculatingDrive(false);
-
-      // Always use calculated time, not dropped time
       return minutesToTime(calculatedStartMinutes);
     } catch (error) {
       console.error('Drive time error:', error);
       setIsCalculatingDrive(false);
-      const prevEndMinutes = timeToMinutes(previousJob.endTime);
-      return minutesToTime(prevEndMinutes + 20);
+      const lastJobEndMinutes = timeToMinutes(lastJob.endTime || lastJob.timeframeEnd);
+      return minutesToTime(lastJobEndMinutes + 20);
     }
   };
 
@@ -387,16 +394,9 @@ const KanbanCalendar = ({
       return;
     }
 
-    // Calculate Y position relative to the scroll container
-    let yPos = 0;
-    if (targetTechId) {
-      const scrollContainer = scrollContainerRef.current;
-      const scrollTop = scrollContainer ? scrollContainer.scrollTop : 0;
-      yPos = e.clientY - scrollContainer.getBoundingClientRect().top + scrollTop - 80; // Adjust for header
-    }
-
+    // Calculate start time based on drive time (ignoring drag Y position)
     const startTime = targetTechId
-      ? await calculateOptimalStartTime(job, targetTechId, yPos)
+      ? await calculateOptimalStartTime(job, targetTechId)
       : (job.startTime || job.timeframeStart);
 
     const startMinutes = timeToMinutes(startTime);
@@ -706,8 +706,29 @@ const KanbanCalendar = ({
           {/* Tech Columns */}
           {techs.map(tech => {
             const techRoute = localRoutes[tech.id];
-            const techJobs = techRoute?.jobs || [];
-            const totalHours = techJobs.reduce((sum, j) => sum + j.duration, 0);
+
+            // Get jobs assigned to this tech
+            const primaryJobs = techRoute?.jobs || [];
+
+            // Also get jobs where this tech is the second tech
+            const secondTechJobs = [];
+            Object.values(localRoutes).forEach(route => {
+              route.jobs?.forEach(job => {
+                // Check if this tech is the second tech on this job and it's not already in primary jobs
+                if (job.demoTech === tech.name && !primaryJobs.find(pj => pj.id === job.id)) {
+                  secondTechJobs.push({
+                    ...job,
+                    isSecondTech: true, // Mark this so we can style differently
+                    primaryTech: route.tech?.name // Track who the primary tech is
+                  });
+                }
+              });
+            });
+
+            // Combine both sets of jobs
+            const techJobs = [...primaryJobs, ...secondTechJobs];
+
+            const totalHours = primaryJobs.reduce((sum, j) => sum + j.duration, 0);
             const isDragOver = dragOverTech === tech.id;
             const isDragging = draggedTech === tech.id;
 
@@ -843,11 +864,13 @@ const KanbanCalendar = ({
                     return (
                       <div
                         key={job.id}
-                        draggable
-                        onDragStart={(e) => handleJobDragStart(e, job, tech.id)}
+                        draggable={!job.isSecondTech}
+                        onDragStart={(e) => !job.isSecondTech && handleJobDragStart(e, job, tech.id)}
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleJobClick(job);
+                          if (!job.isSecondTech) {
+                            handleJobClick(job);
+                          }
                         }}
                         style={{
                           position: 'absolute',
@@ -856,14 +879,15 @@ const KanbanCalendar = ({
                           right: '4px',
                           minHeight: `${Math.max(height, 40)}px`,
                           padding: '6px',
-                          backgroundColor: 'var(--surface-color)',
-                          border: `2px solid ${getJobTypeColor(job.jobType)}`,
-                          borderLeft: `4px solid ${getJobTypeColor(job.jobType)}`,
+                          backgroundColor: job.isSecondTech ? 'var(--status-pending-bg)' : 'var(--surface-color)',
+                          border: job.isSecondTech ? '2px dashed var(--purple-color)' : `2px solid ${getJobTypeColor(job.jobType)}`,
+                          borderLeft: job.isSecondTech ? '4px solid var(--purple-color)' : `4px solid ${getJobTypeColor(job.jobType)}`,
                           borderRadius: '4px',
-                          cursor: 'pointer',
+                          cursor: job.isSecondTech ? 'default' : 'pointer',
                           transition: 'all 0.15s ease',
                           boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
-                          overflow: 'hidden'
+                          overflow: 'hidden',
+                          opacity: job.isSecondTech ? 0.85 : 1
                         }}
                         onMouseEnter={(e) => {
                           e.currentTarget.style.transform = 'translateX(2px)';
@@ -879,6 +903,12 @@ const KanbanCalendar = ({
                         <div style={{ fontWeight: '600', fontSize: '10px', marginBottom: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {job.customerName}
                         </div>
+                        {job.isSecondTech && (
+                          <div style={{ fontSize: '8px', color: 'var(--purple-color)', fontWeight: '600', marginBottom: '2px' }}>
+                            <i className="fas fa-user-friends"></i> Helping {job.primaryTech}
+                            {job.secondTechDuration === 'partial' && ` (${job.secondTechHours || 1}h only)`}
+                          </div>
+                        )}
                         <div style={{ fontSize: '9px', color: 'var(--text-secondary)' }}>
                           {job.startTime && job.endTime && (
                             <div style={{ color: 'var(--success-color)', fontWeight: '600', marginBottom: '2px' }}>
@@ -886,12 +916,12 @@ const KanbanCalendar = ({
                             </div>
                           )}
                           <div>{job.duration}h{job.travelTime > 0 && ` • ${job.travelTime}m`}</div>
-                          {job.requiresTwoTechs && (
+                          {job.requiresTwoTechs && !job.isSecondTech && (
                             <div style={{ color: 'var(--warning-color)', marginTop: '2px', fontWeight: '500' }}>
                               <i className="fas fa-users"></i> 2
                             </div>
                           )}
-                          {job.demoTech && (
+                          {job.demoTech && !job.isSecondTech && (
                             <div style={{ color: 'var(--purple-color)', fontSize: '8px', marginTop: '1px' }}>
                               + {job.demoTech}
                               {job.secondTechDuration === 'partial' && ` (${job.secondTechHours || 1}h)`}
