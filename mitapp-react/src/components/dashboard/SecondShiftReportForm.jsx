@@ -2,16 +2,14 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import firebaseService from '../../services/firebaseService';
 
-const SecondShiftReportForm = ({ onClose, onSubmitSuccess }) => {
+const SecondShiftReportForm = ({ reportType = 'supervisor', onClose, onSubmitSuccess }) => {
   const { currentUser } = useAuth();
 
-  // Determine report type based on role
-  const isSecondShiftOrMITLead =
-    currentUser?.role === 'Second Shift Lead' ||
-    currentUser?.role === 'MIT Lead';
+  // Determine which form to show based on reportType prop
+  const isSecondShiftReport = reportType === 'secondShift';
 
   const [formData, setFormData] = useState(
-    isSecondShiftOrMITLead
+    isSecondShiftReport
       ? {
           // Second Shift / MIT Lead form data
           date: new Date().toISOString().split('T')[0],
@@ -96,8 +94,8 @@ const SecondShiftReportForm = ({ onClose, onSubmitSuccess }) => {
 
       let reportData;
 
-      if (isSecondShiftOrMITLead) {
-        // Second Shift / MIT Lead report
+      if (isSecondShiftReport) {
+        // Second Shift report
         reportData = {
           reportType: 'secondShift',
           date: formData.date,
@@ -164,8 +162,8 @@ const SecondShiftReportForm = ({ onClose, onSubmitSuccess }) => {
       <div className="modal modal-lg" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h3>
-            <i className={isSecondShiftOrMITLead ? 'fas fa-moon' : 'fas fa-clipboard-check'}></i>{' '}
-            {isSecondShiftOrMITLead ? 'Second Shift Report' : 'Supervisor Report'}
+            <i className={isSecondShiftReport ? 'fas fa-moon' : 'fas fa-clipboard-check'}></i>{' '}
+            {isSecondShiftReport ? 'Second Shift Report' : 'Supervisor Report'}
           </h3>
           <button className="modal-close" onClick={onClose}><i className="fas fa-times"></i></button>
         </div>
@@ -181,9 +179,9 @@ const SecondShiftReportForm = ({ onClose, onSubmitSuccess }) => {
             />
           </div>
 
-          {isSecondShiftOrMITLead ? (
+          {isSecondShiftReport ? (
             <>
-              {/* Second Shift / MIT Lead Questions */}
+              {/* Second Shift Questions */}
               {/* Install Windows Left */}
           <div className="question-section" style={{ marginTop: '24px', padding: '16px', backgroundColor: 'var(--surface-secondary)', borderRadius: '8px' }}>
             <div className="form-group">

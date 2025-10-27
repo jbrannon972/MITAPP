@@ -16,6 +16,7 @@ const Dashboard = () => {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [loading, setLoading] = useState(true);
   const [showReportForm, setShowReportForm] = useState(false);
+  const [reportType, setReportType] = useState('supervisor'); // 'supervisor' or 'secondShift'
   const [showHuddleModal, setShowHuddleModal] = useState(false);
   const [dashboardData, setDashboardData] = useState({
     dailyStats: null,
@@ -187,7 +188,10 @@ const Dashboard = () => {
             {(currentUser?.role === 'Supervisor' || currentUser?.role === 'MIT Lead') && (
               <button
                 className="btn btn-success"
-                onClick={() => setShowReportForm(true)}
+                onClick={() => {
+                  setReportType('supervisor');
+                  setShowReportForm(true);
+                }}
                 title="Submit Supervisor Report"
               >
                 <i className="fas fa-clipboard-check"></i> Submit Supervisor Report
@@ -199,7 +203,10 @@ const Dashboard = () => {
               currentUser?.userId === staffingData.secondShiftLead) && (
               <button
                 className="btn btn-info"
-                onClick={() => setShowReportForm(true)}
+                onClick={() => {
+                  setReportType('secondShift');
+                  setShowReportForm(true);
+                }}
                 title="Submit Second Shift Report"
               >
                 <i className="fas fa-moon"></i> Submit 2nd Shift Report
@@ -581,6 +588,7 @@ const Dashboard = () => {
       {/* Second Shift Report Form Modal */}
       {showReportForm && (
         <SecondShiftReportForm
+          reportType={reportType}
           onClose={() => setShowReportForm(false)}
           onSubmitSuccess={() => {
             setShowReportForm(false);
