@@ -294,15 +294,26 @@ const KanbanCalendar = ({
 
   // Check if job arrival is outside its timeframe window
   const isOutsideTimeframe = (job) => {
+    // Don't show badge for second tech assignments or jobs without timeframes
+    if (job.type === 'secondTechAssignment') {
+      return false;
+    }
+
+    // Must have all three fields to check
     if (!job.timeframeStart || !job.timeframeEnd || !job.startTime) {
       return false;
     }
 
-    const startMinutes = timeToMinutes(job.startTime);
-    const windowStart = timeToMinutes(job.timeframeStart);
-    const windowEnd = timeToMinutes(job.timeframeEnd);
+    try {
+      const startMinutes = timeToMinutes(job.startTime);
+      const windowStart = timeToMinutes(job.timeframeStart);
+      const windowEnd = timeToMinutes(job.timeframeEnd);
 
-    return startMinutes < windowStart || startMinutes > windowEnd;
+      return startMinutes < windowStart || startMinutes > windowEnd;
+    } catch (error) {
+      // If there's any error parsing times, don't show badge
+      return false;
+    }
   };
 
   // Calculate optimal start time based on drive time (ignoring drag position)
@@ -480,85 +491,127 @@ const KanbanCalendar = ({
       return;
     }
 
-    // Calculate start time based on drive time (ignoring drag Y position)
-    const startTime = targetTechId
-      ? await calculateOptimalStartTime(job, targetTechId)
-      : (job.startTime || job.timeframeStart);
-
-    const startMinutes = timeToMinutes(startTime);
-    const endMinutes = startMinutes + (job.duration * 60);
-    const endTime = minutesToTime(endMinutes);
-
-    const updatedJob = {
-      ...job,
-      startTime,
-      endTime,
-      assignedTech: targetTechId,
-      status: targetTechId ? 'assigned' : 'unassigned'
-    };
-
     const updatedRoutes = { ...localRoutes };
 
-    if (sourceTechId) {
-      // Remove job from source tech
-      updatedRoutes[sourceTechId] = {
-        ...updatedRoutes[sourceTechId],
-        jobs: updatedRoutes[sourceTechId].jobs.filter(j => j.id !== job.id)
-      };
+    // Check if reordering within same tech
+    const isSameTechReorder = sourceTechId === targetTechId && sourceTechId;
 
-      // Recalculate remaining jobs' timings to shift them up
+    if (isSameTechReorder) {
+      // REORDERING WITHIN SAME TECH - handle specially
+      const scrollContainer = scrollContainerRef.current;
+      const scrollTop = scrollContainer ? scrollContainer.scrollTop : 0;
+      const dropYPos = e.clientY - scrollContainer.getBoundingClientRect().top + scrollTop - 80;
+      const dropTime = getTimeFromY(dropYPos);
+      const dropMinutes = timeToMinutes(dropTime);
+
+      // Get all jobs except the one being moved
+      const otherJobs = updatedRoutes[sourceTechId].jobs.filter(j => j.id !== job.id);
+
+      // Sort by start time
+      const sortedJobs = otherJobs.sort((a, b) => {
+        const aTime = timeToMinutes(a.startTime || a.timeframeStart);
+        const bTime = timeToMinutes(b.startTime || b.timeframeStart);
+        return aTime - bTime;
+      });
+
+      // Find insertion point based on drop position
+      let insertIndex = sortedJobs.findIndex(j => timeToMinutes(j.startTime) > dropMinutes);
+      if (insertIndex === -1) insertIndex = sortedJobs.length;
+
+      // Insert job at new position
+      sortedJobs.splice(insertIndex, 0, job);
+
+      // Update route with new order
+      updatedRoutes[sourceTechId].jobs = sortedJobs;
+
+      // Recalculate ALL jobs in new order
       updatedRoutes[sourceTechId] = await recalculateRouteTimings(sourceTechId, updatedRoutes);
 
-      // If job is being removed (not just reassigned), clean up second tech assignments
-      if (!targetTechId && job.type !== 'secondTechAssignment') {
-        // Remove any second tech assignments linked to this primary job
-        Object.keys(updatedRoutes).forEach(techId => {
-          if (updatedRoutes[techId]?.jobs) {
-            updatedRoutes[techId].jobs = updatedRoutes[techId].jobs.filter(
-              j => !(j.type === 'secondTechAssignment' && j.primaryJobId === job.id)
-            );
-          }
-        });
-      }
-    }
-
-    // Handle second tech assignment being dragged
-    if (job.type === 'secondTechAssignment') {
-      // Second tech assignments can be moved but stay linked to primary
-      if (targetTechId) {
-        const targetTech = techs.find(t => t.id === targetTechId);
-        if (!updatedRoutes[targetTechId]) {
-          updatedRoutes[targetTechId] = {
-            tech: targetTech,
-            jobs: []
-          };
-        }
-        updatedRoutes[targetTechId].jobs.push(updatedJob);
-      }
     } else {
-      // Regular job being assigned
-      if (targetTechId) {
-        const targetTech = techs.find(t => t.id === targetTechId);
-        if (!updatedRoutes[targetTechId]) {
-          updatedRoutes[targetTechId] = {
-            tech: targetTech,
-            jobs: []
-          };
+      // MOVING TO DIFFERENT TECH OR UNASSIGNING
+
+      // Calculate start time based on drive time
+      const startTime = targetTechId
+        ? await calculateOptimalStartTime(job, targetTechId)
+        : (job.startTime || job.timeframeStart);
+
+      const startMinutes = timeToMinutes(startTime);
+      const endMinutes = startMinutes + (job.duration * 60);
+      const endTime = minutesToTime(endMinutes);
+
+      const updatedJob = {
+        ...job,
+        startTime,
+        endTime,
+        assignedTech: targetTechId,
+        status: targetTechId ? 'assigned' : 'unassigned'
+      };
+
+      if (sourceTechId) {
+        // Remove job from source tech
+        updatedRoutes[sourceTechId] = {
+          ...updatedRoutes[sourceTechId],
+          jobs: updatedRoutes[sourceTechId].jobs.filter(j => j.id !== job.id)
+        };
+
+        // Recalculate remaining jobs' timings to shift them up
+        updatedRoutes[sourceTechId] = await recalculateRouteTimings(sourceTechId, updatedRoutes);
+
+        // If job is being removed (not just reassigned), clean up second tech assignments
+        if (!targetTechId && job.type !== 'secondTechAssignment') {
+          // Remove any second tech assignments linked to this primary job
+          Object.keys(updatedRoutes).forEach(techId => {
+            if (updatedRoutes[techId]?.jobs) {
+              updatedRoutes[techId].jobs = updatedRoutes[techId].jobs.filter(
+                j => !(j.type === 'secondTechAssignment' && j.primaryJobId === job.id)
+              );
+            }
+          });
         }
-        updatedRoutes[targetTechId].jobs.push(updatedJob);
+      }
+
+      // Handle second tech assignment being dragged
+      if (job.type === 'secondTechAssignment') {
+        // Second tech assignments can be moved but stay linked to primary
+        if (targetTechId) {
+          const targetTech = techs.find(t => t.id === targetTechId);
+          if (!updatedRoutes[targetTechId]) {
+            updatedRoutes[targetTechId] = {
+              tech: targetTech,
+              jobs: []
+            };
+          }
+          updatedRoutes[targetTechId].jobs.push(updatedJob);
+        }
+      } else {
+        // Regular job being assigned
+        if (targetTechId) {
+          const targetTech = techs.find(t => t.id === targetTechId);
+          if (!updatedRoutes[targetTechId]) {
+            updatedRoutes[targetTechId] = {
+              tech: targetTech,
+              jobs: []
+            };
+          }
+          updatedRoutes[targetTechId].jobs.push(updatedJob);
+        }
       }
     }
 
     // Update the global jobs list with recalculated times
     const updatedJobs = localJobs.map(j => {
-      if (j.id === job.id) {
-        return updatedJob;
-      }
-      // Update times for jobs that were recalculated
+      // For same-tech reorders or any tech with recalculated jobs
       if (sourceTechId && updatedRoutes[sourceTechId]) {
-        const recalculatedJob = updatedRoutes[sourceTechId].jobs.find(rj => rj.id === j.id);
+        const recalculatedJob = updatedRoutes[sourceTechId].jobs.find(rj => rj.id === j.id && rj.type !== 'secondTechAssignment');
         if (recalculatedJob) {
           return recalculatedJob;
+        }
+      }
+      // For jobs moved to different tech
+      if (!isSameTechReorder && targetTechId && updatedRoutes[targetTechId]) {
+        const movedJob = updatedRoutes[targetTechId].jobs.find(rj => rj.id === j.id && rj.type !== 'secondTechAssignment');
+        if (movedJob) {
+          return movedJob;
         }
       }
       return j;
@@ -629,6 +682,7 @@ const KanbanCalendar = ({
     // Track if second tech changed
     const originalJob = localJobs.find(j => j.id === selectedJob.id);
     const secondTechChanged = originalJob?.demoTech !== selectedJob.demoTech;
+    const requiresTwoTechsChanged = originalJob?.requiresTwoTechs !== selectedJob.requiresTwoTechs;
     const oldSecondTech = originalJob?.demoTech;
     const newSecondTech = selectedJob.demoTech;
 
@@ -652,8 +706,8 @@ const KanbanCalendar = ({
     }
 
     // Handle second tech assignment changes
-    if (secondTechChanged) {
-      // Remove old second tech assignment
+    if (secondTechChanged || requiresTwoTechsChanged) {
+      // Remove old second tech assignment if it exists
       if (oldSecondTech) {
         const oldSecondTechObj = techs.find(t => t.name === oldSecondTech);
         if (oldSecondTechObj && updatedRoutes[oldSecondTechObj.id]) {
@@ -663,7 +717,16 @@ const KanbanCalendar = ({
         }
       }
 
-      // Add new second tech assignment
+      // Also remove from all routes in case tech name changed
+      Object.keys(updatedRoutes).forEach(techId => {
+        if (updatedRoutes[techId]?.jobs) {
+          updatedRoutes[techId].jobs = updatedRoutes[techId].jobs.filter(
+            j => !(j.type === 'secondTechAssignment' && j.primaryJobId === selectedJob.id)
+          );
+        }
+      });
+
+      // Add new second tech assignment ONLY if requiresTwoTechs is checked AND tech is selected
       if (newSecondTech && selectedJob.requiresTwoTechs) {
         const newSecondTechObj = techs.find(t => t.name === newSecondTech);
         if (newSecondTechObj) {
@@ -1111,7 +1174,7 @@ const KanbanCalendar = ({
                                     marginLeft: '4px',
                                     flexShrink: 0
                                   }}
-                                  title={`Outside timeframe window (${job.timeframeStart}-${job.timeframeEnd})`}
+                                  title={`Timeframe Conflict!\nRequested: ${job.timeframeStart} - ${job.timeframeEnd}\nScheduled Arrival: ${job.startTime}`}
                                 >
                                   ⚠
                                 </span>
