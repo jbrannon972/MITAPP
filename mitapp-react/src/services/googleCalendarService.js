@@ -4,7 +4,21 @@
  * Updated to use Google Identity Services (GIS) - the new authentication library
  */
 
+import { getMapboxService } from './mapboxService';
+
 const CALENDAR_API_URL = 'https://www.googleapis.com/calendar/v3';
+
+// Houston office locations
+const OFFICES = {
+  office_1: {
+    name: 'Conroe Office',
+    address: '10491 Fussel Rd, Conroe, TX 77303'
+  },
+  office_2: {
+    name: 'Katy Office',
+    address: '5115 E 5th St, Katy, TX 77493'
+  }
+};
 
 class GoogleCalendarService {
   constructor() {
@@ -252,6 +266,104 @@ class GoogleCalendarService {
   }
 
   /**
+   * Create a "Return to Office" calendar event
+   * @param {string} calendarId - Email/ID of the calendar (tech's email)
+   * @param {object} lastJob - The last job in the route
+   * @param {string} date - Date in YYYY-MM-DD format
+   * @param {object} techInfo - Technician information including office
+   * @returns {Promise} Created event
+   */
+  async createReturnToOfficeEvent(calendarId, lastJob, date, techInfo) {
+    if (!this.isSignedIn()) {
+      throw new Error('Not signed in to Google Calendar');
+    }
+
+    try {
+      // Get office address
+      const officeInfo = OFFICES[techInfo.office || 'office_1'];
+      if (!officeInfo) {
+        console.warn('Office info not found, skipping return to office event');
+        return null;
+      }
+
+      // Calculate travel time from last job to office
+      const mapbox = getMapboxService();
+      const travelInfo = await mapbox.getDrivingDistance(lastJob.address, officeInfo.address);
+
+      // Calculate return time
+      const lastJobEndTime = lastJob.endTime || lastJob.timeframeEnd;
+      const [endHour, endMinute] = lastJobEndTime.split(':').map(Number);
+
+      // Add travel time to end time
+      const returnDate = new Date(date);
+      returnDate.setHours(endHour, endMinute, 0);
+      returnDate.setMinutes(returnDate.getMinutes() + travelInfo.durationMinutes);
+
+      // Format times for calendar event
+      const returnHour = returnDate.getHours().toString().padStart(2, '0');
+      const returnMinute = returnDate.getMinutes().toString().padStart(2, '0');
+      const returnTime = `${returnHour}:${returnMinute}`;
+
+      // Event duration is 30 minutes (time to return + park)
+      const endDate = new Date(returnDate);
+      endDate.setMinutes(endDate.getMinutes() + 30);
+      const eventEndHour = endDate.getHours().toString().padStart(2, '0');
+      const eventEndMinute = endDate.getMinutes().toString().padStart(2, '0');
+      const eventEndTime = `${eventEndHour}:${eventEndMinute}`;
+
+      const startDateTime = `${date}T${returnTime}:00`;
+      const endDateTime = `${date}T${eventEndTime}:00`;
+
+      const event = {
+        summary: `Return to ${officeInfo.name}`,
+        location: officeInfo.address,
+        description: `Drive back to office from last job\n\n` +
+                     `Last Job: ${lastJob.customerName}\n` +
+                     `From: ${lastJob.address}\n` +
+                     `To: ${officeInfo.address}\n\n` +
+                     `Estimated Drive Time: ${travelInfo.durationMinutes} minutes\n` +
+                     `Distance: ${travelInfo.distanceMiles} miles\n\n` +
+                     `Expected Arrival: ${returnTime}`,
+        start: {
+          dateTime: startDateTime,
+          timeZone: 'America/Chicago'
+        },
+        end: {
+          dateTime: endDateTime,
+          timeZone: 'America/Chicago'
+        },
+        colorId: '8', // Gray
+        reminders: {
+          useDefault: false,
+          overrides: [
+            { method: 'popup', minutes: 10 }
+          ]
+        },
+        extendedProperties: {
+          private: {
+            eventType: 'return_to_office',
+            travelTime: travelInfo.durationMinutes.toString(),
+            distance: travelInfo.distanceMiles
+          }
+        }
+      };
+
+      const response = await window.gapi.client.calendar.events.insert({
+        calendarId: calendarId,
+        resource: event,
+        sendUpdates: 'all'
+      });
+
+      console.log(`✅ Created return to office event for ${techInfo.name} at ${returnTime}`);
+      return response.result;
+    } catch (error) {
+      console.error('Error creating return to office event:', error);
+      // Don't throw - this is a nice-to-have feature, not critical
+      return null;
+    }
+  }
+
+  /**
    * Push all jobs for a tech to their calendar
    * @param {object} tech - Technician info with calendar email
    * @param {array} jobs - Array of jobs to add
@@ -269,6 +381,7 @@ class GoogleCalendarService {
       errors: []
     };
 
+    // Create job events
     for (const job of jobs) {
       try {
         await this.createJobEvent(tech.email, job, date, tech);
@@ -279,6 +392,18 @@ class GoogleCalendarService {
           job: job.customerName,
           error: error.message
         });
+      }
+    }
+
+    // Create "Return to Office" event after last job
+    if (jobs.length > 0) {
+      try {
+        const lastJob = jobs[jobs.length - 1];
+        await this.createReturnToOfficeEvent(tech.email, lastJob, date, tech);
+        console.log(`✅ Added return to office event for ${tech.name}`);
+      } catch (error) {
+        console.warn(`Could not create return to office event for ${tech.name}:`, error.message);
+        // Don't count this as a failure since it's not critical
       }
     }
 
