@@ -223,7 +223,7 @@ const KanbanCalendar = ({
           'line-cap': 'round'
         },
         paint: {
-          'line-color': 'var(--info-color)',
+          'line-color': '#3b82f6', // Blue - Mapbox doesn't support CSS variables
           'line-width': 4,
           'line-opacity': 0.75
         }

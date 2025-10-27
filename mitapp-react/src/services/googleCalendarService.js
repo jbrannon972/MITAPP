@@ -18,6 +18,10 @@ class GoogleCalendarService {
   async initialize(clientId) {
     if (this.isInitialized) return;
 
+    if (!clientId || clientId.trim() === '') {
+      throw new Error('Google Client ID is required. Please configure it in the routing tab.');
+    }
+
     return new Promise((resolve, reject) => {
       // Load the Google API client library
       const script = document.createElement('script');
@@ -32,14 +36,27 @@ class GoogleCalendarService {
             });
 
             this.isInitialized = true;
+            console.log('Google Calendar API initialized successfully');
             resolve();
           } catch (error) {
             console.error('Error initializing Google API:', error);
-            reject(error);
+            let errorMessage = 'Failed to initialize Google Calendar API. ';
+
+            if (error.details) {
+              errorMessage += error.details;
+            } else if (error.error) {
+              errorMessage += error.error;
+            } else {
+              errorMessage += 'Please check your Client ID configuration in Google Cloud Console.';
+            }
+
+            reject(new Error(errorMessage));
           }
         });
       };
-      script.onerror = reject;
+      script.onerror = () => {
+        reject(new Error('Failed to load Google API script. Please check your internet connection.'));
+      };
       document.body.appendChild(script);
     });
   }
