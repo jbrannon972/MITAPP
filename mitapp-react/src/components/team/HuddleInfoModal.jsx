@@ -195,7 +195,7 @@ const HuddleInfoModal = ({ isOpen, onClose, selectedDate = new Date() }) => {
       <div className="modal modal-lg" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
           <h2>Today's Huddle Info - {format(selectedDate, 'MMMM d, yyyy')}</h2>
-          <button className="close-btn" onClick={onClose}>&times;</button>
+          <button className="modal-close" onClick={onClose}><i className="fas fa-times"></i></button>
         </div>
 
         <div className="modal-body">
@@ -319,18 +319,29 @@ const HuddleInfoModal = ({ isOpen, onClose, selectedDate = new Date() }) => {
                       ) : (
                         <div className="other-zones-list">
                           <h4>Select Member from Other Zones</h4>
-                          {staffingData?.zones
-                            ?.filter(zone => {
-                              // Filter out current user's zone by comparing zone name or id
-                              if (!currentUserZone) return true; // Show all zones if current zone not found
+                          {(() => {
+                            // Get zones excluding current user's zone
+                            const otherZones = staffingData?.zones?.filter(zone => {
+                              if (!currentUserZone) return true;
                               return zone.name !== currentUserZone.name && zone.id !== currentUserZone.id;
-                            })
-                            ?.map((zone, zoneIdx) => {
-                              // Check if zone has any members or a lead
-                              const hasMembers = zone.members && zone.members.length > 0;
-                              const hasLead = zone.lead !== null && zone.lead !== undefined;
+                            }) || [];
 
-                              if (!hasMembers && !hasLead) {
+                            console.log('staffingData:', staffingData);
+                            console.log('currentUserZone:', currentUserZone);
+                            console.log('otherZones:', otherZones);
+
+                            if (otherZones.length === 0) {
+                              return <p style={{ padding: '12px', color: 'var(--text-secondary)' }}>No other zones found</p>;
+                            }
+
+                            return otherZones.map((zone, zoneIdx) => {
+                              const zoneMembers = zone.members || [];
+                              const zoneLead = zone.lead;
+
+                              console.log(`Zone ${zone.name}:`, { lead: zoneLead, members: zoneMembers });
+
+                              // Skip empty zones
+                              if (!zoneLead && zoneMembers.length === 0) {
                                 return null;
                               }
 
@@ -341,17 +352,17 @@ const HuddleInfoModal = ({ isOpen, onClose, selectedDate = new Date() }) => {
                                   </div>
                                   <div className="other-zone-members">
                                     {/* Zone Lead */}
-                                    {zone.lead && (
+                                    {zoneLead && (
                                       <div
                                         className="other-zone-member-item"
-                                        onClick={() => addManualMember({ ...zone.lead, zoneName: zone.name })}
+                                        onClick={() => addManualMember({ ...zoneLead, zoneName: zone.name })}
                                       >
-                                        <span className="member-name">{zone.lead.name}</span>
+                                        <span className="member-name">{zoneLead.name}</span>
                                         <span className="member-role-badge">Lead</span>
                                       </div>
                                     )}
                                     {/* Zone Members */}
-                                    {zone.members?.map((member, memberIdx) => (
+                                    {zoneMembers.map((member, memberIdx) => (
                                       <div
                                         key={member.id || memberIdx}
                                         className="other-zone-member-item"
@@ -366,7 +377,8 @@ const HuddleInfoModal = ({ isOpen, onClose, selectedDate = new Date() }) => {
                                   </div>
                                 </div>
                               );
-                            })}
+                            });
+                          })()}
                           <button
                             className="btn btn-secondary"
                             onClick={() => setShowManualAdd(false)}
