@@ -179,9 +179,9 @@ const Dashboard = () => {
               <button
                 className="btn btn-primary"
                 onClick={() => setShowHuddleModal(true)}
-                title="View Today's Huddle Info"
+                title="Huddle Info"
               >
-                <i className="fas fa-comments"></i> View Today's Huddle Info
+                Huddle Info
               </button>
             )}
             {/* Supervisor Report - For Supervisors and MIT Leads */}
@@ -192,9 +192,9 @@ const Dashboard = () => {
                   setReportType('supervisor');
                   setShowReportForm(true);
                 }}
-                title="Submit Supervisor Report"
+                title="Submit Report"
               >
-                <i className="fas fa-clipboard-check"></i> Submit Supervisor Report
+                Submit Report
               </button>
             )}
             {/* Second Shift Report - Only for designated second shift lead */}

@@ -320,8 +320,12 @@ const HuddleInfoModal = ({ isOpen, onClose, selectedDate = new Date() }) => {
                         <div className="other-zones-list">
                           <h4>Select Member from Other Zones</h4>
                           {staffingData?.zones
-                            ?.filter(zone => zone.id !== currentUserZone?.id)
-                            ?.map(zone => {
+                            ?.filter(zone => {
+                              // Filter out current user's zone by comparing zone name or id
+                              if (!currentUserZone) return true; // Show all zones if current zone not found
+                              return zone.name !== currentUserZone.name && zone.id !== currentUserZone.id;
+                            })
+                            ?.map((zone, zoneIdx) => {
                               // Check if zone has any members or a lead
                               const hasMembers = zone.members && zone.members.length > 0;
                               const hasLead = zone.lead !== null && zone.lead !== undefined;
@@ -331,7 +335,7 @@ const HuddleInfoModal = ({ isOpen, onClose, selectedDate = new Date() }) => {
                               }
 
                               return (
-                                <div key={zone.id} className="other-zone-section">
+                                <div key={zone.id || zone.name || zoneIdx} className="other-zone-section">
                                   <div className="other-zone-header">
                                     <i className="fas fa-map-marker-alt"></i> {zone.name}
                                   </div>
@@ -347,9 +351,9 @@ const HuddleInfoModal = ({ isOpen, onClose, selectedDate = new Date() }) => {
                                       </div>
                                     )}
                                     {/* Zone Members */}
-                                    {zone.members?.map(member => (
+                                    {zone.members?.map((member, memberIdx) => (
                                       <div
-                                        key={member.id}
+                                        key={member.id || memberIdx}
                                         className="other-zone-member-item"
                                         onClick={() => addManualMember({ ...member, zoneName: zone.name })}
                                       >

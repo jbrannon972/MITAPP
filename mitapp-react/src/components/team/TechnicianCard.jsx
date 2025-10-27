@@ -51,7 +51,7 @@ const TechnicianCard = ({
       }}
       style={{ cursor: canClickProfile ? 'pointer' : 'default', position: 'relative' }}
     >
-      <div className={`member-details ${!canManage ? 'no-controls' : ''}`} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+      <div className={`member-details ${!canManage ? 'no-controls' : ''}`} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%' }}>
         {canManage && zoneIndex !== 'management' && (
           <button
             className="btn btn-delete-tech"
@@ -73,7 +73,8 @@ const TechnicianCard = ({
               justifyContent: 'center',
               transition: 'all 0.2s ease',
               minWidth: '24px',
-              minHeight: '24px'
+              minHeight: '24px',
+              flexShrink: 0
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.backgroundColor = 'var(--danger-color)';
@@ -87,10 +88,8 @@ const TechnicianCard = ({
             <i className="fas fa-trash-alt"></i>
           </button>
         )}
-        <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
-          <span className="member-name">{formatName(member.name)}</span>
-          <span className="member-role">{member.role}</span>
-        </div>
+        <span className="member-name" style={{ flex: 1 }}>{formatName(member.name)}</span>
+        <span className="member-role">{member.role}</span>
       </div>
     </div>
   );
