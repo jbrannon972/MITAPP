@@ -554,31 +554,30 @@ const KanbanCalendar = ({
         }
       }
 
-      // Handle second tech assignment being dragged
-      if (job.type === 'secondTechAssignment') {
-        // Second tech assignments can be moved but stay linked to primary
-        if (targetTechId) {
-          const targetTech = techs.find(t => t.id === targetTechId);
-          if (!updatedRoutes[targetTechId]) {
-            updatedRoutes[targetTechId] = {
-              tech: targetTech,
-              jobs: []
-            };
-          }
-          updatedRoutes[targetTechId].jobs.push(updatedJob);
+    // Handle second tech assignment being dragged
+    if (job.type === 'secondTechAssignment') {
+      // Second tech assignments can be moved but stay linked to primary
+      if (targetTechId) {
+        const targetTech = techs.find(t => t.id === targetTechId);
+        if (!updatedRoutes[targetTechId]) {
+          updatedRoutes[targetTechId] = {
+            tech: targetTech,
+            jobs: []
+          };
         }
-      } else {
-        // Regular job being assigned
-        if (targetTechId) {
-          const targetTech = techs.find(t => t.id === targetTechId);
-          if (!updatedRoutes[targetTechId]) {
-            updatedRoutes[targetTechId] = {
-              tech: targetTech,
-              jobs: []
-            };
-          }
-          updatedRoutes[targetTechId].jobs.push(updatedJob);
+        updatedRoutes[targetTechId].jobs.push(updatedJob);
+      }
+    } else {
+      // Regular job being assigned
+      if (targetTechId) {
+        const targetTech = techs.find(t => t.id === targetTechId);
+        if (!updatedRoutes[targetTechId]) {
+          updatedRoutes[targetTechId] = {
+            tech: targetTech,
+            jobs: []
+          };
         }
+        updatedRoutes[targetTechId].jobs.push(updatedJob);
       }
     }
 
