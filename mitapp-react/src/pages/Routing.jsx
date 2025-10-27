@@ -873,8 +873,8 @@ const Routing = () => {
   };
 
   const content = (
-    <div className="tab-content active">
-      <div className="tab-controls" style={{ marginBottom: '16px' }}>
+    <div className="tab-content active" style={{ maxWidth: 'none' }}>
+      <div className="tab-controls" style={{ marginBottom: '16px', padding: isFullScreen ? '16px 16px 0 16px' : '0' }}>
         <div className="sub-nav">
           <button
             className={`sub-nav-btn ${activeView === 'routing' ? 'active' : ''}`}
@@ -918,7 +918,9 @@ const Routing = () => {
             backgroundColor: 'var(--status-in-progress-bg)',
             borderRadius: '6px',
             fontSize: '12px',
-            marginBottom: '12px'
+            marginBottom: '12px',
+            marginLeft: isFullScreen ? '16px' : '0',
+            marginRight: isFullScreen ? '16px' : '0'
           }}>
             <i className="fas fa-users" style={{ color: 'var(--success-color)' }}></i>
             <span style={{ fontWeight: '600', color: 'var(--success-color)' }}>
@@ -943,12 +945,20 @@ const Routing = () => {
         )}
 
         {loading ? (
-          <p>Loading...</p>
+          <p style={{ padding: isFullScreen ? '0 16px' : '0' }}>Loading...</p>
         ) : (
           <>
-            {activeView === 'routing' && renderRoutingView()}
+            {activeView === 'routing' && (
+              <div style={{ padding: isFullScreen ? '0 16px' : '0' }}>
+                {renderRoutingView()}
+              </div>
+            )}
             {activeView === 'kanban' && renderKanbanView()}
-            {activeView === 'jobs' && renderJobsView()}
+            {activeView === 'jobs' && (
+              <div style={{ padding: isFullScreen ? '0 16px' : '0' }}>
+                {renderJobsView()}
+              </div>
+            )}
           </>
         )}
 
@@ -1090,17 +1100,9 @@ const Routing = () => {
         bottom: 0,
         backgroundColor: 'var(--surface-color)',
         zIndex: 9999,
-        overflow: 'hidden',
-        display: 'flex',
-        flexDirection: 'column'
+        overflow: 'auto'
       }}>
-        <div style={{
-          flex: 1,
-          overflow: 'auto',
-          padding: '16px'
-        }}>
-          {content}
-        </div>
+        {content}
       </div>
     );
   }
