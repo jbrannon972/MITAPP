@@ -57,8 +57,8 @@ const KanbanCalendar = ({
     return true;
   };
 
-  // Initialize from props ONLY on first mount, never sync again
-  // Child component is the authoritative source of truth
+  // Initialize from props ONLY on first mount or when date changes
+  // Child component is the authoritative source of truth during a session
   useEffect(() => {
     if (!hasInitialized.current) {
       console.log('🎬 Initial load - setting state from props');
@@ -69,6 +69,14 @@ const KanbanCalendar = ({
       console.log('⏭️ Ignoring prop changes - child state is authoritative');
     }
   }, [initialJobs, initialRoutes]);
+
+  // Reset when date changes
+  useEffect(() => {
+    console.log('📅 Date changed, resetting state');
+    setLocalJobs(initialJobs);
+    setLocalRoutes(initialRoutes);
+    hasInitialized.current = true;
+  }, [selectedDate]);
 
   // Calculate return to office times whenever routes change
   useEffect(() => {
