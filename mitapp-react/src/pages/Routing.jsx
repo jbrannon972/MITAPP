@@ -578,6 +578,57 @@ const Routing = () => {
     }
   };
 
+  const handleClearAllJobs = async () => {
+    const confirmed = window.confirm(
+      `⚠️ WARNING: This will DELETE ALL jobs and routes for ${selectedDate}.\n\n` +
+      `This action cannot be undone.\n\n` +
+      `Are you sure you want to continue?`
+    );
+
+    if (!confirmed) return;
+
+    const doubleConfirm = window.confirm(
+      `🚨 FINAL CONFIRMATION\n\n` +
+      `You are about to permanently delete:\n` +
+      `• ${jobs.length} jobs\n` +
+      `• ${Object.keys(routes).length} routes\n\n` +
+      `Type OK in the next dialog to proceed.`
+    );
+
+    if (!doubleConfirm) return;
+
+    try {
+      console.log('🗑️ Clearing all jobs and routes for', selectedDate);
+
+      // Clear local state immediately
+      setJobs([]);
+      setRoutes({});
+
+      // Clear in Firebase
+      await firebaseService.saveDocument('hou_routing', `jobs_${selectedDate}`, {
+        jobs: [],
+        date: selectedDate,
+        lastUpdated: new Date().toISOString(),
+        clearedBy: currentUser?.displayName || currentUser?.email,
+        clearedAt: new Date().toISOString()
+      });
+
+      await firebaseService.saveDocument('hou_routing', `routes_${selectedDate}`, {
+        routes: {},
+        date: selectedDate,
+        lastUpdated: new Date().toISOString(),
+        clearedBy: currentUser?.displayName || currentUser?.email,
+        clearedAt: new Date().toISOString()
+      });
+
+      console.log('✅ All jobs and routes cleared successfully');
+      alert(`✅ All jobs and routes for ${selectedDate} have been deleted.\n\nYou can now import a fresh CSV file.`);
+    } catch (error) {
+      console.error('❌ Error clearing jobs and routes:', error);
+      alert('Error clearing data. Please try again.');
+    }
+  };
+
   const renderJobsView = () => {
     const unassignedJobs = jobs.filter(j => !j.assignedTech);
     const assignedJobs = jobs.filter(j => j.assignedTech);
@@ -608,6 +659,14 @@ const Routing = () => {
             </button>
             <button className="btn btn-primary" onClick={() => setShowImportModal(true)}>
               <i className="fas fa-upload"></i> Import CSV
+            </button>
+            <button
+              className="btn btn-danger"
+              onClick={handleClearAllJobs}
+              disabled={jobs.length === 0}
+              title="Delete all jobs and routes for this date"
+            >
+              <i className="fas fa-trash-alt"></i> Clear All
             </button>
           </div>
         </div>
