@@ -49,36 +49,48 @@ const TechnicianCard = ({
           onViewProfile();
         }
       }}
-      style={{ cursor: canClickProfile ? 'pointer' : 'default' }}
+      style={{ cursor: canClickProfile ? 'pointer' : 'default', position: 'relative' }}
     >
-      {canManage && zoneIndex !== 'management' && (
-        <>
+      <div className={`member-details ${!canManage ? 'no-controls' : ''}`} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        {canManage && zoneIndex !== 'management' && (
           <button
-            className="btn btn-edit"
-            onClick={(e) => {
-              e.stopPropagation();
-              onEdit();
-            }}
-            title="Edit Member"
-            style={{ position: 'absolute', top: '4px', right: '28px', padding: '2px 6px', fontSize: '10px', backgroundColor: 'var(--info-color)', color: 'var(--surface-color)', border: 'none', borderRadius: '3px', cursor: 'pointer' }}
-          >
-            <i className="fas fa-edit"></i>
-          </button>
-          <button
-            className="btn btn-remove"
+            className="btn btn-delete-tech"
             onClick={(e) => {
               e.stopPropagation();
               onRemove();
             }}
             title="Remove Member"
+            style={{
+              backgroundColor: 'var(--surface-secondary)',
+              border: '1px solid var(--danger-color)',
+              color: 'var(--danger-color)',
+              padding: '4px 8px',
+              borderRadius: 'var(--radius-sm)',
+              cursor: 'pointer',
+              fontSize: '12px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              transition: 'all 0.2s ease',
+              minWidth: '24px',
+              minHeight: '24px'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = 'var(--danger-color)';
+              e.currentTarget.style.color = 'white';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'var(--surface-secondary)';
+              e.currentTarget.style.color = 'var(--danger-color)';
+            }}
           >
-            <i className="fas fa-times"></i>
+            <i className="fas fa-trash-alt"></i>
           </button>
-        </>
-      )}
-      <div className={`member-details ${!canManage ? 'no-controls' : ''}`}>
-        <span className="member-name">{formatName(member.name)}</span>
-        <span className="member-role">{member.role}</span>
+        )}
+        <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+          <span className="member-name">{formatName(member.name)}</span>
+          <span className="member-role">{member.role}</span>
+        </div>
       </div>
     </div>
   );

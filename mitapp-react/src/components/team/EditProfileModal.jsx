@@ -5,11 +5,11 @@ const EditProfileModal = ({ person, onClose, onSave }) => {
   const [formData, setFormData] = useState({
     name: person.name || '',
     role: person.role || 'MIT Tech',
+    email: person.email || '',
     hireDate: person.hireDate || '',
     endDate: person.endDate || '',
     inTraining: person.inTraining || false,
-    trainingEndDate: person.trainingEndDate || '',
-    slackId: person.slackId || ''
+    trainingEndDate: person.trainingEndDate || ''
   });
   const [evaluation, setEvaluation] = useState(null);
   const [driverScore, setDriverScore] = useState(null);
@@ -107,7 +107,7 @@ const EditProfileModal = ({ person, onClose, onSave }) => {
     <div className="modal-overlay active" onClick={onClose}>
       <div className="modal modal-lg" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h3><i className="fas fa-user-edit"></i> Edit Profile: {person.name}</h3>
+          <h3><i className="fas fa-user-circle"></i> {person.name}</h3>
           <button className="modal-close" onClick={onClose}><i className="fas fa-times"></i></button>
         </div>
         <div className="modal-body">
@@ -167,7 +167,7 @@ const EditProfileModal = ({ person, onClose, onSave }) => {
           </h4>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
             <div className="form-group">
-              <label htmlFor="name">Full Name</label>
+              <label htmlFor="name">Full Name <span style={{ color: 'var(--danger-color)' }}>*</span></label>
               <input
                 type="text"
                 id="name"
@@ -175,10 +175,11 @@ const EditProfileModal = ({ person, onClose, onSave }) => {
                 className="form-input"
                 value={formData.name}
                 onChange={handleChange}
+                required
               />
             </div>
             <div className="form-group">
-              <label htmlFor="role">Role</label>
+              <label htmlFor="role">Role <span style={{ color: 'var(--danger-color)' }}>*</span></label>
               <select
                 id="role"
                 name="role"
@@ -192,6 +193,26 @@ const EditProfileModal = ({ person, onClose, onSave }) => {
               </select>
             </div>
             <div className="form-group">
+              <label htmlFor="email">
+                Email (Gmail for Calendar)
+                <span style={{ marginLeft: '8px', fontSize: '12px', color: 'var(--text-secondary)' }}>
+                  (Required for route calendar integration)
+                </span>
+              </label>
+              <input
+                type="email"
+                id="email"
+                name="email"
+                className="form-input"
+                value={formData.email}
+                onChange={handleChange}
+                placeholder="e.g., cody.mccrorey@entrusted.com"
+              />
+              <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px', marginBottom: 0 }}>
+                This email is used to push route assignments to the technician's Google Calendar
+              </p>
+            </div>
+            <div className="form-group">
               <label htmlFor="hireDate">Hire Date</label>
               <input
                 type="date"
@@ -200,6 +221,7 @@ const EditProfileModal = ({ person, onClose, onSave }) => {
                 className="form-input"
                 value={formData.hireDate}
                 onChange={handleChange}
+                placeholder="mm/dd/yyyy"
               />
             </div>
             <div className="form-group">
@@ -211,6 +233,7 @@ const EditProfileModal = ({ person, onClose, onSave }) => {
                 className="form-input"
                 value={formData.endDate}
                 onChange={handleChange}
+                placeholder="mm/dd/yyyy"
               />
             </div>
           </div>
@@ -240,25 +263,9 @@ const EditProfileModal = ({ person, onClose, onSave }) => {
                 className="form-input"
                 value={formData.trainingEndDate}
                 onChange={handleChange}
+                placeholder="mm/dd/yyyy"
               />
             </div>
-          </div>
-
-          {/* Slack Integration */}
-          <h4 style={{ fontSize: '16px', marginTop: '20px', marginBottom: '12px', color: 'var(--primary-color)', borderBottom: '1px solid var(--border-color)', paddingBottom: '8px' }}>
-            <i className="fab fa-slack"></i> Slack Integration
-          </h4>
-          <div className="form-group">
-            <label htmlFor="slackId">Slack User ID</label>
-            <input
-              type="text"
-              id="slackId"
-              name="slackId"
-              className="form-input"
-              value={formData.slackId}
-              onChange={handleChange}
-              placeholder="e.g., U040LUK4ZFW"
-            />
           </div>
 
           {/* Assigned Vehicle */}
