@@ -17,33 +17,49 @@ const HuddleInfoModal = ({ isOpen, onClose, selectedDate = new Date() }) => {
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [showAttendance, setShowAttendance] = useState(false);
   const [showManualAdd, setShowManualAdd] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
 
   const dateStr = format(selectedDate, 'yyyy-MM-dd');
 
-  // Get current user's zone
-  const currentUserZone = staffingData?.zones?.find(zone =>
-    zone.members?.some(member => member.id === currentUser?.userId)
-  );
+  // Get current user's zone - check both members and lead
+  const currentUserZone = staffingData?.zones?.find(zone => {
+    // Check if user is a member
+    const isMember = zone.members?.some(member => member.id === currentUser?.userId);
+    // Check if user is the zone lead
+    const isLead = zone.lead?.id === currentUser?.userId;
+    return isMember || isLead;
+  });
 
-  // Get team members in current zone
+  // Get team members in current zone (excluding the lead from members list)
   const zoneMembers = currentUserZone?.members || [];
 
-  // Get all team members from other zones
+  // Get all team members from other zones (both members and leads)
   const otherZoneMembers = staffingData?.zones
     ?.filter(zone => zone.id !== currentUserZone?.id)
-    ?.flatMap(zone =>
-      zone.members?.map(member => ({
+    ?.flatMap(zone => {
+      const members = zone.members?.map(member => ({
         ...member,
         zoneName: zone.name
-      })) || []
-    ) || [];
+      })) || [];
+
+      // Add the zone lead if exists
+      if (zone.lead) {
+        members.push({
+          ...zone.lead,
+          zoneName: zone.name
+        });
+      }
+
+      return members;
+    }) || [];
 
   // Load huddle content and attendance
   useEffect(() => {
     if (isOpen) {
       loadHuddleData();
+      setShowAttendance(false); // Reset attendance view when modal opens
     }
   }, [isOpen, dateStr]);
 
@@ -63,6 +79,14 @@ const HuddleInfoModal = ({ isOpen, onClose, selectedDate = new Date() }) => {
           setAttendance({
             present: existingAttendance.present || [],
             manuallyAdded: existingAttendance.manuallyAdded || []
+          });
+          // If attendance already exists, show the attendance section
+          setShowAttendance(true);
+        } else {
+          // Reset attendance for new huddle
+          setAttendance({
+            present: [],
+            manuallyAdded: []
           });
         }
       }
@@ -97,7 +121,9 @@ const HuddleInfoModal = ({ isOpen, onClose, selectedDate = new Date() }) => {
           name: member.name,
           originalZone: member.zoneName
         }
-      ]
+      ],
+      // Also mark them as present
+      present: [...prev.present, member.id]
     }));
     setShowManualAdd(false);
     setSearchTerm('');
@@ -106,8 +132,18 @@ const HuddleInfoModal = ({ isOpen, onClose, selectedDate = new Date() }) => {
   const removeManualMember = (userId) => {
     setAttendance(prev => ({
       ...prev,
-      manuallyAdded: prev.manuallyAdded.filter(m => m.userId !== userId)
+      manuallyAdded: prev.manuallyAdded.filter(m => m.userId !== userId),
+      // Also remove from present
+      present: prev.present.filter(id => id !== userId)
     }));
+  };
+
+  const handleHuddleComplete = () => {
+    if (!currentUserZone) {
+      alert('Error: Could not determine your zone. Please contact support.');
+      return;
+    }
+    setShowAttendance(true);
   };
 
   const saveAttendance = async () => {
@@ -131,7 +167,7 @@ const HuddleInfoModal = ({ isOpen, onClose, selectedDate = new Date() }) => {
       };
 
       await firebaseService.saveDocument('hou_huddle_attendance', attendanceId, attendanceData);
-      alert('Attendance saved successfully!');
+      alert('Huddle attendance saved successfully!');
       onClose();
     } catch (error) {
       console.error('Error saving attendance:', error);
@@ -215,8 +251,8 @@ const HuddleInfoModal = ({ isOpen, onClose, selectedDate = new Date() }) => {
                 )}
               </div>
 
-              {/* Attendance Section */}
-              {currentUserZone && (
+              {/* Attendance Section - Only shown after Huddle Complete */}
+              {showAttendance && currentUserZone && (
                 <>
                   <div className="section-divider"></div>
 
@@ -278,7 +314,7 @@ const HuddleInfoModal = ({ isOpen, onClose, selectedDate = new Date() }) => {
                           className="btn btn-secondary"
                           onClick={() => setShowManualAdd(true)}
                         >
-                          + Add Member from Another Zone
+                          <i className="fas fa-plus"></i> Add Member from Another Zone
                         </button>
                       ) : (
                         <div className="manual-add-form">
@@ -326,17 +362,34 @@ const HuddleInfoModal = ({ isOpen, onClose, selectedDate = new Date() }) => {
         </div>
 
         <div className="modal-footer">
-          <button className="btn btn-secondary" onClick={onClose}>
-            Close
-          </button>
-          {currentUserZone && (
-            <button
-              className="btn btn-primary"
-              onClick={saveAttendance}
-              disabled={saving || loading}
-            >
-              {saving ? 'Saving...' : 'Save Attendance'}
-            </button>
+          {!showAttendance ? (
+            <>
+              <button className="btn btn-secondary" onClick={onClose}>
+                Close
+              </button>
+              {currentUserZone && (
+                <button
+                  className="btn btn-primary"
+                  onClick={handleHuddleComplete}
+                  disabled={loading}
+                >
+                  <i className="fas fa-check-circle"></i> Huddle Complete
+                </button>
+              )}
+            </>
+          ) : (
+            <>
+              <button className="btn btn-secondary" onClick={onClose}>
+                Cancel
+              </button>
+              <button
+                className="btn btn-primary"
+                onClick={saveAttendance}
+                disabled={saving || loading}
+              >
+                {saving ? 'Saving...' : 'Save Attendance'}
+              </button>
+            </>
           )}
         </div>
       </div>
