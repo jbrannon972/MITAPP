@@ -322,16 +322,11 @@ const HuddleInfoModal = ({ isOpen, onClose, selectedDate = new Date() }) => {
                           {staffingData?.zones
                             ?.filter(zone => zone.id !== currentUserZone?.id)
                             ?.map(zone => {
-                              // Filter out members already added
-                              const availableLead = zone.lead && !attendance.manuallyAdded.some(m => m.userId === zone.lead.id)
-                                ? zone.lead
-                                : null;
-                              const availableMembers = zone.members?.filter(member =>
-                                !attendance.manuallyAdded.some(m => m.userId === member.id)
-                              ) || [];
+                              // Check if zone has any members or a lead
+                              const hasMembers = zone.members && zone.members.length > 0;
+                              const hasLead = zone.lead !== null && zone.lead !== undefined;
 
-                              // Skip zone if no available members
-                              if (!availableLead && availableMembers.length === 0) {
+                              if (!hasMembers && !hasLead) {
                                 return null;
                               }
 
@@ -342,17 +337,17 @@ const HuddleInfoModal = ({ isOpen, onClose, selectedDate = new Date() }) => {
                                   </div>
                                   <div className="other-zone-members">
                                     {/* Zone Lead */}
-                                    {availableLead && (
+                                    {zone.lead && (
                                       <div
                                         className="other-zone-member-item"
-                                        onClick={() => addManualMember({ ...availableLead, zoneName: zone.name })}
+                                        onClick={() => addManualMember({ ...zone.lead, zoneName: zone.name })}
                                       >
-                                        <span className="member-name">{availableLead.name}</span>
+                                        <span className="member-name">{zone.lead.name}</span>
                                         <span className="member-role-badge">Lead</span>
                                       </div>
                                     )}
                                     {/* Zone Members */}
-                                    {availableMembers.map(member => (
+                                    {zone.members?.map(member => (
                                       <div
                                         key={member.id}
                                         className="other-zone-member-item"

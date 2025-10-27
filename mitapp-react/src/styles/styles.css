@@ -1036,19 +1036,30 @@ body {
 }
 
 .modal-close {
-    background: none;
-    border: none;
+    background: var(--surface-secondary);
+    border: 1px solid var(--border-color);
     cursor: pointer;
     color: var(--text-secondary);
     font-size: 18px;
-    padding: 6px;
+    padding: 8px 10px;
     border-radius: var(--radius-md);
     transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 36px;
+    min-height: 36px;
 }
 
 .modal-close:hover {
-    background: var(--border-color);
-    color: var(--text-primary);
+    background: var(--danger-color);
+    border-color: var(--danger-color);
+    color: white;
+    transform: scale(1.05);
+}
+
+.modal-close:active {
+    transform: scale(0.95);
 }
 
 .modal-body {
