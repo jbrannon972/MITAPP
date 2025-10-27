@@ -323,7 +323,8 @@ const HuddleInfoModal = ({ isOpen, onClose, selectedDate = new Date() }) => {
                             // Get zones excluding current user's zone
                             const otherZones = staffingData?.zones?.filter(zone => {
                               if (!currentUserZone) return true;
-                              return zone.name !== currentUserZone.name && zone.id !== currentUserZone.id;
+                              // Filter by name only - zones may not have consistent IDs
+                              return zone.name !== currentUserZone.name;
                             }) || [];
 
                             console.log('staffingData:', staffingData);
