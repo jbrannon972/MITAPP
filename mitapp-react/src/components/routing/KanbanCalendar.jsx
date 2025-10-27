@@ -616,10 +616,11 @@ const KanbanCalendar = ({
       await onUpdateRoutes(updatedRoutes);
       await onUpdateJobs(updatedJobs);
     } finally {
-      // Reset updating flag after a short delay to allow parent state to settle
+      // Reset updating flag after delay to allow Firebase roundtrip to complete
+      // 500ms should be sufficient since we removed optimistic updates from parent
       setTimeout(() => {
         isUpdatingRef.current = false;
-      }, 100);
+      }, 500);
     }
   };
 
@@ -667,10 +668,11 @@ const KanbanCalendar = ({
       await onUpdateRoutes(updatedRoutes);
       await onUpdateJobs(updatedJobs);
     } finally {
-      // Reset updating flag after a short delay to allow parent state to settle
+      // Reset updating flag after delay to allow Firebase roundtrip to complete
+      // 500ms should be sufficient since we removed optimistic updates from parent
       setTimeout(() => {
         isUpdatingRef.current = false;
-      }, 100);
+      }, 500);
     }
   };
 
@@ -725,10 +727,11 @@ const KanbanCalendar = ({
       await onUpdateRoutes(updatedRoutes);
       await onUpdateJobs(updatedJobs);
     } finally {
-      // Reset updating flag after a short delay to allow parent state to settle
+      // Reset updating flag after delay to allow Firebase roundtrip to complete
+      // 500ms should be sufficient since we removed optimistic updates from parent
       setTimeout(() => {
         isUpdatingRef.current = false;
-      }, 100);
+      }, 500);
     }
   };
 
@@ -773,10 +776,11 @@ const KanbanCalendar = ({
       await onUpdateRoutes(updatedRoutes);
       await onUpdateJobs(updatedJobs);
     } finally {
-      // Reset updating flag after a short delay to allow parent state to settle
+      // Reset updating flag after delay to allow Firebase roundtrip to complete
+      // 500ms should be sufficient since we removed optimistic updates from parent
       setTimeout(() => {
         isUpdatingRef.current = false;
-      }, 100);
+      }, 500);
     }
   };
 
@@ -881,10 +885,11 @@ const KanbanCalendar = ({
       await onUpdateJobs(updatedJobs);
       await onUpdateRoutes(updatedRoutes);
     } finally {
-      // Reset updating flag after a short delay to allow parent state to settle
+      // Reset updating flag after delay to allow Firebase roundtrip to complete
+      // 500ms should be sufficient since we removed optimistic updates from parent
       setTimeout(() => {
         isUpdatingRef.current = false;
-      }, 100);
+      }, 500);
     }
   };
 
