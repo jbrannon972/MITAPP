@@ -14,8 +14,10 @@ const KanbanCalendar = ({
   scheduleForDay
 }) => {
   // Local state for instant UI updates
+  // Initialize once and NEVER sync from props again - child is authoritative
   const [localJobs, setLocalJobs] = useState(initialJobs);
   const [localRoutes, setLocalRoutes] = useState(initialRoutes);
+  const hasInitialized = useRef(false);
   const [draggedJob, setDraggedJob] = useState(null);
   const [draggedTech, setDraggedTech] = useState(null);
   const [dragOverTech, setDragOverTech] = useState(null);
@@ -55,38 +57,18 @@ const KanbanCalendar = ({
     return true;
   };
 
-  // Sync with parent when props change - but only if data is actually different
-  // This prevents overwriting local changes that are being saved
-  // IMPORTANT: Never sync while updating or within 500ms after update completes
+  // Initialize from props ONLY on first mount, never sync again
+  // Child component is the authoritative source of truth
   useEffect(() => {
-    console.log('🔄 Jobs useEffect fired', {
-      isUpdating: isUpdatingRef.current,
-      localJobsCount: localJobs.length,
-      initialJobsCount: initialJobs.length,
-      areEqual: deepEqual(localJobs, initialJobs)
-    });
-    if (!isUpdatingRef.current && !deepEqual(localJobs, initialJobs)) {
-      console.log('✅ Syncing jobs from parent (data changed)');
+    if (!hasInitialized.current) {
+      console.log('🎬 Initial load - setting state from props');
       setLocalJobs(initialJobs);
-    } else {
-      console.log('⏭️ Skipping jobs sync');
-    }
-  }, [initialJobs]);
-
-  useEffect(() => {
-    console.log('🔄 Routes useEffect fired', {
-      isUpdating: isUpdatingRef.current,
-      localRoutesKeys: Object.keys(localRoutes).length,
-      initialRoutesKeys: Object.keys(initialRoutes).length,
-      areEqual: deepEqual(localRoutes, initialRoutes)
-    });
-    if (!isUpdatingRef.current && !deepEqual(localRoutes, initialRoutes)) {
-      console.log('✅ Syncing routes from parent (data changed)');
       setLocalRoutes(initialRoutes);
+      hasInitialized.current = true;
     } else {
-      console.log('⏭️ Skipping routes sync');
+      console.log('⏭️ Ignoring prop changes - child state is authoritative');
     }
-  }, [initialRoutes]);
+  }, [initialJobs, initialRoutes]);
 
   // Calculate return to office times whenever routes change
   useEffect(() => {
