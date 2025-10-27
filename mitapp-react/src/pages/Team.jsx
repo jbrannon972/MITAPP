@@ -6,6 +6,7 @@ import ZoneCard from '../components/team/ZoneCard';
 import EditProfileModal from '../components/team/EditProfileModal';
 import DriverLeaderboard from '../components/team/DriverLeaderboard';
 import Evaluations from '../components/team/Evaluations';
+import HuddleManager from '../components/team/HuddleManager';
 import { getTotalStaff, getMITTechCount, getDemoTechCount } from '../utils/calculations';
 import { exportToCSV, prepareTeamDataForExport } from '../utils/exportUtils';
 import firebaseService from '../services/firebaseService';
@@ -317,6 +318,14 @@ const Team = () => {
               >
                 <i className="fas fa-list"></i> Full Roster
               </button>
+              {currentUser?.role === 'Manager' && (
+                <button
+                  className={'sub-nav-btn ' + (activeView === 'huddle-info' ? 'active' : '')}
+                  onClick={() => setActiveView('huddle-info')}
+                >
+                  <i className="fas fa-comments"></i> Huddle Info
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -543,6 +552,12 @@ const Team = () => {
                 <div className="metric-label">Service Areas</div>
               </div>
             </div>
+          </div>
+        )}
+
+        {activeView === 'huddle-info' && (
+          <div className="team-view active">
+            <HuddleManager />
           </div>
         )}
 

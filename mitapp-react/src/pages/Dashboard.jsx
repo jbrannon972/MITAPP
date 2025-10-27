@@ -7,6 +7,7 @@ import { getTechsOnRouteToday, getSubTeamsToday, getDailyHoursData } from '../ut
 import { getCalculatedScheduleForDay } from '../utils/calendarManager';
 import DailyHoursChart from '../components/dashboard/DailyHoursChart';
 import SecondShiftReportForm from '../components/dashboard/SecondShiftReportForm';
+import HuddleInfoModal from '../components/team/HuddleInfoModal';
 
 const Dashboard = () => {
   const { currentUser } = useAuth();
@@ -15,6 +16,7 @@ const Dashboard = () => {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [loading, setLoading] = useState(true);
   const [showReportForm, setShowReportForm] = useState(false);
+  const [showHuddleModal, setShowHuddleModal] = useState(false);
   const [dashboardData, setDashboardData] = useState({
     dailyStats: null,
     staffingInfo: [],
@@ -172,6 +174,15 @@ const Dashboard = () => {
                 onChange={(e) => setSelectedDate(e.target.value)}
               />
             </div>
+            {(currentUser?.role === 'Manager' || currentUser?.role === 'Supervisor') && (
+              <button
+                className="btn btn-primary"
+                onClick={() => setShowHuddleModal(true)}
+                title="View Today's Huddle Info"
+              >
+                <i className="fas fa-comments"></i> View Today's Huddle Info
+              </button>
+            )}
             <button
               className="btn btn-info"
               onClick={() => setShowReportForm(true)}
@@ -560,6 +571,15 @@ const Dashboard = () => {
             setShowReportForm(false);
             loadDashboardData(); // Reload dashboard to show new report
           }}
+        />
+      )}
+
+      {/* Huddle Info Modal */}
+      {showHuddleModal && (
+        <HuddleInfoModal
+          isOpen={showHuddleModal}
+          onClose={() => setShowHuddleModal(false)}
+          selectedDate={new Date(selectedDate + 'T00:00:00')}
         />
       )}
     </Layout>
