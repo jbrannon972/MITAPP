@@ -301,7 +301,9 @@ const Routing = () => {
     try {
       // Don't do optimistic update - let Firebase subscription handle it
       // This prevents race conditions with child component's local state
+      const stack = new Error().stack;
       console.log('📤 Saving jobs to Firebase...', jobsData.length, 'jobs');
+      console.log('📍 Called from:', stack.split('\n')[2]);
 
       // Save to Firebase with metadata for conflict tracking
       if (currentUser) {
@@ -407,7 +409,9 @@ const Routing = () => {
     try {
       // Don't do optimistic update - let Firebase subscription handle it
       // This prevents race conditions with child component's local state
+      const stack = new Error().stack;
       console.log('📤 Saving routes to Firebase...', Object.keys(routesData).length, 'routes');
+      console.log('📍 Called from:', stack.split('\n')[2]);
 
       // Save to Firebase with metadata for conflict tracking
       if (currentUser) {
