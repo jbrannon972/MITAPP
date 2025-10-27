@@ -1090,10 +1090,17 @@ const Routing = () => {
         bottom: 0,
         backgroundColor: 'var(--surface-color)',
         zIndex: 9999,
-        overflow: 'auto',
-        padding: '16px'
+        overflow: 'hidden',
+        display: 'flex',
+        flexDirection: 'column'
       }}>
-        {content}
+        <div style={{
+          flex: 1,
+          overflow: 'auto',
+          padding: '16px'
+        }}>
+          {content}
+        </div>
       </div>
     );
   }
