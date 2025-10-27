@@ -618,6 +618,10 @@ const KanbanCalendar = ({
 
       // Update the global jobs list with recalculated times
       const updatedJobs = localJobs.map(j => {
+        // If this is the job being moved/unassigned, use the updated version
+        if (j.id === job.id) {
+          return updatedJob;
+        }
         // For source tech: use recalculated job if it exists
         if (sourceTechId && updatedRoutes[sourceTechId]) {
           const recalculatedJob = updatedRoutes[sourceTechId].jobs.find(rj => rj.id === j.id && rj.type !== 'secondTechAssignment');
