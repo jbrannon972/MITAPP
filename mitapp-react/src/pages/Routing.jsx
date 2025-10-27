@@ -50,6 +50,14 @@ const Routing = () => {
     loadRoutes();
   }, [selectedDate]);
 
+  // Re-enrich routes when staffing data changes (to add emails to existing routes)
+  useEffect(() => {
+    if (staffingData && Object.keys(routes).length > 0) {
+      const enrichedRoutes = enrichRoutesWithEmails(routes);
+      setRoutes(enrichedRoutes);
+    }
+  }, [staffingData]);
+
   const loadJobs = async () => {
     try {
       setLoading(true);
@@ -65,10 +73,60 @@ const Routing = () => {
   const loadRoutes = async () => {
     try {
       const data = await firebaseService.getDocument('hou_routing', `routes_${selectedDate}`);
-      setRoutes(data?.routes || {});
+      const loadedRoutes = data?.routes || {};
+
+      // Enrich routes with email data from staffing data
+      const enrichedRoutes = enrichRoutesWithEmails(loadedRoutes);
+      setRoutes(enrichedRoutes);
     } catch (error) {
       console.error('Error loading routes:', error);
     }
+  };
+
+  // Enrich route tech objects with email from staffing data
+  const enrichRoutesWithEmails = (routes) => {
+    if (!staffingData?.zones) return routes;
+
+    const enrichedRoutes = { ...routes };
+
+    // For each route, find the tech in staffing data and add their email
+    Object.keys(enrichedRoutes).forEach(techId => {
+      const route = enrichedRoutes[techId];
+      if (route && route.tech && !route.tech.email) {
+        // Find this tech in staffing data
+        let techWithEmail = null;
+
+        for (const zone of staffingData.zones) {
+          // Check zone lead
+          if (zone.lead && zone.lead.id === techId) {
+            techWithEmail = zone.lead;
+            break;
+          }
+          // Check zone members
+          const member = zone.members?.find(m => m.id === techId);
+          if (member) {
+            techWithEmail = member;
+            break;
+          }
+        }
+
+        // If found, add email to route tech object
+        if (techWithEmail && techWithEmail.email) {
+          console.log(`Enriching ${route.tech.name} with email: ${techWithEmail.email}`);
+          enrichedRoutes[techId] = {
+            ...route,
+            tech: {
+              ...route.tech,
+              email: techWithEmail.email
+            }
+          };
+        } else {
+          console.warn(`Could not find email for tech: ${route.tech.name} (ID: ${techId})`);
+        }
+      }
+    });
+
+    return enrichedRoutes;
   };
 
   const handleCSVImport = (e) => {
