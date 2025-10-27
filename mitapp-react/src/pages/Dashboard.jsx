@@ -174,7 +174,7 @@ const Dashboard = () => {
                 onChange={(e) => setSelectedDate(e.target.value)}
               />
             </div>
-            {(currentUser?.role === 'Manager' || currentUser?.role === 'Supervisor') && (
+            {(currentUser?.role === 'Manager' || currentUser?.role === 'Supervisor' || currentUser?.role === 'MIT Lead') && (
               <button
                 className="btn btn-primary"
                 onClick={() => setShowHuddleModal(true)}
@@ -183,13 +183,18 @@ const Dashboard = () => {
                 <i className="fas fa-comments"></i> View Today's Huddle Info
               </button>
             )}
-            <button
-              className="btn btn-info"
-              onClick={() => setShowReportForm(true)}
-              title="Submit Supervisor Report"
-            >
-              <i className="fas fa-clipboard-check"></i> Submit Supervisor Report
-            </button>
+            {/* Second Shift Report - Only for designated second shift lead */}
+            {staffingData?.secondShiftLead &&
+             (currentUser?.username === staffingData.secondShiftLead ||
+              currentUser?.userId === staffingData.secondShiftLead) && (
+              <button
+                className="btn btn-info"
+                onClick={() => setShowReportForm(true)}
+                title="Submit Second Shift Report"
+              >
+                <i className="fas fa-moon"></i> Submit 2nd Shift Report
+              </button>
+            )}
           </div>
         </div>
 
@@ -563,7 +568,7 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* Supervisor Report Form Modal */}
+      {/* Second Shift Report Form Modal */}
       {showReportForm && (
         <SecondShiftReportForm
           onClose={() => setShowReportForm(false)}
