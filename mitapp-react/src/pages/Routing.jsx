@@ -908,40 +908,39 @@ const Routing = () => {
           </button>
         </div>
 
-          {/* Active Users Indicator */}
-          {activeUsers.length > 0 && (
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              padding: '8px 12px',
-              backgroundColor: 'var(--status-in-progress-bg)',
-              borderRadius: '6px',
-              fontSize: '12px',
-              marginBottom: '12px'
-            }}>
-              <i className="fas fa-users" style={{ color: 'var(--success-color)' }}></i>
-              <span style={{ fontWeight: '600', color: 'var(--success-color)' }}>
-                {activeUsers.length} {activeUsers.length === 1 ? 'person' : 'people'} viewing:
+        {/* Active Users Indicator */}
+        {activeUsers.length > 0 && (
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            padding: '8px 12px',
+            backgroundColor: 'var(--status-in-progress-bg)',
+            borderRadius: '6px',
+            fontSize: '12px',
+            marginBottom: '12px'
+          }}>
+            <i className="fas fa-users" style={{ color: 'var(--success-color)' }}></i>
+            <span style={{ fontWeight: '600', color: 'var(--success-color)' }}>
+              {activeUsers.length} {activeUsers.length === 1 ? 'person' : 'people'} viewing:
+            </span>
+            {activeUsers.map((user, idx) => (
+              <span key={idx} style={{
+                padding: '2px 8px',
+                backgroundColor: 'var(--success-color)',
+                color: 'white',
+                borderRadius: '12px',
+                fontSize: '11px',
+                fontWeight: '600'
+              }}>
+                {user.userName}
               </span>
-              {activeUsers.map((user, idx) => (
-                <span key={idx} style={{
-                  padding: '2px 8px',
-                  backgroundColor: 'var(--success-color)',
-                  color: 'white',
-                  borderRadius: '12px',
-                  fontSize: '11px',
-                  fontWeight: '600'
-                }}>
-                  {user.userName}
-                </span>
-              ))}
-              <span style={{ fontSize: '10px', color: 'var(--text-secondary)', fontStyle: 'italic', marginLeft: 'auto' }}>
-                Live updates enabled
-              </span>
-            </div>
-          )}
-        </div>
+            ))}
+            <span style={{ fontSize: '10px', color: 'var(--text-secondary)', fontStyle: 'italic', marginLeft: 'auto' }}>
+              Live updates enabled
+            </span>
+          </div>
+        )}
 
         {loading ? (
           <p>Loading...</p>
@@ -952,10 +951,9 @@ const Routing = () => {
             {activeView === 'jobs' && renderJobsView()}
           </>
         )}
-      </div>
 
-      {/* CSV Import Modal */}
-      {showImportModal && (
+        {/* CSV Import Modal */}
+        {showImportModal && (
           <div className="modal-overlay active" onClick={() => setShowImportModal(false)}>
             <div className="modal" onClick={(e) => e.stopPropagation()}>
               <div className="modal-header">
@@ -1077,6 +1075,7 @@ const Routing = () => {
             </div>
           </div>
         )}
+      </div>
     </div>
   );
 
