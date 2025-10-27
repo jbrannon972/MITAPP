@@ -921,16 +921,16 @@ const ManualMode = ({
               }}
               style={{
                 position: 'absolute',
-                top: '50%',
-                left: '50%',
-                transform: 'translate(-50%, -50%)',
+                top: '16px',
+                left: '16px',
                 backgroundColor: 'var(--surface-color)',
                 padding: '16px',
                 borderRadius: '8px',
                 boxShadow: '0 8px 24px rgba(0,0,0,0.25)',
                 maxWidth: '400px',
                 zIndex: 1000,
-                border: '2px solid var(--info-color)'
+                border: '2px solid var(--info-color)',
+                pointerEvents: 'auto'
               }}
             >
               <div style={{ marginBottom: '12px' }}>
@@ -1025,31 +1025,53 @@ const ManualMode = ({
                     borderRadius: '4px',
                     marginBottom: '4px',
                     borderLeft: `3px solid ${getJobTypeColor(job.jobType)}`,
-                    fontSize: '11px'
+                    fontSize: '11px',
+                    position: 'relative'
                   }}
                 >
-                  <div style={{ fontWeight: '600', marginBottom: '2px' }}>
-                    {idx + 1}. {job.customerName}
-                  </div>
-                  <div style={{ color: 'var(--text-secondary)', fontSize: '10px' }}>
-                    {job.startTime && (
-                      <div style={{ marginBottom: '2px', color: 'var(--success-color)', fontWeight: '600' }}>
-                        <i className="fas fa-clock"></i> {job.startTime} - {job.endTime}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: '600', marginBottom: '2px' }}>
+                        {idx + 1}. {job.customerName}
                       </div>
-                    )}
-                    <div>
-                      {job.jobType} • {job.duration}h
-                      {job.requiresTwoTechs && (
-                        <span style={{ color: 'var(--warning-color)', marginLeft: '4px' }}>
-                          <i className="fas fa-users"></i>
-                        </span>
-                      )}
+                      <div style={{ color: 'var(--text-secondary)', fontSize: '10px' }}>
+                        {job.startTime && (
+                          <div style={{ marginBottom: '2px', color: 'var(--success-color)', fontWeight: '600' }}>
+                            <i className="fas fa-clock"></i> {job.startTime} - {job.endTime}
+                          </div>
+                        )}
+                        <div>
+                          {job.jobType} • {job.duration}h
+                          {job.requiresTwoTechs && (
+                            <span style={{ color: 'var(--warning-color)', marginLeft: '4px' }}>
+                              <i className="fas fa-users"></i>
+                            </span>
+                          )}
+                        </div>
+                        {job.travelTime > 0 && (
+                          <div style={{ color: 'var(--warning-color)', fontSize: '9px', marginTop: '2px' }}>
+                            <i className="fas fa-car"></i> {job.travelTime}min drive
+                          </div>
+                        )}
+                      </div>
                     </div>
-                    {job.travelTime > 0 && (
-                      <div style={{ color: 'var(--warning-color)', fontSize: '9px', marginTop: '2px' }}>
-                        <i className="fas fa-car"></i> {job.travelTime}min drive
-                      </div>
-                    )}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        removeJobFromTech(job.id, selectedTech);
+                      }}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        cursor: 'pointer',
+                        padding: '2px 4px',
+                        color: 'var(--danger-color)',
+                        fontSize: '10px'
+                      }}
+                      title="Unassign job"
+                    >
+                      <i className="fas fa-times"></i>
+                    </button>
                   </div>
                 </div>
               ))}

@@ -245,6 +245,10 @@ const Routing = () => {
 
   const saveJobs = async (jobsData) => {
     try {
+      // Update local state first for immediate UI sync
+      setJobs(jobsData);
+
+      // Then save to Firebase
       await firebaseService.saveDocument('hou_routing', `jobs_${selectedDate}`, {
         jobs: jobsData,
         date: selectedDate,
@@ -330,6 +334,10 @@ const Routing = () => {
 
   const saveRoutes = async (routesData) => {
     try {
+      // Update local state first for immediate UI sync between views
+      setRoutes(routesData);
+
+      // Then save to Firebase
       await firebaseService.saveDocument('hou_routing', `routes_${selectedDate}`, {
         routes: routesData,
         date: selectedDate,
@@ -707,11 +715,7 @@ const Routing = () => {
   return (
     <Layout>
       <div className="tab-content active">
-        <div className="tab-header">
-          <h2>Route Planning & Management - Houston</h2>
-        </div>
-
-        <div className="tab-controls" style={{ marginBottom: '24px' }}>
+        <div className="tab-controls" style={{ marginBottom: '16px' }}>
           <div className="sub-nav">
             <button
               className={`sub-nav-btn ${activeView === 'routing' ? 'active' : ''}`}
