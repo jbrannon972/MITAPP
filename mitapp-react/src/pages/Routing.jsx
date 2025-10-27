@@ -210,6 +210,7 @@ const Routing = () => {
           id: zone.lead.id,
           name: zone.lead.name,
           role: zone.lead.role,
+          email: zone.lead.email, // Include email for calendar integration
           zone: zone.name,
           office: zone.lead.office || 'office_1',
           isDemoTech: false
@@ -221,6 +222,7 @@ const Routing = () => {
           id: member.id,
           name: member.name,
           role: member.role,
+          email: member.email, // Include email for calendar integration
           zone: zone.name,
           office: member.office || 'office_1',
           isDemoTech: member.role === 'Demo Tech'
