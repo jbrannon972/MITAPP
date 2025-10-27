@@ -317,39 +317,51 @@ const HuddleInfoModal = ({ isOpen, onClose, selectedDate = new Date() }) => {
                           <i className="fas fa-plus"></i> Add Member from Another Zone
                         </button>
                       ) : (
-                        <div className="manual-add-form">
-                          <input
-                            type="text"
-                            placeholder="Search by name..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="search-input"
-                            autoFocus
-                          />
-                          <div className="search-results">
-                            {filteredOtherMembers.length === 0 ? (
-                              <p>No members found</p>
-                            ) : (
-                              filteredOtherMembers.map(member => (
-                                <div
-                                  key={member.id}
-                                  className="search-result-item"
-                                  onClick={() => addManualMember(member)}
-                                >
-                                  <span>{member.name}</span>
-                                  <span className="zone-badge">{member.zoneName}</span>
+                        <div className="other-zones-list">
+                          <h4>Select Member from Other Zones</h4>
+                          {staffingData?.zones
+                            ?.filter(zone => zone.id !== currentUserZone?.id)
+                            ?.map(zone => (
+                              <div key={zone.id} className="other-zone-section">
+                                <div className="other-zone-header">
+                                  <i className="fas fa-map-marker-alt"></i> {zone.name}
                                 </div>
-                              ))
-                            )}
-                          </div>
+                                <div className="other-zone-members">
+                                  {/* Zone Lead */}
+                                  {zone.lead && (
+                                    <div
+                                      className="other-zone-member-item"
+                                      onClick={() => addManualMember({ ...zone.lead, zoneName: zone.name })}
+                                    >
+                                      <span className="member-name">{zone.lead.name}</span>
+                                      <span className="member-role-badge">Lead</span>
+                                    </div>
+                                  )}
+                                  {/* Zone Members */}
+                                  {zone.members?.map(member => (
+                                    <div
+                                      key={member.id}
+                                      className="other-zone-member-item"
+                                      onClick={() => addManualMember({ ...member, zoneName: zone.name })}
+                                    >
+                                      <span className="member-name">{member.name}</span>
+                                      {member.role && (
+                                        <span className="member-role-badge">{member.role}</span>
+                                      )}
+                                    </div>
+                                  ))}
+                                  {!zone.lead && (!zone.members || zone.members.length === 0) && (
+                                    <p className="no-members">No members in this zone</p>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
                           <button
-                            className="btn btn-text"
-                            onClick={() => {
-                              setShowManualAdd(false);
-                              setSearchTerm('');
-                            }}
+                            className="btn btn-secondary"
+                            onClick={() => setShowManualAdd(false)}
+                            style={{ marginTop: '12px' }}
                           >
-                            Cancel
+                            Close
                           </button>
                         </div>
                       )}

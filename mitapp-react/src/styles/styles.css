@@ -2884,6 +2884,86 @@ input:checked + .slider:before {
     flex: 1;
 }
 
+/* Other Zones List */
+.other-zones-list {
+    background: var(--background-color);
+    padding: 16px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-color);
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.other-zones-list h4 {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 16px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.other-zone-section {
+    margin-bottom: 16px;
+}
+
+.other-zone-header {
+    font-weight: 600;
+    color: var(--primary-color);
+    padding: 8px 12px;
+    background: var(--surface-color);
+    border-radius: var(--radius-sm);
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.other-zone-members {
+    display: grid;
+    gap: 4px;
+    padding-left: 8px;
+}
+
+.other-zone-member-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 12px;
+    background: var(--surface-color);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all 0.2s;
+    border: 1px solid transparent;
+}
+
+.other-zone-member-item:hover {
+    background-color: #f1f5f9;
+    border-color: var(--primary-color);
+    transform: translateX(4px);
+}
+
+.other-zone-member-item .member-name {
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.other-zone-member-item .member-role-badge {
+    font-size: 12px;
+    background-color: var(--secondary-color);
+    color: white;
+    padding: 3px 8px;
+    border-radius: 10px;
+    font-weight: 500;
+}
+
+.other-zone-section .no-members {
+    color: var(--text-secondary);
+    font-size: 13px;
+    padding: 8px 12px;
+    font-style: italic;
+}
+
 /* Mobile Responsiveness for Huddle Features */
 @media (max-width: 768px) {
     .huddle-manager-header {

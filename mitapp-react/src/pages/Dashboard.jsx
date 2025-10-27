@@ -183,6 +183,16 @@ const Dashboard = () => {
                 <i className="fas fa-comments"></i> View Today's Huddle Info
               </button>
             )}
+            {/* Supervisor Report - For Supervisors and MIT Leads */}
+            {(currentUser?.role === 'Supervisor' || currentUser?.role === 'MIT Lead') && (
+              <button
+                className="btn btn-success"
+                onClick={() => setShowReportForm(true)}
+                title="Submit Supervisor Report"
+              >
+                <i className="fas fa-clipboard-check"></i> Submit Supervisor Report
+              </button>
+            )}
             {/* Second Shift Report - Only for designated second shift lead */}
             {staffingData?.secondShiftLead &&
              (currentUser?.username === staffingData.secondShiftLead ||
