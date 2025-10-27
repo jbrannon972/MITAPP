@@ -29,23 +29,18 @@ const KanbanCalendar = ({
   const columnRefs = useRef({});
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
-  const isUpdatingRef = useRef(false);
 
   // Get all techs including demo techs for second tech assignment
   const allTechs = [...techs];
   const demoTechs = techs.filter(t => t.isDemoTech || t.role?.toLowerCase().includes('demo'));
 
-  // Sync with parent when props change (but not during our own updates)
+  // Sync with parent when props change
   useEffect(() => {
-    if (!isUpdatingRef.current) {
-      setLocalJobs(initialJobs);
-    }
+    setLocalJobs(initialJobs);
   }, [initialJobs]);
 
   useEffect(() => {
-    if (!isUpdatingRef.current) {
-      setLocalRoutes(initialRoutes);
-    }
+    setLocalRoutes(initialRoutes);
   }, [initialRoutes]);
 
   // Calculate return to office times whenever routes change
@@ -515,13 +510,7 @@ const KanbanCalendar = ({
       return;
     }
 
-    // Set updating flag to prevent parent sync from overwriting our changes
-    isUpdatingRef.current = true;
-
-    try {
-      const updatedRoutes = { ...localRoutes };
-
-    // MOVING TO DIFFERENT TECH OR UNASSIGNING
+    const updatedRoutes = { ...localRoutes };
 
     // Calculate start time based on drive time
     const startTime = targetTechId
@@ -543,25 +532,25 @@ const KanbanCalendar = ({
     if (sourceTechId) {
       // Remove job from source tech
       updatedRoutes[sourceTechId] = {
-          ...updatedRoutes[sourceTechId],
-          jobs: updatedRoutes[sourceTechId].jobs.filter(j => j.id !== job.id)
-        };
+        ...updatedRoutes[sourceTechId],
+        jobs: updatedRoutes[sourceTechId].jobs.filter(j => j.id !== job.id)
+      };
 
-        // Recalculate remaining jobs' timings to shift them up
-        updatedRoutes[sourceTechId] = await recalculateRouteTimings(sourceTechId, updatedRoutes);
+      // Recalculate remaining jobs' timings to shift them up
+      updatedRoutes[sourceTechId] = await recalculateRouteTimings(sourceTechId, updatedRoutes);
 
-        // If job is being removed (not just reassigned), clean up second tech assignments
-        if (!targetTechId && job.type !== 'secondTechAssignment') {
-          // Remove any second tech assignments linked to this primary job
-          Object.keys(updatedRoutes).forEach(techId => {
-            if (updatedRoutes[techId]?.jobs) {
-              updatedRoutes[techId].jobs = updatedRoutes[techId].jobs.filter(
-                j => !(j.type === 'secondTechAssignment' && j.primaryJobId === job.id)
-              );
-            }
-          });
-        }
+      // If job is being removed (not just reassigned), clean up second tech assignments
+      if (!targetTechId && job.type !== 'secondTechAssignment') {
+        // Remove any second tech assignments linked to this primary job
+        Object.keys(updatedRoutes).forEach(techId => {
+          if (updatedRoutes[techId]?.jobs) {
+            updatedRoutes[techId].jobs = updatedRoutes[techId].jobs.filter(
+              j => !(j.type === 'secondTechAssignment' && j.primaryJobId === job.id)
+            );
+          }
+        });
       }
+    }
 
     // Handle second tech assignment being dragged
     if (job.type === 'secondTechAssignment') {
@@ -592,15 +581,15 @@ const KanbanCalendar = ({
 
     // Update the global jobs list with recalculated times
     const updatedJobs = localJobs.map(j => {
-      // For same-tech reorders or any tech with recalculated jobs
+      // For source tech: use recalculated job if it exists
       if (sourceTechId && updatedRoutes[sourceTechId]) {
         const recalculatedJob = updatedRoutes[sourceTechId].jobs.find(rj => rj.id === j.id && rj.type !== 'secondTechAssignment');
         if (recalculatedJob) {
           return recalculatedJob;
         }
       }
-      // For jobs moved to different tech
-      if (!isSameTechReorder && targetTechId && updatedRoutes[targetTechId]) {
+      // For target tech: use the updated job if it exists
+      if (targetTechId && updatedRoutes[targetTechId]) {
         const movedJob = updatedRoutes[targetTechId].jobs.find(rj => rj.id === j.id && rj.type !== 'secondTechAssignment');
         if (movedJob) {
           return movedJob;
@@ -609,19 +598,12 @@ const KanbanCalendar = ({
       return j;
     });
 
-      setLocalRoutes(updatedRoutes);
-      setLocalJobs(updatedJobs);
-      setDraggedJob(null);
+    setLocalRoutes(updatedRoutes);
+    setLocalJobs(updatedJobs);
+    setDraggedJob(null);
 
-      await onUpdateRoutes(updatedRoutes);
-      await onUpdateJobs(updatedJobs);
-    } finally {
-      // Reset updating flag after delay to allow Firebase roundtrip to complete
-      // 500ms should be sufficient since we removed optimistic updates from parent
-      setTimeout(() => {
-        isUpdatingRef.current = false;
-      }, 500);
-    }
+    await onUpdateRoutes(updatedRoutes);
+    await onUpdateJobs(updatedJobs);
   };
 
   const handleRouteSwap = async (e, targetTechId) => {
@@ -634,46 +616,38 @@ const KanbanCalendar = ({
     }
 
     // Set updating flag to prevent parent sync from overwriting our changes
-    isUpdatingRef.current = true;
 
-    try {
-      const updatedRoutes = { ...localRoutes };
-      const draggedJobs = updatedRoutes[draggedTech]?.jobs || [];
-      const targetJobs = updatedRoutes[targetTechId]?.jobs || [];
+    const updatedRoutes = { ...localRoutes };
+  const draggedJobs = updatedRoutes[draggedTech]?.jobs || [];
+  const targetJobs = updatedRoutes[targetTechId]?.jobs || [];
 
-      const temp = { ...updatedRoutes[draggedTech] };
-      updatedRoutes[draggedTech] = {
-        ...(updatedRoutes[targetTechId] || { jobs: [] }),
-        tech: temp.tech
-      };
-      updatedRoutes[targetTechId] = {
-        ...temp,
-        tech: updatedRoutes[targetTechId]?.tech || techs.find(t => t.id === targetTechId)
-      };
+  const temp = { ...updatedRoutes[draggedTech] };
+  updatedRoutes[draggedTech] = {
+    ...(updatedRoutes[targetTechId] || { jobs: [] }),
+    tech: temp.tech
+  };
+  updatedRoutes[targetTechId] = {
+    ...temp,
+    tech: updatedRoutes[targetTechId]?.tech || techs.find(t => t.id === targetTechId)
+  };
 
-      const updatedJobs = localJobs.map(job => {
-        if (draggedJobs.some(j => j.id === job.id)) {
-          return { ...job, assignedTech: draggedTech };
-        }
-        if (targetJobs.some(j => j.id === job.id)) {
-          return { ...job, assignedTech: targetTechId };
-        }
-        return job;
-      });
-
-      setLocalRoutes(updatedRoutes);
-      setLocalJobs(updatedJobs);
-      setDraggedTech(null);
-
-      await onUpdateRoutes(updatedRoutes);
-      await onUpdateJobs(updatedJobs);
-    } finally {
-      // Reset updating flag after delay to allow Firebase roundtrip to complete
-      // 500ms should be sufficient since we removed optimistic updates from parent
-      setTimeout(() => {
-        isUpdatingRef.current = false;
-      }, 500);
+  const updatedJobs = localJobs.map(job => {
+    if (draggedJobs.some(j => j.id === job.id)) {
+      return { ...job, assignedTech: draggedTech };
     }
+    if (targetJobs.some(j => j.id === job.id)) {
+      return { ...job, assignedTech: targetTechId };
+    }
+    return job;
+  });
+
+  setLocalRoutes(updatedRoutes);
+  setLocalJobs(updatedJobs);
+  setDraggedTech(null);
+
+  await onUpdateRoutes(updatedRoutes);
+  await onUpdateJobs(updatedJobs);
+
   };
 
   const handleTechClick = (techId) => {
@@ -689,106 +663,89 @@ const KanbanCalendar = ({
   // Move job up in the sequence (earlier in the day)
   const handleMoveJobUp = async (job, techId) => {
     // Set updating flag to prevent parent sync from overwriting our changes
-    isUpdatingRef.current = true;
 
-    try {
-      const updatedRoutes = { ...localRoutes };
-      if (!updatedRoutes[techId]) return;
+    const updatedRoutes = { ...localRoutes };
+  if (!updatedRoutes[techId]) return;
 
-      // Get jobs sorted by time
-      const jobs = [...updatedRoutes[techId].jobs].sort((a, b) => {
-        const aTime = timeToMinutes(a.startTime || a.timeframeStart);
-        const bTime = timeToMinutes(b.startTime || b.timeframeStart);
-        return aTime - bTime;
-      });
+  // Get jobs sorted by time
+  const jobs = [...updatedRoutes[techId].jobs].sort((a, b) => {
+    const aTime = timeToMinutes(a.startTime || a.timeframeStart);
+    const bTime = timeToMinutes(b.startTime || b.timeframeStart);
+    return aTime - bTime;
+  });
 
-      const currentIndex = jobs.findIndex(j => j.id === job.id);
-      if (currentIndex <= 0) return; // Already at top
+  const currentIndex = jobs.findIndex(j => j.id === job.id);
+  if (currentIndex <= 0) return; // Already at top
 
-      // Swap with previous job
-      const temp = jobs[currentIndex];
-      jobs[currentIndex] = jobs[currentIndex - 1];
-      jobs[currentIndex - 1] = temp;
+  // Swap with previous job
+  const temp = jobs[currentIndex];
+  jobs[currentIndex] = jobs[currentIndex - 1];
+  jobs[currentIndex - 1] = temp;
 
-      // Update route with new order
-      updatedRoutes[techId].jobs = jobs;
+  // Update route with new order
+  updatedRoutes[techId].jobs = jobs;
 
-      // Recalculate all job timings
-      updatedRoutes[techId] = await recalculateRouteTimings(techId, updatedRoutes);
+  // Recalculate all job timings
+  updatedRoutes[techId] = await recalculateRouteTimings(techId, updatedRoutes);
 
-      // Update global jobs list
-      const updatedJobs = localJobs.map(j => {
-        const recalculatedJob = updatedRoutes[techId].jobs.find(rj => rj.id === j.id && rj.type !== 'secondTechAssignment');
-        return recalculatedJob || j;
-      });
+  // Update global jobs list
+  const updatedJobs = localJobs.map(j => {
+    const recalculatedJob = updatedRoutes[techId].jobs.find(rj => rj.id === j.id && rj.type !== 'secondTechAssignment');
+    return recalculatedJob || j;
+  });
 
-      setLocalRoutes(updatedRoutes);
-      setLocalJobs(updatedJobs);
-      await onUpdateRoutes(updatedRoutes);
-      await onUpdateJobs(updatedJobs);
-    } finally {
-      // Reset updating flag after delay to allow Firebase roundtrip to complete
-      // 500ms should be sufficient since we removed optimistic updates from parent
-      setTimeout(() => {
-        isUpdatingRef.current = false;
-      }, 500);
-    }
+  setLocalRoutes(updatedRoutes);
+  setLocalJobs(updatedJobs);
+  await onUpdateRoutes(updatedRoutes);
+  await onUpdateJobs(updatedJobs);
+
   };
 
   // Move job down in the sequence (later in the day)
   const handleMoveJobDown = async (job, techId) => {
     // Set updating flag to prevent parent sync from overwriting our changes
-    isUpdatingRef.current = true;
 
-    try {
-      const updatedRoutes = { ...localRoutes };
-      if (!updatedRoutes[techId]) return;
+    const updatedRoutes = { ...localRoutes };
+  if (!updatedRoutes[techId]) return;
 
-      // Get jobs sorted by time
-      const jobs = [...updatedRoutes[techId].jobs].sort((a, b) => {
-        const aTime = timeToMinutes(a.startTime || a.timeframeStart);
-        const bTime = timeToMinutes(b.startTime || b.timeframeStart);
-        return aTime - bTime;
-      });
+  // Get jobs sorted by time
+  const jobs = [...updatedRoutes[techId].jobs].sort((a, b) => {
+    const aTime = timeToMinutes(a.startTime || a.timeframeStart);
+    const bTime = timeToMinutes(b.startTime || b.timeframeStart);
+    return aTime - bTime;
+  });
 
-      const currentIndex = jobs.findIndex(j => j.id === job.id);
-      if (currentIndex === -1 || currentIndex >= jobs.length - 1) return; // Already at bottom
+  const currentIndex = jobs.findIndex(j => j.id === job.id);
+  if (currentIndex === -1 || currentIndex >= jobs.length - 1) return; // Already at bottom
 
-      // Swap with next job
-      const temp = jobs[currentIndex];
-      jobs[currentIndex] = jobs[currentIndex + 1];
-      jobs[currentIndex + 1] = temp;
+  // Swap with next job
+  const temp = jobs[currentIndex];
+  jobs[currentIndex] = jobs[currentIndex + 1];
+  jobs[currentIndex + 1] = temp;
 
-      // Update route with new order
-      updatedRoutes[techId].jobs = jobs;
+  // Update route with new order
+  updatedRoutes[techId].jobs = jobs;
 
-      // Recalculate all job timings
-      updatedRoutes[techId] = await recalculateRouteTimings(techId, updatedRoutes);
+  // Recalculate all job timings
+  updatedRoutes[techId] = await recalculateRouteTimings(techId, updatedRoutes);
 
-      // Update global jobs list
-      const updatedJobs = localJobs.map(j => {
-        const recalculatedJob = updatedRoutes[techId].jobs.find(rj => rj.id === j.id && rj.type !== 'secondTechAssignment');
-        return recalculatedJob || j;
-      });
+  // Update global jobs list
+  const updatedJobs = localJobs.map(j => {
+    const recalculatedJob = updatedRoutes[techId].jobs.find(rj => rj.id === j.id && rj.type !== 'secondTechAssignment');
+    return recalculatedJob || j;
+  });
 
-      setLocalRoutes(updatedRoutes);
-      setLocalJobs(updatedJobs);
-      await onUpdateRoutes(updatedRoutes);
-      await onUpdateJobs(updatedJobs);
-    } finally {
-      // Reset updating flag after delay to allow Firebase roundtrip to complete
-      // 500ms should be sufficient since we removed optimistic updates from parent
-      setTimeout(() => {
-        isUpdatingRef.current = false;
-      }, 500);
-    }
+  setLocalRoutes(updatedRoutes);
+  setLocalJobs(updatedJobs);
+  await onUpdateRoutes(updatedRoutes);
+  await onUpdateJobs(updatedJobs);
+
   };
 
   const handleSaveJobDetails = async () => {
     if (!selectedJob) return;
 
     // Set updating flag to prevent parent sync from overwriting our changes
-    isUpdatingRef.current = true;
 
     try {
       // Track if second tech changed
@@ -885,10 +842,7 @@ const KanbanCalendar = ({
       await onUpdateJobs(updatedJobs);
       await onUpdateRoutes(updatedRoutes);
     } finally {
-      // Reset updating flag after delay to allow Firebase roundtrip to complete
-      // 500ms should be sufficient since we removed optimistic updates from parent
       setTimeout(() => {
-        isUpdatingRef.current = false;
       }, 500);
     }
   };

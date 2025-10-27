@@ -299,8 +299,8 @@ const Routing = () => {
 
   const saveJobs = async (jobsData) => {
     try {
-      // Don't update local state - let Firebase subscription handle it
-      // This prevents race conditions with real-time sync
+      // Update local state immediately for instant UI feedback
+      setJobs(jobsData);
 
       // Save to Firebase with metadata for conflict tracking
       if (currentUser) {
@@ -403,8 +403,8 @@ const Routing = () => {
 
   const saveRoutes = async (routesData) => {
     try {
-      // Don't update local state - let Firebase subscription handle it
-      // This prevents race conditions with real-time sync
+      // Update local state immediately for instant UI feedback
+      setRoutes(routesData);
 
       // Save to Firebase with metadata for conflict tracking
       if (currentUser) {
