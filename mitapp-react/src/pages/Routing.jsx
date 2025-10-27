@@ -3,6 +3,7 @@ import Layout from '../components/common/Layout';
 import ManualMode from '../components/routing/ManualMode';
 import KanbanCalendar from '../components/routing/KanbanCalendar';
 import { useData } from '../contexts/DataContext';
+import { useAuth } from '../contexts/AuthContext';
 import firebaseService from '../services/firebaseService';
 import { getMapboxService, initMapboxService } from '../services/mapboxService';
 import {
@@ -17,6 +18,7 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 
 const Routing = () => {
   const { staffingData } = useData();
+  const { currentUser } = useAuth();
   const [activeView, setActiveView] = useState('routing');
   const [jobs, setJobs] = useState([]);
   const [routes, setRoutes] = useState({});
@@ -27,6 +29,7 @@ const Routing = () => {
   const [optimizing, setOptimizing] = useState(false);
   const [mapboxToken, setMapboxToken] = useState(localStorage.getItem('mapboxToken') || 'pk.eyJ1IjoiamJyYW5ub245NzIiLCJhIjoiY204NXN2Z2w2Mms4ODJrb2tvemV2ZnlicyJ9.84JYhRSUAF5_-vvdebw-TA');
   const [selectedTech, setSelectedTech] = useState(null);
+  const [activeUsers, setActiveUsers] = useState([]);
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const markersRef = useRef([]);
@@ -45,10 +48,60 @@ const Routing = () => {
     }
   };
 
+  // Real-time subscriptions for jobs and routes
   useEffect(() => {
-    loadJobs();
-    loadRoutes();
-  }, [selectedDate]);
+    if (!currentUser) return;
+
+    setLoading(true);
+
+    // Subscribe to real-time jobs updates
+    const jobsUnsubscribe = firebaseService.subscribeToDocument(
+      'hou_routing',
+      `jobs_${selectedDate}`,
+      (data) => {
+        setJobs(data?.jobs || []);
+        setLoading(false);
+      }
+    );
+
+    // Subscribe to real-time routes updates
+    const routesUnsubscribe = firebaseService.subscribeToDocument(
+      'hou_routing',
+      `routes_${selectedDate}`,
+      (data) => {
+        const loadedRoutes = data?.routes || {};
+        const enrichedRoutes = enrichRoutesWithEmails(loadedRoutes);
+        setRoutes(enrichedRoutes);
+      }
+    );
+
+    // Set presence to show this user is viewing routes
+    const user = {
+      id: currentUser.uid,
+      name: currentUser.displayName || currentUser.email,
+      email: currentUser.email
+    };
+    firebaseService.setPresence('routing', selectedDate, user);
+
+    // Subscribe to presence updates
+    const presenceUnsubscribe = firebaseService.subscribeToPresence(
+      'routing',
+      selectedDate,
+      (users) => {
+        // Filter out current user and show others
+        const otherUsers = users.filter(u => u.userId !== currentUser.uid);
+        setActiveUsers(otherUsers);
+      }
+    );
+
+    // Cleanup function
+    return () => {
+      jobsUnsubscribe();
+      routesUnsubscribe();
+      presenceUnsubscribe();
+      firebaseService.removePresence('routing', selectedDate, currentUser.uid);
+    };
+  }, [selectedDate, currentUser, staffingData]);
 
   // Re-enrich routes when staffing data changes (to add emails to existing routes)
   useEffect(() => {
@@ -58,30 +111,7 @@ const Routing = () => {
     }
   }, [staffingData]);
 
-  const loadJobs = async () => {
-    try {
-      setLoading(true);
-      const data = await firebaseService.getDocument('hou_routing', `jobs_${selectedDate}`);
-      setJobs(data?.jobs || []);
-    } catch (error) {
-      console.error('Error loading jobs:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const loadRoutes = async () => {
-    try {
-      const data = await firebaseService.getDocument('hou_routing', `routes_${selectedDate}`);
-      const loadedRoutes = data?.routes || {};
-
-      // Enrich routes with email data from staffing data
-      const enrichedRoutes = enrichRoutesWithEmails(loadedRoutes);
-      setRoutes(enrichedRoutes);
-    } catch (error) {
-      console.error('Error loading routes:', error);
-    }
-  };
+  // Removed loadJobs and loadRoutes - using real-time subscriptions instead
 
   // Enrich route tech objects with email from staffing data
   const enrichRoutesWithEmails = (routes) => {
@@ -245,15 +275,30 @@ const Routing = () => {
 
   const saveJobs = async (jobsData) => {
     try {
-      // Update local state first for immediate UI sync
+      // Update local state first for immediate UI sync (optimistic update)
       setJobs(jobsData);
 
-      // Then save to Firebase
-      await firebaseService.saveDocument('hou_routing', `jobs_${selectedDate}`, {
-        jobs: jobsData,
-        date: selectedDate,
-        lastUpdated: new Date().toISOString()
-      });
+      // Save to Firebase with metadata for conflict tracking
+      if (currentUser) {
+        await firebaseService.saveWithMetadata(
+          'hou_routing',
+          `jobs_${selectedDate}`,
+          {
+            jobs: jobsData,
+            date: selectedDate
+          },
+          {
+            name: currentUser.displayName || currentUser.email,
+            id: currentUser.uid
+          }
+        );
+      } else {
+        await firebaseService.saveDocument('hou_routing', `jobs_${selectedDate}`, {
+          jobs: jobsData,
+          date: selectedDate,
+          lastUpdated: new Date().toISOString()
+        });
+      }
     } catch (error) {
       console.error('Error saving jobs:', error);
       alert('Error saving jobs. Please try again.');
@@ -334,15 +379,30 @@ const Routing = () => {
 
   const saveRoutes = async (routesData) => {
     try {
-      // Update local state first for immediate UI sync between views
+      // Update local state first for immediate UI sync between views (optimistic update)
       setRoutes(routesData);
 
-      // Then save to Firebase
-      await firebaseService.saveDocument('hou_routing', `routes_${selectedDate}`, {
-        routes: routesData,
-        date: selectedDate,
-        lastUpdated: new Date().toISOString()
-      });
+      // Save to Firebase with metadata for conflict tracking
+      if (currentUser) {
+        await firebaseService.saveWithMetadata(
+          'hou_routing',
+          `routes_${selectedDate}`,
+          {
+            routes: routesData,
+            date: selectedDate
+          },
+          {
+            name: currentUser.displayName || currentUser.email,
+            id: currentUser.uid
+          }
+        );
+      } else {
+        await firebaseService.saveDocument('hou_routing', `routes_${selectedDate}`, {
+          routes: routesData,
+          date: selectedDate,
+          lastUpdated: new Date().toISOString()
+        });
+      }
     } catch (error) {
       console.error('Error saving routes:', error);
     }
@@ -673,8 +733,8 @@ const Routing = () => {
 
 
   const handleRefresh = () => {
-    loadJobs();
-    loadRoutes();
+    // No need to manually refresh - real-time sync handles updates
+    alert('This page updates automatically! Changes from other users appear in real-time.');
   };
 
   const renderRoutingView = () => {
@@ -694,6 +754,7 @@ const Routing = () => {
         onRefresh={handleRefresh}
         selectedDate={selectedDate}
         onImportCSV={() => setShowImportModal(true)}
+        activeUsers={activeUsers}
       />
     );
   };
@@ -712,6 +773,7 @@ const Routing = () => {
         onUpdateRoutes={saveRoutes}
         onUpdateJobs={saveJobs}
         selectedDate={selectedDate}
+        activeUsers={activeUsers}
       />
     );
   };
@@ -740,6 +802,40 @@ const Routing = () => {
               <i className="fas fa-clipboard-list"></i> Jobs
             </button>
           </div>
+
+          {/* Active Users Indicator */}
+          {activeUsers.length > 0 && (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '8px 12px',
+              backgroundColor: 'var(--status-in-progress-bg)',
+              borderRadius: '6px',
+              fontSize: '12px',
+              marginBottom: '12px'
+            }}>
+              <i className="fas fa-users" style={{ color: 'var(--success-color)' }}></i>
+              <span style={{ fontWeight: '600', color: 'var(--success-color)' }}>
+                {activeUsers.length} {activeUsers.length === 1 ? 'person' : 'people'} viewing:
+              </span>
+              {activeUsers.map((user, idx) => (
+                <span key={idx} style={{
+                  padding: '2px 8px',
+                  backgroundColor: 'var(--success-color)',
+                  color: 'white',
+                  borderRadius: '12px',
+                  fontSize: '11px',
+                  fontWeight: '600'
+                }}>
+                  {user.userName}
+                </span>
+              ))}
+              <span style={{ fontSize: '10px', color: 'var(--text-secondary)', fontStyle: 'italic', marginLeft: 'auto' }}>
+                Live updates enabled
+              </span>
+            </div>
+          )}
         </div>
 
         {loading ? (

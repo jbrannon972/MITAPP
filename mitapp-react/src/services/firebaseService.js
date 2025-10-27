@@ -9,7 +9,9 @@ import {
   deleteDoc,
   query,
   where,
-  orderBy
+  orderBy,
+  onSnapshot,
+  serverTimestamp
 } from 'firebase/firestore';
 
 class FirebaseService {
@@ -459,6 +461,111 @@ class FirebaseService {
     } catch (error) {
       console.error('Error getting all technicians:', error);
       return [];
+    }
+  }
+
+  // ========== REAL-TIME COLLABORATION FEATURES ==========
+
+  /**
+   * Subscribe to real-time updates for a document
+   * @param {string} collectionName - Collection name
+   * @param {string} docId - Document ID
+   * @param {function} callback - Callback function(data)
+   * @returns {function} Unsubscribe function
+   */
+  subscribeToDocument(collectionName, docId, callback) {
+    const docRef = doc(db, collectionName, docId);
+
+    return onSnapshot(docRef, (snapshot) => {
+      if (snapshot.exists()) {
+        callback({ id: snapshot.id, ...snapshot.data() });
+      } else {
+        callback(null);
+      }
+    }, (error) => {
+      console.error(`Error subscribing to ${collectionName}/${docId}:`, error);
+    });
+  }
+
+  /**
+   * Set user presence (active users viewing a specific resource)
+   * @param {string} resourceType - Type of resource (e.g., 'routing')
+   * @param {string} resourceId - Resource identifier (e.g., 'routes_2025-01-15')
+   * @param {object} user - User info { id, name, email }
+   */
+  async setPresence(resourceType, resourceId, user) {
+    try {
+      const presenceRef = doc(db, 'presence', `${resourceType}_${resourceId}_${user.id}`);
+      await setDoc(presenceRef, {
+        userId: user.id,
+        userName: user.name,
+        userEmail: user.email,
+        resourceType,
+        resourceId,
+        lastSeen: serverTimestamp(),
+        active: true
+      });
+    } catch (error) {
+      console.error('Error setting presence:', error);
+    }
+  }
+
+  /**
+   * Remove user presence
+   * @param {string} resourceType - Type of resource
+   * @param {string} resourceId - Resource identifier
+   * @param {string} userId - User ID
+   */
+  async removePresence(resourceType, resourceId, userId) {
+    try {
+      const presenceRef = doc(db, 'presence', `${resourceType}_${resourceId}_${userId}`);
+      await deleteDoc(presenceRef);
+    } catch (error) {
+      console.error('Error removing presence:', error);
+    }
+  }
+
+  /**
+   * Subscribe to presence updates for a resource
+   * @param {string} resourceType - Type of resource
+   * @param {string} resourceId - Resource identifier
+   * @param {function} callback - Callback function(users[])
+   * @returns {function} Unsubscribe function
+   */
+  subscribeToPresence(resourceType, resourceId, callback) {
+    const presenceQuery = query(
+      collection(db, 'presence'),
+      where('resourceType', '==', resourceType),
+      where('resourceId', '==', resourceId),
+      where('active', '==', true)
+    );
+
+    return onSnapshot(presenceQuery, (snapshot) => {
+      const users = snapshot.docs.map(doc => doc.data());
+      callback(users);
+    }, (error) => {
+      console.error('Error subscribing to presence:', error);
+    });
+  }
+
+  /**
+   * Update last modified info for conflict detection
+   * @param {string} collectionName - Collection name
+   * @param {string} docId - Document ID
+   * @param {object} user - User info
+   * @param {object} data - Data to save
+   */
+  async saveWithMetadata(collectionName, docId, data, user) {
+    try {
+      const docRef = doc(db, collectionName, docId);
+      await setDoc(docRef, {
+        ...data,
+        lastModifiedBy: user.name || 'Unknown',
+        lastModifiedAt: serverTimestamp()
+      });
+    } catch (error) {
+      console.error(`Error saving document with metadata to ${collectionName}:`, error);
+      throw error;
     }
   }
 }
