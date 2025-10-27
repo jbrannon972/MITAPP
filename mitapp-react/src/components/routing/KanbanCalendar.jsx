@@ -724,7 +724,7 @@ const KanbanCalendar = ({
                   transition: 'all 0.15s ease',
                   boxShadow: isDragOver ? '0 4px 12px rgba(59, 130, 246, 0.2)' : 'none',
                   height: 'fit-content',
-                  minHeight: `${timelineHeight + 60}px`
+                  minHeight: `${timelineHeight + 90}px`
                 }}
                 onDragOver={handleDragOver}
                 onDragEnter={() => handleDragEnter(tech.id)}
@@ -767,7 +767,48 @@ const KanbanCalendar = ({
                   <div style={{ marginTop: '4px', display: 'flex', gap: '6px', fontSize: '9px', fontWeight: '500' }}>
                     <span style={{ color: 'var(--info-color)' }}>{techJobs.length}j</span>
                     <span style={{ color: 'var(--success-color)' }}>{totalHours.toFixed(1)}h</span>
+                    {techRoute?.demoTech && (
+                      <span style={{ color: 'var(--warning-color)' }} title={`Demo Tech: ${techRoute.demoTech}`}>
+                        <i className="fas fa-user-plus"></i>
+                      </span>
+                    )}
                   </div>
+                </div>
+
+                {/* Demo Tech Selector */}
+                <div style={{ padding: '4px 8px', borderBottom: '1px solid #e5e7eb', backgroundColor: 'var(--surface-color)' }}>
+                  <select
+                    className="form-control"
+                    style={{ fontSize: '9px', padding: '2px 4px', width: '100%' }}
+                    value={techRoute?.demoTech || ''}
+                    onChange={(e) => {
+                      e.stopPropagation();
+                      const updatedRoutes = { ...localRoutes };
+                      if (!updatedRoutes[tech.id]) {
+                        updatedRoutes[tech.id] = { tech, jobs: [] };
+                      }
+                      updatedRoutes[tech.id] = {
+                        ...updatedRoutes[tech.id],
+                        demoTech: e.target.value || null
+                      };
+                      setLocalRoutes(updatedRoutes);
+                      onUpdateRoutes(updatedRoutes);
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <option value="">Demo Tech...</option>
+                    {demoTechs.map(dt => {
+                      // Check if demo tech is already assigned to another route
+                      const isAssigned = Object.entries(localRoutes).some(
+                        ([techId, route]) => techId !== tech.id && route.demoTech === dt.name
+                      );
+                      return (
+                        <option key={dt.id} value={dt.name} disabled={isAssigned}>
+                          {dt.name} {isAssigned ? '(✓)' : ''}
+                        </option>
+                      );
+                    })}
+                  </select>
                 </div>
 
                 {/* Timeline */}
@@ -853,6 +894,7 @@ const KanbanCalendar = ({
                           {job.demoTech && (
                             <div style={{ color: 'var(--purple-color)', fontSize: '8px', marginTop: '1px' }}>
                               + {job.demoTech}
+                              {job.secondTechDuration === 'partial' && ` (${job.secondTechHours || 1}h)`}
                             </div>
                           )}
                         </div>
@@ -953,19 +995,51 @@ const KanbanCalendar = ({
                 </div>
 
                 {selectedJob.requiresTwoTechs && (
-                  <div className="form-group">
-                    <label>Second Technician</label>
-                    <select
-                      className="form-control"
-                      value={selectedJob.demoTech || ''}
-                      onChange={(e) => setSelectedJob({...selectedJob, demoTech: e.target.value})}
-                    >
-                      <option value="">Select Demo Tech...</option>
-                      {demoTechs.map(dt => (
-                        <option key={dt.id} value={dt.name}>{dt.name}</option>
-                      ))}
-                    </select>
-                  </div>
+                  <>
+                    <div className="form-group">
+                      <label>Second Technician</label>
+                      <select
+                        className="form-control"
+                        value={selectedJob.demoTech || ''}
+                        onChange={(e) => setSelectedJob({...selectedJob, demoTech: e.target.value})}
+                      >
+                        <option value="">Select Tech...</option>
+                        {allTechs.map(dt => (
+                          <option key={dt.id} value={dt.name}>{dt.name} - {dt.role}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="form-group">
+                      <label>Second Tech Time</label>
+                      <select
+                        className="form-control"
+                        value={selectedJob.secondTechDuration || 'full'}
+                        onChange={(e) => setSelectedJob({...selectedJob, secondTechDuration: e.target.value})}
+                      >
+                        <option value="full">Full Job Duration</option>
+                        <option value="partial">Partial - Heavy Lifting Only</option>
+                      </select>
+                    </div>
+
+                    {selectedJob.secondTechDuration === 'partial' && (
+                      <div className="form-group">
+                        <label>Partial Time (hours)</label>
+                        <input
+                          type="number"
+                          className="form-control"
+                          value={selectedJob.secondTechHours || 1}
+                          onChange={(e) => setSelectedJob({...selectedJob, secondTechHours: parseFloat(e.target.value) || 1})}
+                          min="0.5"
+                          max={selectedJob.duration}
+                          step="0.5"
+                        />
+                        <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                          Second tech will be on job for {selectedJob.secondTechHours || 1} of {selectedJob.duration} hours
+                        </p>
+                      </div>
+                    )}
+                  </>
                 )}
 
                 <div className="form-group">

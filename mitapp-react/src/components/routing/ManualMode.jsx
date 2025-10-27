@@ -1016,6 +1016,41 @@ const ManualMode = ({
                   <i className="fas fa-times"></i>
                 </button>
               </div>
+
+              {/* Demo Tech Assignment */}
+              <div style={{ marginBottom: '8px', paddingBottom: '8px', borderBottom: '1px solid #e5e7eb' }}>
+                <label style={{ fontSize: '10px', color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>
+                  Demo Tech (Optional):
+                </label>
+                <select
+                  className="form-control"
+                  style={{ fontSize: '11px', padding: '4px', width: '100%' }}
+                  value={routes[selectedTech].demoTech || ''}
+                  onChange={(e) => {
+                    const updatedRoutes = { ...routes };
+                    updatedRoutes[selectedTech] = {
+                      ...updatedRoutes[selectedTech],
+                      demoTech: e.target.value || null
+                    };
+                    setRoutes(updatedRoutes);
+                    onUpdateRoutes(updatedRoutes);
+                  }}
+                >
+                  <option value="">None</option>
+                  {techs.filter(t => t.isDemoTech).map(dt => {
+                    // Check if demo tech is already assigned to another route
+                    const isAssigned = Object.entries(routes).some(
+                      ([techId, route]) => techId !== selectedTech && route.demoTech === dt.name
+                    );
+                    return (
+                      <option key={dt.id} value={dt.name} disabled={isAssigned}>
+                        {dt.name} {isAssigned ? '(Already assigned)' : ''}
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
+
               {routes[selectedTech].jobs.map((job, idx) => (
                 <div
                   key={job.id}
