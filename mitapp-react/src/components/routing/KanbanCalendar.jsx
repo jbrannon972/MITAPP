@@ -30,6 +30,7 @@ const KanbanCalendar = ({
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const isUpdatingRef = useRef(false);
+  const updateTimeoutRef = useRef(null);
 
   // Get all techs including demo techs for second tech assignment
   const allTechs = [...techs];
@@ -56,6 +57,7 @@ const KanbanCalendar = ({
 
   // Sync with parent when props change - but only if data is actually different
   // This prevents overwriting local changes that are being saved
+  // IMPORTANT: Never sync while updating or within 500ms after update completes
   useEffect(() => {
     console.log('🔄 Jobs useEffect fired', {
       isUpdating: isUpdatingRef.current,
@@ -703,10 +705,15 @@ const KanbanCalendar = ({
       await onUpdateRoutes(updatedRoutes);
       await onUpdateJobs(updatedJobs);
     } finally {
-      // Clear flag after a brief delay to allow Firebase sync to complete
-      setTimeout(() => {
+      // Clear any existing timeout
+      if (updateTimeoutRef.current) {
+        clearTimeout(updateTimeoutRef.current);
+      }
+
+      // Keep flag set for longer to prevent rapid-fire updates
+      updateTimeoutRef.current = setTimeout(() => {
         isUpdatingRef.current = false;
-      }, 100);
+      }, 500);
     }
   };
 
@@ -777,11 +784,16 @@ const KanbanCalendar = ({
     } catch (error) {
       console.error('❌ Error in handleMoveJobUp:', error);
     } finally {
-      // Clear flag after a brief delay to allow Firebase sync to complete
-      setTimeout(() => {
+      // Clear any existing timeout
+      if (updateTimeoutRef.current) {
+        clearTimeout(updateTimeoutRef.current);
+      }
+
+      // Keep flag set for longer to prevent rapid-fire updates
+      updateTimeoutRef.current = setTimeout(() => {
         isUpdatingRef.current = false;
-        console.log('🏁 Cleared isUpdatingRef after 100ms');
-      }, 100);
+        console.log('🏁 Cleared isUpdatingRef after 500ms');
+      }, 500);
     }
   };
 
@@ -842,11 +854,16 @@ const KanbanCalendar = ({
     } catch (error) {
       console.error('❌ Error in handleMoveJobDown:', error);
     } finally {
-      // Clear flag after a brief delay to allow Firebase sync to complete
-      setTimeout(() => {
+      // Clear any existing timeout
+      if (updateTimeoutRef.current) {
+        clearTimeout(updateTimeoutRef.current);
+      }
+
+      // Keep flag set for longer to prevent rapid-fire updates
+      updateTimeoutRef.current = setTimeout(() => {
         isUpdatingRef.current = false;
-        console.log('🏁 Cleared isUpdatingRef after 100ms');
-      }, 100);
+        console.log('🏁 Cleared isUpdatingRef after 500ms');
+      }, 500);
     }
   };
 
@@ -951,10 +968,15 @@ const KanbanCalendar = ({
       await onUpdateJobs(updatedJobs);
       await onUpdateRoutes(updatedRoutes);
     } finally {
-      // Clear flag after a brief delay to allow Firebase sync to complete
-      setTimeout(() => {
+      // Clear any existing timeout
+      if (updateTimeoutRef.current) {
+        clearTimeout(updateTimeoutRef.current);
+      }
+
+      // Keep flag set for longer to prevent rapid-fire updates
+      updateTimeoutRef.current = setTimeout(() => {
         isUpdatingRef.current = false;
-      }, 100);
+      }, 500);
     }
   };
 
