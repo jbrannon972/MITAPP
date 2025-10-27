@@ -615,39 +615,36 @@ const KanbanCalendar = ({
       return;
     }
 
-    // Set updating flag to prevent parent sync from overwriting our changes
-
     const updatedRoutes = { ...localRoutes };
-  const draggedJobs = updatedRoutes[draggedTech]?.jobs || [];
-  const targetJobs = updatedRoutes[targetTechId]?.jobs || [];
+    const draggedJobs = updatedRoutes[draggedTech]?.jobs || [];
+    const targetJobs = updatedRoutes[targetTechId]?.jobs || [];
 
-  const temp = { ...updatedRoutes[draggedTech] };
-  updatedRoutes[draggedTech] = {
-    ...(updatedRoutes[targetTechId] || { jobs: [] }),
-    tech: temp.tech
-  };
-  updatedRoutes[targetTechId] = {
-    ...temp,
-    tech: updatedRoutes[targetTechId]?.tech || techs.find(t => t.id === targetTechId)
-  };
+    const temp = { ...updatedRoutes[draggedTech] };
+    updatedRoutes[draggedTech] = {
+      ...(updatedRoutes[targetTechId] || { jobs: [] }),
+      tech: temp.tech
+    };
+    updatedRoutes[targetTechId] = {
+      ...temp,
+      tech: updatedRoutes[targetTechId]?.tech || techs.find(t => t.id === targetTechId)
+    };
 
-  const updatedJobs = localJobs.map(job => {
-    if (draggedJobs.some(j => j.id === job.id)) {
-      return { ...job, assignedTech: draggedTech };
-    }
-    if (targetJobs.some(j => j.id === job.id)) {
-      return { ...job, assignedTech: targetTechId };
-    }
-    return job;
-  });
+    const updatedJobs = localJobs.map(job => {
+      if (draggedJobs.some(j => j.id === job.id)) {
+        return { ...job, assignedTech: draggedTech };
+      }
+      if (targetJobs.some(j => j.id === job.id)) {
+        return { ...job, assignedTech: targetTechId };
+      }
+      return job;
+    });
 
-  setLocalRoutes(updatedRoutes);
-  setLocalJobs(updatedJobs);
-  setDraggedTech(null);
+    setLocalRoutes(updatedRoutes);
+    setLocalJobs(updatedJobs);
+    setDraggedTech(null);
 
-  await onUpdateRoutes(updatedRoutes);
-  await onUpdateJobs(updatedJobs);
-
+    await onUpdateRoutes(updatedRoutes);
+    await onUpdateJobs(updatedJobs);
   };
 
   const handleTechClick = (techId) => {
@@ -662,189 +659,176 @@ const KanbanCalendar = ({
 
   // Move job up in the sequence (earlier in the day)
   const handleMoveJobUp = async (job, techId) => {
-    // Set updating flag to prevent parent sync from overwriting our changes
-
     const updatedRoutes = { ...localRoutes };
-  if (!updatedRoutes[techId]) return;
+    if (!updatedRoutes[techId]) return;
 
-  // Get jobs sorted by time
-  const jobs = [...updatedRoutes[techId].jobs].sort((a, b) => {
-    const aTime = timeToMinutes(a.startTime || a.timeframeStart);
-    const bTime = timeToMinutes(b.startTime || b.timeframeStart);
-    return aTime - bTime;
-  });
+    // Get jobs sorted by time
+    const jobs = [...updatedRoutes[techId].jobs].sort((a, b) => {
+      const aTime = timeToMinutes(a.startTime || a.timeframeStart);
+      const bTime = timeToMinutes(b.startTime || b.timeframeStart);
+      return aTime - bTime;
+    });
 
-  const currentIndex = jobs.findIndex(j => j.id === job.id);
-  if (currentIndex <= 0) return; // Already at top
+    const currentIndex = jobs.findIndex(j => j.id === job.id);
+    if (currentIndex <= 0) return; // Already at top
 
-  // Swap with previous job
-  const temp = jobs[currentIndex];
-  jobs[currentIndex] = jobs[currentIndex - 1];
-  jobs[currentIndex - 1] = temp;
+    // Swap with previous job
+    const temp = jobs[currentIndex];
+    jobs[currentIndex] = jobs[currentIndex - 1];
+    jobs[currentIndex - 1] = temp;
 
-  // Update route with new order
-  updatedRoutes[techId].jobs = jobs;
+    // Update route with new order
+    updatedRoutes[techId].jobs = jobs;
 
-  // Recalculate all job timings
-  updatedRoutes[techId] = await recalculateRouteTimings(techId, updatedRoutes);
+    // Recalculate all job timings
+    updatedRoutes[techId] = await recalculateRouteTimings(techId, updatedRoutes);
 
-  // Update global jobs list
-  const updatedJobs = localJobs.map(j => {
-    const recalculatedJob = updatedRoutes[techId].jobs.find(rj => rj.id === j.id && rj.type !== 'secondTechAssignment');
-    return recalculatedJob || j;
-  });
+    // Update global jobs list
+    const updatedJobs = localJobs.map(j => {
+      const recalculatedJob = updatedRoutes[techId].jobs.find(rj => rj.id === j.id && rj.type !== 'secondTechAssignment');
+      return recalculatedJob || j;
+    });
 
-  setLocalRoutes(updatedRoutes);
-  setLocalJobs(updatedJobs);
-  await onUpdateRoutes(updatedRoutes);
-  await onUpdateJobs(updatedJobs);
-
+    setLocalRoutes(updatedRoutes);
+    setLocalJobs(updatedJobs);
+    await onUpdateRoutes(updatedRoutes);
+    await onUpdateJobs(updatedJobs);
   };
 
   // Move job down in the sequence (later in the day)
   const handleMoveJobDown = async (job, techId) => {
-    // Set updating flag to prevent parent sync from overwriting our changes
-
     const updatedRoutes = { ...localRoutes };
-  if (!updatedRoutes[techId]) return;
+    if (!updatedRoutes[techId]) return;
 
-  // Get jobs sorted by time
-  const jobs = [...updatedRoutes[techId].jobs].sort((a, b) => {
-    const aTime = timeToMinutes(a.startTime || a.timeframeStart);
-    const bTime = timeToMinutes(b.startTime || b.timeframeStart);
-    return aTime - bTime;
-  });
+    // Get jobs sorted by time
+    const jobs = [...updatedRoutes[techId].jobs].sort((a, b) => {
+      const aTime = timeToMinutes(a.startTime || a.timeframeStart);
+      const bTime = timeToMinutes(b.startTime || b.timeframeStart);
+      return aTime - bTime;
+    });
 
-  const currentIndex = jobs.findIndex(j => j.id === job.id);
-  if (currentIndex === -1 || currentIndex >= jobs.length - 1) return; // Already at bottom
+    const currentIndex = jobs.findIndex(j => j.id === job.id);
+    if (currentIndex === -1 || currentIndex >= jobs.length - 1) return; // Already at bottom
 
-  // Swap with next job
-  const temp = jobs[currentIndex];
-  jobs[currentIndex] = jobs[currentIndex + 1];
-  jobs[currentIndex + 1] = temp;
+    // Swap with next job
+    const temp = jobs[currentIndex];
+    jobs[currentIndex] = jobs[currentIndex + 1];
+    jobs[currentIndex + 1] = temp;
 
-  // Update route with new order
-  updatedRoutes[techId].jobs = jobs;
+    // Update route with new order
+    updatedRoutes[techId].jobs = jobs;
 
-  // Recalculate all job timings
-  updatedRoutes[techId] = await recalculateRouteTimings(techId, updatedRoutes);
+    // Recalculate all job timings
+    updatedRoutes[techId] = await recalculateRouteTimings(techId, updatedRoutes);
 
-  // Update global jobs list
-  const updatedJobs = localJobs.map(j => {
-    const recalculatedJob = updatedRoutes[techId].jobs.find(rj => rj.id === j.id && rj.type !== 'secondTechAssignment');
-    return recalculatedJob || j;
-  });
+    // Update global jobs list
+    const updatedJobs = localJobs.map(j => {
+      const recalculatedJob = updatedRoutes[techId].jobs.find(rj => rj.id === j.id && rj.type !== 'secondTechAssignment');
+      return recalculatedJob || j;
+    });
 
-  setLocalRoutes(updatedRoutes);
-  setLocalJobs(updatedJobs);
-  await onUpdateRoutes(updatedRoutes);
-  await onUpdateJobs(updatedJobs);
-
+    setLocalRoutes(updatedRoutes);
+    setLocalJobs(updatedJobs);
+    await onUpdateRoutes(updatedRoutes);
+    await onUpdateJobs(updatedJobs);
   };
 
   const handleSaveJobDetails = async () => {
     if (!selectedJob) return;
 
-    // Set updating flag to prevent parent sync from overwriting our changes
+    // Track if second tech changed
+    const originalJob = localJobs.find(j => j.id === selectedJob.id);
+    const secondTechChanged = originalJob?.demoTech !== selectedJob.demoTech;
+    const requiresTwoTechsChanged = originalJob?.requiresTwoTechs !== selectedJob.requiresTwoTechs;
+    const oldSecondTech = originalJob?.demoTech;
+    const newSecondTech = selectedJob.demoTech;
 
-    try {
-      // Track if second tech changed
-      const originalJob = localJobs.find(j => j.id === selectedJob.id);
-      const secondTechChanged = originalJob?.demoTech !== selectedJob.demoTech;
-      const requiresTwoTechsChanged = originalJob?.requiresTwoTechs !== selectedJob.requiresTwoTechs;
-      const oldSecondTech = originalJob?.demoTech;
-      const newSecondTech = selectedJob.demoTech;
+    const updatedJobs = localJobs.map(j => {
+      if (j.id === selectedJob.id) {
+        return selectedJob;
+      }
+      return j;
+    });
 
-      const updatedJobs = localJobs.map(j => {
+    const updatedRoutes = { ...localRoutes };
+
+    // Update primary job in primary tech's route
+    if (selectedJob.assignedTech && updatedRoutes[selectedJob.assignedTech]) {
+      updatedRoutes[selectedJob.assignedTech].jobs = updatedRoutes[selectedJob.assignedTech].jobs.map(j => {
         if (j.id === selectedJob.id) {
           return selectedJob;
         }
         return j;
       });
-
-      const updatedRoutes = { ...localRoutes };
-
-      // Update primary job in primary tech's route
-      if (selectedJob.assignedTech && updatedRoutes[selectedJob.assignedTech]) {
-        updatedRoutes[selectedJob.assignedTech].jobs = updatedRoutes[selectedJob.assignedTech].jobs.map(j => {
-          if (j.id === selectedJob.id) {
-            return selectedJob;
-          }
-          return j;
-        });
-      }
-
-      // Handle second tech assignment changes
-      if (secondTechChanged || requiresTwoTechsChanged) {
-        // Remove old second tech assignment if it exists
-        if (oldSecondTech) {
-          const oldSecondTechObj = techs.find(t => t.name === oldSecondTech);
-          if (oldSecondTechObj && updatedRoutes[oldSecondTechObj.id]) {
-            updatedRoutes[oldSecondTechObj.id].jobs = updatedRoutes[oldSecondTechObj.id].jobs.filter(
-              j => !(j.type === 'secondTechAssignment' && j.primaryJobId === selectedJob.id)
-            );
-          }
-        }
-
-        // Also remove from all routes in case tech name changed
-        Object.keys(updatedRoutes).forEach(techId => {
-          if (updatedRoutes[techId]?.jobs) {
-            updatedRoutes[techId].jobs = updatedRoutes[techId].jobs.filter(
-              j => !(j.type === 'secondTechAssignment' && j.primaryJobId === selectedJob.id)
-            );
-          }
-        });
-
-        // Add new second tech assignment ONLY if requiresTwoTechs is checked AND tech is selected
-        if (newSecondTech && selectedJob.requiresTwoTechs) {
-          const newSecondTechObj = techs.find(t => t.name === newSecondTech);
-          if (newSecondTechObj) {
-            if (!updatedRoutes[newSecondTechObj.id]) {
-              updatedRoutes[newSecondTechObj.id] = {
-                tech: newSecondTechObj,
-                jobs: []
-              };
-            }
-
-            // Calculate second tech's time window
-            let duration = selectedJob.duration;
-            if (selectedJob.secondTechDuration === 'partial' && selectedJob.secondTechHours) {
-              duration = selectedJob.secondTechHours;
-            }
-
-            // Create second tech assignment (defaults to same start time as primary, but can be dragged)
-            const secondTechAssignment = {
-              id: `${selectedJob.id}_secondtech_${Date.now()}`,
-              type: 'secondTechAssignment',
-              primaryJobId: selectedJob.id,
-              primaryTechId: selectedJob.assignedTech,
-              primaryTechName: techs.find(t => t.id === selectedJob.assignedTech)?.name || 'Unknown',
-              customerName: selectedJob.customerName,
-              address: selectedJob.address,
-              jobType: selectedJob.jobType,
-              startTime: selectedJob.startTime,
-              endTime: minutesToTime(timeToMinutes(selectedJob.startTime) + (duration * 60)),
-              duration: duration,
-              isPartial: selectedJob.secondTechDuration === 'partial',
-              assignedTech: newSecondTechObj.id,
-              status: 'assigned'
-            };
-
-            updatedRoutes[newSecondTechObj.id].jobs.push(secondTechAssignment);
-          }
-        }
-      }
-
-      setLocalJobs(updatedJobs);
-      setLocalRoutes(updatedRoutes);
-      setShowJobModal(false);
-
-      await onUpdateJobs(updatedJobs);
-      await onUpdateRoutes(updatedRoutes);
-    } finally {
-      setTimeout(() => {
-      }, 500);
     }
+
+    // Handle second tech assignment changes
+    if (secondTechChanged || requiresTwoTechsChanged) {
+      // Remove old second tech assignment if it exists
+      if (oldSecondTech) {
+        const oldSecondTechObj = techs.find(t => t.name === oldSecondTech);
+        if (oldSecondTechObj && updatedRoutes[oldSecondTechObj.id]) {
+          updatedRoutes[oldSecondTechObj.id].jobs = updatedRoutes[oldSecondTechObj.id].jobs.filter(
+            j => !(j.type === 'secondTechAssignment' && j.primaryJobId === selectedJob.id)
+          );
+        }
+      }
+
+      // Also remove from all routes in case tech name changed
+      Object.keys(updatedRoutes).forEach(techId => {
+        if (updatedRoutes[techId]?.jobs) {
+          updatedRoutes[techId].jobs = updatedRoutes[techId].jobs.filter(
+            j => !(j.type === 'secondTechAssignment' && j.primaryJobId === selectedJob.id)
+          );
+        }
+      });
+
+      // Add new second tech assignment ONLY if requiresTwoTechs is checked AND tech is selected
+      if (newSecondTech && selectedJob.requiresTwoTechs) {
+        const newSecondTechObj = techs.find(t => t.name === newSecondTech);
+        if (newSecondTechObj) {
+          if (!updatedRoutes[newSecondTechObj.id]) {
+            updatedRoutes[newSecondTechObj.id] = {
+              tech: newSecondTechObj,
+              jobs: []
+            };
+          }
+
+          // Calculate second tech's time window
+          let duration = selectedJob.duration;
+          if (selectedJob.secondTechDuration === 'partial' && selectedJob.secondTechHours) {
+            duration = selectedJob.secondTechHours;
+          }
+
+          // Create second tech assignment (defaults to same start time as primary, but can be dragged)
+          const secondTechAssignment = {
+            id: `${selectedJob.id}_secondtech_${Date.now()}`,
+            type: 'secondTechAssignment',
+            primaryJobId: selectedJob.id,
+            primaryTechId: selectedJob.assignedTech,
+            primaryTechName: techs.find(t => t.id === selectedJob.assignedTech)?.name || 'Unknown',
+            customerName: selectedJob.customerName,
+            address: selectedJob.address,
+            jobType: selectedJob.jobType,
+            startTime: selectedJob.startTime,
+            endTime: minutesToTime(timeToMinutes(selectedJob.startTime) + (duration * 60)),
+            duration: duration,
+            isPartial: selectedJob.secondTechDuration === 'partial',
+            assignedTech: newSecondTechObj.id,
+            status: 'assigned'
+          };
+
+          updatedRoutes[newSecondTechObj.id].jobs.push(secondTechAssignment);
+        }
+      }
+    }
+
+    setLocalJobs(updatedJobs);
+    setLocalRoutes(updatedRoutes);
+    setShowJobModal(false);
+
+    await onUpdateJobs(updatedJobs);
+    await onUpdateRoutes(updatedRoutes);
   };
 
   const unassignedJobs = localJobs.filter(j => !j.assignedTech);
