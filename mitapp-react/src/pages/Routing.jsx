@@ -32,6 +32,7 @@ const Routing = () => {
   const [selectedTech, setSelectedTech] = useState(null);
   const [activeUsers, setActiveUsers] = useState([]);
   const [scheduleForDay, setScheduleForDay] = useState(null);
+  const [isFullScreen, setIsFullScreen] = useState(false);
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const markersRef = useRef([]);
@@ -871,30 +872,41 @@ const Routing = () => {
     );
   };
 
-  return (
-    <Layout>
-      <div className="tab-content active">
-        <div className="tab-controls" style={{ marginBottom: '16px' }}>
-          <div className="sub-nav">
-            <button
-              className={`sub-nav-btn ${activeView === 'routing' ? 'active' : ''}`}
-              onClick={() => setActiveView('routing')}
-            >
-              <i className="fas fa-route"></i> Routing
-            </button>
-            <button
-              className={`sub-nav-btn ${activeView === 'kanban' ? 'active' : ''}`}
-              onClick={() => setActiveView('kanban')}
-            >
-              <i className="fas fa-columns"></i> Kanban Calendar
-            </button>
-            <button
-              className={`sub-nav-btn ${activeView === 'jobs' ? 'active' : ''}`}
-              onClick={() => setActiveView('jobs')}
-            >
-              <i className="fas fa-clipboard-list"></i> Jobs
-            </button>
-          </div>
+  const content = (
+    <div className="tab-content active">
+      <div className="tab-controls" style={{ marginBottom: '16px' }}>
+        <div className="sub-nav">
+          <button
+            className={`sub-nav-btn ${activeView === 'routing' ? 'active' : ''}`}
+            onClick={() => setActiveView('routing')}
+          >
+            <i className="fas fa-route"></i> Routing
+          </button>
+          <button
+            className={`sub-nav-btn ${activeView === 'kanban' ? 'active' : ''}`}
+            onClick={() => setActiveView('kanban')}
+          >
+            <i className="fas fa-columns"></i> Kanban Calendar
+          </button>
+          <button
+            className={`sub-nav-btn ${activeView === 'jobs' ? 'active' : ''}`}
+            onClick={() => setActiveView('jobs')}
+          >
+            <i className="fas fa-clipboard-list"></i> Jobs
+          </button>
+          <button
+            className="sub-nav-btn"
+            onClick={() => setIsFullScreen(!isFullScreen)}
+            style={{
+              marginLeft: 'auto',
+              backgroundColor: isFullScreen ? 'var(--info-color)' : undefined,
+              color: isFullScreen ? 'white' : undefined
+            }}
+            title={isFullScreen ? 'Exit Full Screen' : 'Enter Full Screen'}
+          >
+            <i className={`fas ${isFullScreen ? 'fa-compress' : 'fa-expand'}`}></i> {isFullScreen ? 'Exit' : 'Full Screen'}
+          </button>
+        </div>
 
           {/* Active Users Indicator */}
           {activeUsers.length > 0 && (
@@ -940,9 +952,10 @@ const Routing = () => {
             {activeView === 'jobs' && renderJobsView()}
           </>
         )}
+      </div>
 
-        {/* CSV Import Modal */}
-        {showImportModal && (
+      {/* CSV Import Modal */}
+      {showImportModal && (
           <div className="modal-overlay active" onClick={() => setShowImportModal(false)}>
             <div className="modal" onClick={(e) => e.stopPropagation()}>
               <div className="modal-header">
@@ -1064,9 +1077,29 @@ const Routing = () => {
             </div>
           </div>
         )}
-      </div>
-    </Layout>
+    </div>
   );
+
+  // Render in full-screen mode without Layout, or normal mode with Layout
+  if (isFullScreen) {
+    return (
+      <div style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'var(--surface-color)',
+        zIndex: 9999,
+        overflow: 'auto',
+        padding: '16px'
+      }}>
+        {content}
+      </div>
+    );
+  }
+
+  return <Layout>{content}</Layout>;
 };
 
 export default Routing;
