@@ -299,12 +299,9 @@ const Routing = () => {
       // Clean phone number and make it a tel: link
       const cleanPhone = cleanPhoneNumber(job.customer_phone);
 
-      // Determine if 2 techs needed - be more specific
-      // Only mark as needing 2 techs if it explicitly has "demo prep" or "install"
-      const jobTypeLower = jobType.toLowerCase();
-      const requiresTwoTechs =
-        jobTypeLower.includes('install') ||
-        jobTypeLower.includes('demo prep');
+      // Determine if 2 techs needed - check for DT(true) flag in description
+      // DT(true) means "Demo Tech" is required (a second person)
+      const requiresTwoTechs = (job.route_description || '').includes('DT(true)');
 
       jobs.push({
         id: job.text || `job_${Date.now()}_${i}`,
