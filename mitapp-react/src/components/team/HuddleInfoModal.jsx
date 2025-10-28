@@ -80,22 +80,60 @@ const HuddleInfoModal = ({ isOpen, onClose, selectedDate = new Date() }) => {
           present: [],
           manuallyAdded: []
         };
+      } else {
+        console.warn('Zone without ID:', zone.name);
       }
     });
+
+    // If current user is a zone lead and their zone wasn't added (no ID), create a temporary ID
+    if (!isManager && currentUserZoneWithTechs && !currentUserZoneWithTechs.id) {
+      const tempId = `temp_${currentUserZoneWithTechs.name?.replace(/\s+/g, '_')}`;
+      console.log('Zone lead zone has no ID, using temporary ID:', tempId);
+      initialAttendance[tempId] = {
+        zoneName: currentUserZoneWithTechs.name,
+        present: [],
+        manuallyAdded: []
+      };
+      // Update the zone object to include this temp ID
+      currentUserZoneWithTechs.id = tempId;
+    }
+
     setAttendance(initialAttendance);
     setWorkflowStep('attendance');
   };
 
   const toggleAttendance = (zoneId, techId) => {
-    setAttendance(prev => ({
-      ...prev,
-      [zoneId]: {
-        ...prev[zoneId],
-        present: prev[zoneId].present.includes(techId)
-          ? prev[zoneId].present.filter(id => id !== techId)
-          : [...prev[zoneId].present, techId]
+    // Safety check - don't proceed if zoneId is invalid
+    if (!zoneId || zoneId === 'undefined') {
+      console.error('Invalid zoneId:', zoneId);
+      return;
+    }
+
+    setAttendance(prev => {
+      // If this zone isn't in attendance yet, initialize it
+      if (!prev[zoneId]) {
+        const zone = allZonesWithTechs.find(z => z.id === zoneId);
+        return {
+          ...prev,
+          [zoneId]: {
+            zoneName: zone?.name || 'Unknown',
+            present: [techId],
+            manuallyAdded: []
+          }
+        };
       }
-    }));
+
+      // Toggle attendance
+      return {
+        ...prev,
+        [zoneId]: {
+          ...prev[zoneId],
+          present: prev[zoneId].present.includes(techId)
+            ? prev[zoneId].present.filter(id => id !== techId)
+            : [...prev[zoneId].present, techId]
+        }
+      };
+    });
   };
 
   const addManualMember = (tech, originalZoneId) => {
