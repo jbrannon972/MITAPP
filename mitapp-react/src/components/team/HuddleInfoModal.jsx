@@ -25,11 +25,22 @@ const HuddleInfoModal = ({ isOpen, onClose, selectedDate = new Date() }) => {
   const dateStr = format(selectedDate, 'yyyy-MM-dd');
   const isManager = currentUser?.role === 'Manager';
 
-  // Get all zones with their techs
-  const allZonesWithTechs = (staffingData?.zones || []).map(zone => ({
-    ...zone,
-    allTechs: [...(zone.members || []), ...(zone.lead ? [zone.lead] : [])]
-  }));
+  // Helper function to generate consistent zone IDs from zone names
+  const generateZoneId = (zoneName) => {
+    if (!zoneName) return null;
+    // Convert "Zone 3" → "zone_3", "2nd Shift" → "2nd_shift", etc.
+    return zoneName.toLowerCase().replace(/\s+/g, '_');
+  };
+
+  // Get all zones with their techs AND ensure they all have IDs
+  const allZonesWithTechs = (staffingData?.zones || []).map(zone => {
+    const zoneId = zone.id || generateZoneId(zone.name);
+    return {
+      ...zone,
+      id: zoneId, // Override with generated ID if missing
+      allTechs: [...(zone.members || []), ...(zone.lead ? [zone.lead] : [])]
+    };
+  });
 
   // Get current user's zone with techs included (single lookup to avoid mismatches)
   const currentUserZoneWithTechs = allZonesWithTechs.find(zone => {
@@ -38,9 +49,6 @@ const HuddleInfoModal = ({ isOpen, onClose, selectedDate = new Date() }) => {
     return isMember || isLead;
   });
 
-  console.log('Current User ID:', currentUser?.userId);
-  console.log('Current User Zone:', currentUserZoneWithTechs?.name);
-  console.log('All zones:', allZonesWithTechs.map(z => ({ name: z.name, lead: z.lead?.id, members: z.members?.map(m => m.id) })));
 
   // Load huddle content when modal opens
   useEffect(() => {
@@ -72,34 +80,18 @@ const HuddleInfoModal = ({ isOpen, onClose, selectedDate = new Date() }) => {
   };
 
   const handleHuddleComplete = () => {
-    // Initialize attendance for all zones (only zones with valid IDs)
+    // Initialize attendance for all zones (all zones now have consistent IDs)
     const initialAttendance = {};
     allZonesWithTechs.forEach(zone => {
-      // Only add zones that have a valid ID
-      if (zone.id) {
-        initialAttendance[zone.id] = {
-          zoneName: zone.name,
-          present: [],
-          manuallyAdded: []
-        };
-      } else {
-        console.warn('Zone without ID:', zone.name);
-      }
-    });
-
-    // If current user is a zone lead and their zone wasn't added (no ID), create a temporary ID
-    if (!isManager && currentUserZoneWithTechs && !currentUserZoneWithTechs.id) {
-      const tempId = `temp_${currentUserZoneWithTechs.name?.replace(/\s+/g, '_')}`;
-      console.log('Zone lead zone has no ID, using temporary ID:', tempId);
-      initialAttendance[tempId] = {
-        zoneName: currentUserZoneWithTechs.name,
+      initialAttendance[zone.id] = {
+        zoneName: zone.name,
         present: [],
         manuallyAdded: []
       };
-      // Store the effective zone ID in state so it persists across renders
-      setEffectiveZoneId(tempId);
-    } else if (!isManager && currentUserZoneWithTechs?.id) {
-      // Zone has a real ID, use it
+    });
+
+    // Set effective zone ID for zone leads
+    if (!isManager && currentUserZoneWithTechs) {
       setEffectiveZoneId(currentUserZoneWithTechs.id);
     }
 
@@ -108,37 +100,15 @@ const HuddleInfoModal = ({ isOpen, onClose, selectedDate = new Date() }) => {
   };
 
   const toggleAttendance = (zoneId, techId) => {
-    // Safety check - don't proceed if zoneId is invalid
-    if (!zoneId || zoneId === 'undefined') {
-      console.error('Invalid zoneId:', zoneId);
-      return;
-    }
-
-    setAttendance(prev => {
-      // If this zone isn't in attendance yet, initialize it
-      if (!prev[zoneId]) {
-        const zone = allZonesWithTechs.find(z => z.id === zoneId);
-        return {
-          ...prev,
-          [zoneId]: {
-            zoneName: zone?.name || 'Unknown',
-            present: [techId],
-            manuallyAdded: []
-          }
-        };
+    setAttendance(prev => ({
+      ...prev,
+      [zoneId]: {
+        ...prev[zoneId],
+        present: prev[zoneId].present.includes(techId)
+          ? prev[zoneId].present.filter(id => id !== techId)
+          : [...prev[zoneId].present, techId]
       }
-
-      // Toggle attendance
-      return {
-        ...prev,
-        [zoneId]: {
-          ...prev[zoneId],
-          present: prev[zoneId].present.includes(techId)
-            ? prev[zoneId].present.filter(id => id !== techId)
-            : [...prev[zoneId].present, techId]
-        }
-      };
-    });
+    }));
   };
 
   const addManualMember = (tech, originalZoneId) => {
@@ -230,10 +200,10 @@ const HuddleInfoModal = ({ isOpen, onClose, selectedDate = new Date() }) => {
   const saveAttendance = async () => {
     setSaving(true);
     try {
-      // Save attendance for each zone
-      const savePromises = Object.entries(attendance).map(async ([zoneId, zoneData]) => {
-        // Only save if zone has an ID, has attendees, and zone data exists
-        if (zoneId && zoneId !== 'undefined' && zoneData && zoneData.present.length > 0) {
+      // Save attendance for each zone that has attendees
+      const savePromises = Object.entries(attendance)
+        .filter(([zoneId, zoneData]) => zoneData.present.length > 0)
+        .map(async ([zoneId, zoneData]) => {
           const attendanceId = `${dateStr}_${zoneId}`;
           const attendanceDoc = {
             date: dateStr,
@@ -246,8 +216,7 @@ const HuddleInfoModal = ({ isOpen, onClose, selectedDate = new Date() }) => {
             recordedAt: new Date().toISOString()
           };
           await firebaseService.saveDocument('hou_huddle_attendance', attendanceId, attendanceDoc);
-        }
-      });
+        });
 
       await Promise.all(savePromises);
       alert('Huddle attendance saved successfully!');
@@ -358,7 +327,7 @@ const HuddleInfoModal = ({ isOpen, onClose, selectedDate = new Date() }) => {
                       <p style={{ marginBottom: '16px', color: 'var(--text-secondary)', fontSize: '14px' }}>
                         Select all team members who attended today's huddle:
                       </p>
-                      {allZonesWithTechs.filter(zone => zone.id).map(zone => (
+                      {allZonesWithTechs.map(zone => (
                         <div key={zone.id} style={{ marginBottom: '20px', background: 'var(--surface-secondary)', padding: '12px', borderRadius: '8px' }}>
                           <h4 style={{ margin: '0 0 12px 0', color: 'var(--info-color)' }}>{zone.name}</h4>
                           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '8px' }}>
@@ -443,7 +412,7 @@ const HuddleInfoModal = ({ isOpen, onClose, selectedDate = new Date() }) => {
                     ) : (
                       <div style={{ background: 'var(--surface-secondary)', padding: '12px', borderRadius: '8px' }}>
                         <h4 style={{ fontSize: '14px', marginBottom: '12px' }}>Select Member from Other Zones</h4>
-                        {allZonesWithTechs.filter(zone => zone.id).map(zone => (
+                        {allZonesWithTechs.map(zone => (
                           <div key={zone.id} style={{ marginBottom: '12px' }}>
                             <h5 style={{ fontSize: '13px', marginBottom: '6px', color: 'var(--info-color)' }}>{zone.name}</h5>
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
