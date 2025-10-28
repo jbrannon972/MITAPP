@@ -37,6 +37,9 @@ const HuddleInfoModal = ({ isOpen, onClose, selectedDate = new Date() }) => {
     allTechs: [...(zone.members || []), ...(zone.lead ? [zone.lead] : [])]
   }));
 
+  // Get current user's zone with techs included
+  const currentUserZoneWithTechs = allZonesWithTechs.find(zone => zone.id === currentUserZone?.id);
+
   // Load huddle content when modal opens
   useEffect(() => {
     if (isOpen) {
@@ -344,32 +347,32 @@ const HuddleInfoModal = ({ isOpen, onClose, selectedDate = new Date() }) => {
                         </div>
                       ))}
                     </div>
-                  ) : currentUserZone ? (
+                  ) : currentUserZoneWithTechs ? (
                     /* Zone lead view - only their zone */
                     <div>
-                      <h4 style={{ margin: '0 0 12px 0' }}>{currentUserZone.name}</h4>
+                      <h4 style={{ margin: '0 0 12px 0' }}>{currentUserZoneWithTechs.name}</h4>
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '8px' }}>
-                        {currentUserZone.allTechs?.map(tech => (
+                        {currentUserZoneWithTechs.allTechs?.map(tech => (
                           <label key={tech.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
                             <input
                               type="checkbox"
-                              checked={attendance[currentUserZone.id]?.present.includes(tech.id) || false}
-                              onChange={() => toggleAttendance(currentUserZone.id, tech.id)}
+                              checked={attendance[currentUserZoneWithTechs.id]?.present.includes(tech.id) || false}
+                              onChange={() => toggleAttendance(currentUserZoneWithTechs.id, tech.id)}
                             />
                             <span>{tech.name}</span>
                           </label>
                         ))}
                       </div>
                       {/* Manually added members */}
-                      {attendance[currentUserZone.id]?.manuallyAdded?.length > 0 && (
+                      {attendance[currentUserZoneWithTechs.id]?.manuallyAdded?.length > 0 && (
                         <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #e5e7eb' }}>
                           <h5 style={{ fontSize: '13px', marginBottom: '8px' }}>From Other Zones:</h5>
-                          {attendance[currentUserZone.id].manuallyAdded.map(member => (
+                          {attendance[currentUserZoneWithTechs.id].manuallyAdded.map(member => (
                             <div key={member.userId} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                               <span>{member.name}</span>
                               <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>({member.originalZone})</span>
                               <button
-                                onClick={() => removeManualMember(currentUserZone.id, member.userId)}
+                                onClick={() => removeManualMember(currentUserZoneWithTechs.id, member.userId)}
                                 style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'var(--error-color)', cursor: 'pointer' }}
                               >
                                 <i className="fas fa-times"></i>
