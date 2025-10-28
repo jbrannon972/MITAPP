@@ -20,6 +20,7 @@ const HuddleInfoModal = ({ isOpen, onClose, selectedDate = new Date() }) => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showManualAdd, setShowManualAdd] = useState(false);
+  const [effectiveZoneId, setEffectiveZoneId] = useState(null); // For zone leads with zones that have no ID
 
   const dateStr = format(selectedDate, 'yyyy-MM-dd');
   const isManager = currentUser?.role === 'Manager';
@@ -55,6 +56,7 @@ const HuddleInfoModal = ({ isOpen, onClose, selectedDate = new Date() }) => {
     setMissedTopicsForPresent({});
     setCoverageConfirmed({});
     setShowManualAdd(false);
+    setEffectiveZoneId(null);
   };
 
   const loadHuddleData = async () => {
@@ -94,8 +96,11 @@ const HuddleInfoModal = ({ isOpen, onClose, selectedDate = new Date() }) => {
         present: [],
         manuallyAdded: []
       };
-      // Update the zone object to include this temp ID
-      currentUserZoneWithTechs.id = tempId;
+      // Store the effective zone ID in state so it persists across renders
+      setEffectiveZoneId(tempId);
+    } else if (!isManager && currentUserZoneWithTechs?.id) {
+      // Zone has a real ID, use it
+      setEffectiveZoneId(currentUserZoneWithTechs.id);
     }
 
     setAttendance(initialAttendance);
@@ -390,7 +395,7 @@ const HuddleInfoModal = ({ isOpen, onClose, selectedDate = new Date() }) => {
                         </div>
                       ))}
                     </div>
-                  ) : currentUserZoneWithTechs ? (
+                  ) : currentUserZoneWithTechs && effectiveZoneId ? (
                     /* Zone lead view - only their zone */
                     <div>
                       <h4 style={{ margin: '0 0 12px 0' }}>{currentUserZoneWithTechs.name}</h4>
@@ -399,23 +404,23 @@ const HuddleInfoModal = ({ isOpen, onClose, selectedDate = new Date() }) => {
                           <label key={tech.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
                             <input
                               type="checkbox"
-                              checked={attendance[currentUserZoneWithTechs.id]?.present.includes(tech.id) || false}
-                              onChange={() => toggleAttendance(currentUserZoneWithTechs.id, tech.id)}
+                              checked={attendance[effectiveZoneId]?.present.includes(tech.id) || false}
+                              onChange={() => toggleAttendance(effectiveZoneId, tech.id)}
                             />
                             <span>{tech.name}</span>
                           </label>
                         ))}
                       </div>
                       {/* Manually added members */}
-                      {attendance[currentUserZoneWithTechs.id]?.manuallyAdded?.length > 0 && (
+                      {attendance[effectiveZoneId]?.manuallyAdded?.length > 0 && (
                         <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #e5e7eb' }}>
                           <h5 style={{ fontSize: '13px', marginBottom: '8px' }}>From Other Zones:</h5>
-                          {attendance[currentUserZoneWithTechs.id].manuallyAdded.map(member => (
+                          {attendance[effectiveZoneId].manuallyAdded.map(member => (
                             <div key={member.userId} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                               <span>{member.name}</span>
                               <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>({member.originalZone})</span>
                               <button
-                                onClick={() => removeManualMember(currentUserZoneWithTechs.id, member.userId)}
+                                onClick={() => removeManualMember(effectiveZoneId, member.userId)}
                                 style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'var(--error-color)', cursor: 'pointer' }}
                               >
                                 <i className="fas fa-times"></i>
