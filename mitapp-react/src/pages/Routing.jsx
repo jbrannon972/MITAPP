@@ -879,6 +879,7 @@ const Routing = () => {
         onImportCSV={() => setShowImportModal(true)}
         activeUsers={activeUsers}
         scheduleForDay={scheduleForDay}
+        staffingData={staffingData}
       />
     );
   };

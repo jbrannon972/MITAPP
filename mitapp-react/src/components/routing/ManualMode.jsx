@@ -4,6 +4,7 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 import { getMapboxService } from '../../services/mapboxService';
 import { optimizeRoute } from '../../utils/routeOptimizer';
 import googleCalendarService from '../../services/googleCalendarService';
+import TwoTechAssignmentModal from './TwoTechAssignmentModal';
 
 const ManualMode = ({
   jobs: initialJobs,
@@ -16,7 +17,8 @@ const ManualMode = ({
   onRefresh,
   selectedDate,
   onImportCSV,
-  scheduleForDay
+  scheduleForDay,
+  staffingData
 }) => {
   const [jobs, setJobs] = useState(initialJobs);
   const [routes, setRoutes] = useState(initialRoutes);
@@ -32,6 +34,8 @@ const ManualMode = ({
     localStorage.getItem('googleClientId') || ''
   );
   const [showGoogleSetup, setShowGoogleSetup] = useState(false);
+  const [showTwoTechModal, setShowTwoTechModal] = useState(false);
+  const [pendingRouteDropData, setPendingRouteDropData] = useState(null);
 
   // Update local state when props change
   useEffect(() => {
@@ -350,21 +354,104 @@ const ManualMode = ({
     e.dataTransfer.dropEffect = 'move';
   };
 
-  const handleDropOnTech = async (e, targetTechId) => {
-    e.preventDefault();
+  // Get available demo techs for assignment
+  const getAvailableDemoTechs = (targetTech) => {
+    if (!staffingData || !staffingData.zones) return [];
 
-    if (!draggedRoute) return;
+    const demoTechs = [];
 
-    const { jobs: routeJobs, fromTechId } = draggedRoute;
+    staffingData.zones.forEach(zone => {
+      // Get all members with Demo Tech role
+      const zoneDemoTechs = zone.members?.filter(member =>
+        member.role === 'Demo Tech' &&
+        member.office === targetTech.office  // Same office as lead tech
+      ) || [];
+
+      demoTechs.push(...zoneDemoTechs);
+    });
+
+    // Filter out demo techs already assigned to routes
+    const assignedDemoTechIds = new Set();
+    Object.values(routes).forEach(route => {
+      route.jobs?.forEach(job => {
+        if (job.assignedDemoTech) {
+          assignedDemoTechIds.add(job.assignedDemoTech.id);
+        }
+      });
+    });
+
+    return demoTechs.filter(dt => !assignedDemoTechIds.has(dt.id));
+  };
+
+  // Create helper job for second tech assignment
+  const createHelperJob = (originalJob, hours, primaryTechName) => {
+    return {
+      ...originalJob,
+      id: `helper_${originalJob.id}_${Date.now()}`,
+      duration: hours,
+      isHelperJob: true,
+      primaryJobId: originalJob.id,
+      primaryTechName: primaryTechName,
+      customerName: `[HELP] ${originalJob.customerName}`,
+      jobType: `Help ${primaryTechName}`,
+      status: 'unassigned',
+      assignedTech: null,
+      description: `Help ${primaryTechName} with: ${originalJob.description || originalJob.jobType}`
+    };
+  };
+
+  // Handle two-tech modal completion
+  const completeTwoTechRouteAssignment = async (assignments) => {
+    if (!pendingRouteDropData) return;
+
+    const { routeJobs, targetTechId, targetTech, shift, startLocation, fromTechId } = pendingRouteDropData;
 
     try {
-      // Get target tech info
-      const targetTech = techs.find(t => t.id === targetTechId);
-      const isSecondShift = targetTech.name?.toLowerCase().includes('second shift') ||
-                           targetTech.name?.toLowerCase().includes('2nd shift');
-      const shift = isSecondShift ? 'second' : 'first';
-      const startLocation = offices[targetTech.office].address;
+      // Process assignments and update jobs
+      const updatedRouteJobs = [...routeJobs];
+      const helperJobsToCreate = [];
 
+      Object.entries(assignments).forEach(([jobId, assignment]) => {
+        const jobIndex = updatedRouteJobs.findIndex(j => j.id === jobId);
+        if (jobIndex === -1) return;
+
+        const job = updatedRouteJobs[jobIndex];
+
+        if (assignment.type === 'demo-tech') {
+          // Assign demo tech to job
+          updatedRouteJobs[jobIndex] = {
+            ...job,
+            assignedDemoTech: assignment.demoTech,
+            demoTechDuration: assignment.wholeDuration ? job.duration : assignment.hours
+          };
+        } else if (assignment.type === 'second-tech') {
+          // Create helper job
+          const helperJob = createHelperJob(job, assignment.hours, targetTech.name);
+          helperJobsToCreate.push(helperJob);
+        } else if (assignment.type === 'no-dt') {
+          // Remove DT requirement
+          updatedRouteJobs[jobIndex] = {
+            ...job,
+            requiresTwoTechs: false
+          };
+        }
+      });
+
+      // Continue with normal route assignment flow
+      await continueRouteAssignment(updatedRouteJobs, helperJobsToCreate, targetTechId, targetTech, shift, startLocation, fromTechId);
+
+      // Clear pending data
+      setPendingRouteDropData(null);
+    } catch (error) {
+      console.error('Error completing two-tech assignment:', error);
+      alert('Error assigning route. Please try again.');
+      setPendingRouteDropData(null);
+    }
+  };
+
+  // Continue route assignment after two-tech modal (or directly if no two-tech jobs)
+  const continueRouteAssignment = async (routeJobs, helperJobs, targetTechId, targetTech, shift, startLocation, fromTechId) => {
+    try {
       // Geocode jobs that need coordinates
       const mapbox = getMapboxService();
       const geocodedJobs = await Promise.all(
@@ -375,7 +462,7 @@ const ManualMode = ({
         })
       );
 
-      // Get existing jobs for this tech (if moving between techs, don't include the ones we're moving)
+      // Get existing jobs for this tech
       let existingJobs = [];
       if (routes[targetTechId] && routes[targetTechId].jobs) {
         existingJobs = routes[targetTechId].jobs.filter(
@@ -401,7 +488,7 @@ const ManualMode = ({
         }
       }
 
-      // Optimize the route with time calculations
+      // Optimize the route
       const optimized = await optimizeRoute(
         allJobsForTech,
         startLocation,
@@ -423,7 +510,6 @@ const ManualMode = ({
         ).join('\n');
 
         alert(`⚠️ TIMEFRAME VIOLATIONS DETECTED:\n\n${violationMessages}\n\nThese jobs cannot be completed within their timeframe windows. Please adjust the route or reassign jobs.`);
-        setDraggedRoute(null);
         return;
       }
 
@@ -457,66 +543,87 @@ const ManualMode = ({
         }
       };
 
-      // Update jobs with new assignments and coordinates
-      const updatedJobs = jobs.map(job => {
+      // Update jobs with new assignments
+      let updatedJobs = jobs.map(job => {
         const optimizedJob = optimized.optimizedJobs.find(oj => oj.id === job.id);
         if (optimizedJob) {
           return {
             ...job,
+            ...optimizedJob,
             assignedTech: targetTechId,
-            status: 'assigned',
-            coordinates: optimizedJob.coordinates,
-            startTime: optimizedJob.startTime,
-            endTime: optimizedJob.endTime,
-            arrivalTime: optimizedJob.arrivalTime,
-            travelTime: optimizedJob.travelTime
+            status: 'assigned'
           };
         }
-        // Also update jobs that were already assigned to this tech
+        // Update existing jobs
         const existingJob = existingJobs.find(ej => ej.id === job.id);
         if (existingJob) {
           const reoptimizedJob = optimized.optimizedJobs.find(oj => oj.id === job.id);
           if (reoptimizedJob) {
-            return {
-              ...job,
-              startTime: reoptimizedJob.startTime,
-              endTime: reoptimizedJob.endTime,
-              arrivalTime: reoptimizedJob.arrivalTime,
-              travelTime: reoptimizedJob.travelTime
-            };
+            return { ...job, ...reoptimizedJob };
           }
         }
         return job;
       });
+
+      // Add helper jobs to jobs list
+      if (helperJobs && helperJobs.length > 0) {
+        updatedJobs = [...updatedJobs, ...helperJobs];
+      }
 
       // Clear building route if it was dragged
       if (!fromTechId) {
         setBuildingRoute([]);
       }
 
-      setDraggedRoute(null);
-
-      // Update local state immediately for UI responsiveness
+      // Update state
       setRoutes(updatedRoutes);
       setJobs(updatedJobs);
 
-      // Callback to parent - save to Firebase
+      // Save to Firebase
       await onUpdateRoutes(updatedRoutes);
       await onUpdateJobs(updatedJobs);
 
-      // Show success message with timing info
-      const shiftStart = shift === 'second' ? '1:15 PM' : '8:15 AM';
-      const lastJob = optimized.optimizedJobs[optimized.optimizedJobs.length - 1];
+    } catch (error) {
+      console.error('Error in route assignment:', error);
+      alert('Error optimizing route. Please try again.');
+    }
+  };
 
-      // Calculate return to office time (last job end time + estimated return drive)
-      const lastJobEndMinutes = parseInt(lastJob.endTime.split(':')[0]) * 60 + parseInt(lastJob.endTime.split(':')[1]);
-      const estimatedReturnDrive = 30; // Estimate 30 min back to office
-      const returnMinutes = lastJobEndMinutes + estimatedReturnDrive;
-      const returnHours = Math.floor(returnMinutes / 60);
-      const returnMins = returnMinutes % 60;
-      const returnTime = `${String(returnHours).padStart(2, '0')}:${String(returnMins).padStart(2, '0')}`;
+  const handleDropOnTech = async (e, targetTechId) => {
+    e.preventDefault();
 
-      alert(`✅ Route assigned successfully!\n\n${targetTech.name}\nLeaves office: ${shiftStart}\n${optimized.optimizedJobs.length} jobs\nLast job ends: ${lastJob.endTime}\nEstimated return: ${returnTime}\nTotal work time: ${(optimized.totalDuration / 60).toFixed(1)}h`);
+    if (!draggedRoute) return;
+
+    const { jobs: routeJobs, fromTechId } = draggedRoute;
+
+    try {
+      // Get target tech info
+      const targetTech = techs.find(t => t.id === targetTechId);
+      const isSecondShift = targetTech.name?.toLowerCase().includes('second shift') ||
+                           targetTech.name?.toLowerCase().includes('2nd shift');
+      const shift = isSecondShift ? 'second' : 'first';
+      const startLocation = offices[targetTech.office].address;
+
+      // Check if route has two-tech jobs
+      const twoTechJobs = routeJobs.filter(j => j.requiresTwoTechs);
+      if (twoTechJobs.length > 0) {
+        // Store pending data and show modal
+        setPendingRouteDropData({
+          routeJobs,
+          targetTechId,
+          targetTech,
+          shift,
+          startLocation,
+          fromTechId
+        });
+        setShowTwoTechModal(true);
+        setDraggedRoute(null);  // Clear dragged route
+        return;  // Wait for modal completion
+      }
+
+      // No two-tech jobs - proceed with normal assignment
+      await continueRouteAssignment(routeJobs, [], targetTechId, targetTech, shift, startLocation, fromTechId);
+      setDraggedRoute(null);
 
     } catch (error) {
       console.error('Error assigning route:', error);
@@ -1208,6 +1315,21 @@ const ManualMode = ({
                       }}>
                         <div style={{ fontSize: '11px' }}>{jobCount} job{jobCount !== 1 ? 's' : ''}</div>
                         <div>{totalHours.toFixed(1)}h work</div>
+                        {(() => {
+                          const assignedDTs = new Set();
+                          techRoute.jobs.forEach(job => {
+                            if (job.assignedDemoTech) {
+                              assignedDTs.add(job.assignedDemoTech.name);
+                            }
+                          });
+                          if (assignedDTs.size > 0) {
+                            return (
+                              <div style={{ fontSize: '9px', color: 'var(--warning-color)', marginTop: '2px' }}>
+                                <i className="fas fa-user-plus"></i> DT: {Array.from(assignedDTs).join(', ')}
+                              </div>
+                            );
+                          }
+                        })()}
                         {techRoute.jobs.length > 0 && techRoute.jobs[techRoute.jobs.length - 1].endTime && (
                           <div style={{ fontSize: '9px', color: 'var(--success-color)', marginTop: '2px' }}>
                             Return: {(() => {
@@ -1250,7 +1372,7 @@ const ManualMode = ({
                             backgroundColor: getJobTypeColor(job.jobType),
                             border: job.requiresTwoTechs ? '1px solid var(--warning-color)' : 'none'
                           }}
-                          title={`${job.jobType} - ${job.duration}h`}
+                          title={`${job.customerName}\n${job.jobType} - ${job.duration}h${job.assignedDemoTech ? `\nDemo Tech: ${job.assignedDemoTech.name}` : ''}${job.isHelperJob ? `\nHelping: ${job.primaryTechName}` : ''}`}
                         />
                       ))}
                     </div>
@@ -1345,6 +1467,21 @@ const ManualMode = ({
             </div>
           </div>
         </div>
+      )}
+
+      {/* Two-Tech Assignment Modal */}
+      {pendingRouteDropData && (
+        <TwoTechAssignmentModal
+          isOpen={showTwoTechModal}
+          onClose={() => {
+            setShowTwoTechModal(false);
+            setPendingRouteDropData(null);
+          }}
+          routeJobs={pendingRouteDropData.routeJobs}
+          targetTech={pendingRouteDropData.targetTech}
+          availableDemoTechs={getAvailableDemoTechs(pendingRouteDropData.targetTech)}
+          onComplete={completeTwoTechRouteAssignment}
+        />
       )}
     </div>
   );
