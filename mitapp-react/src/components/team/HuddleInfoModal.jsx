@@ -5,6 +5,7 @@ import { format } from 'date-fns';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import firebaseService from '../../services/firebaseService';
+import { getMissedHuddlesForZone, markHuddleCovered } from '../../services/huddleTrackingService';
 
 const HuddleInfoModal = ({ isOpen, onClose, selectedDate = new Date() }) => {
   const { currentUser } = useAuth();
@@ -20,6 +21,9 @@ const HuddleInfoModal = ({ isOpen, onClose, selectedDate = new Date() }) => {
   const [showAttendance, setShowAttendance] = useState(false);
   const [showManualAdd, setShowManualAdd] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [missedHuddles, setMissedHuddles] = useState({});
+  const [loadingMissed, setLoadingMissed] = useState(false);
+  const [expandedMissed, setExpandedMissed] = useState({});
 
   const dateStr = format(selectedDate, 'yyyy-MM-dd');
 
@@ -89,11 +93,40 @@ const HuddleInfoModal = ({ isOpen, onClose, selectedDate = new Date() }) => {
             manuallyAdded: []
           });
         }
+
+        // Load missed huddles for this zone
+        loadMissedHuddles();
       }
     } catch (error) {
       console.error('Error loading huddle data:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadMissedHuddles = async () => {
+    if (!currentUserZone) return;
+
+    setLoadingMissed(true);
+    try {
+      // Get all tech IDs in the zone
+      const techIds = [
+        ...(currentUserZone.members?.map(m => m.id) || []),
+        ...(currentUserZone.lead ? [currentUserZone.lead.id] : [])
+      ];
+
+      const missed = await getMissedHuddlesForZone(
+        currentUserZone.id,
+        currentUserZone.name,
+        techIds,
+        30 // Look back 30 days
+      );
+
+      setMissedHuddles(missed);
+    } catch (error) {
+      console.error('Error loading missed huddles:', error);
+    } finally {
+      setLoadingMissed(false);
     }
   };
 
@@ -203,6 +236,86 @@ const HuddleInfoModal = ({ isOpen, onClose, selectedDate = new Date() }) => {
             <div className="loading">Loading huddle information...</div>
           ) : (
             <>
+              {/* Missed Huddles Reminders Section */}
+              {!showAttendance && currentUserZone && Object.keys(missedHuddles).length > 0 && (
+                <div className="missed-huddles-section" style={{ marginBottom: '24px' }}>
+                  <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--warning-color)' }}>
+                    <i className="fas fa-exclamation-triangle"></i> Catch-Up Reminders
+                  </h3>
+                  <p style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '12px' }}>
+                    The following team members missed recent huddles and may need to be briefed on these topics:
+                  </p>
+
+                  {Object.entries(missedHuddles).map(([techId, huddles]) => {
+                    if (huddles.length === 0) return null;
+
+                    const tech = [...zoneMembers, currentUserZone.lead].find(t => t?.id === techId);
+                    if (!tech) return null;
+
+                    return (
+                      <div key={techId} className="tech-missed-huddles" style={{
+                        background: 'var(--status-pending-bg)',
+                        border: '1px solid var(--warning-color)',
+                        borderRadius: '8px',
+                        padding: '12px',
+                        marginBottom: '12px'
+                      }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                          <strong style={{ color: 'var(--text-primary)' }}>
+                            {tech.name}
+                          </strong>
+                          <span style={{ fontSize: '12px', color: 'var(--warning-color)', fontWeight: '600' }}>
+                            {huddles.length} missed huddle{huddles.length > 1 ? 's' : ''}
+                          </span>
+                        </div>
+
+                        <button
+                          className="btn btn-sm btn-secondary"
+                          onClick={() => setExpandedMissed(prev => ({ ...prev, [techId]: !prev[techId] }))}
+                          style={{ marginBottom: '8px', fontSize: '12px' }}
+                        >
+                          {expandedMissed[techId] ? 'Hide' : 'Show'} Details
+                        </button>
+
+                        {expandedMissed[techId] && (
+                          <div className="missed-huddles-list" style={{ marginTop: '8px' }}>
+                            {huddles.slice(0, 5).map((huddle, idx) => (
+                              <div key={idx} style={{
+                                background: 'white',
+                                padding: '8px',
+                                borderRadius: '4px',
+                                marginBottom: '6px',
+                                fontSize: '13px'
+                              }}>
+                                <div style={{ fontWeight: '600', marginBottom: '4px', color: 'var(--info-color)' }}>
+                                  {huddle.dateFormatted}
+                                </div>
+                                <ul style={{ margin: '4px 0', paddingLeft: '20px', fontSize: '12px' }}>
+                                  {huddle.topicsSummary.map((topic, topicIdx) => (
+                                    <li key={topicIdx}>
+                                      <strong>{topic.category}:</strong> {topic.preview}
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            ))}
+                            {huddles.length > 5 && (
+                              <p style={{ fontSize: '12px', color: 'var(--text-secondary)', fontStyle: 'italic' }}>
+                                ... and {huddles.length - 5} more
+                              </p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+
+                  <p style={{ fontSize: '12px', color: 'var(--text-secondary)', fontStyle: 'italic', marginTop: '12px' }}>
+                    <i className="fas fa-info-circle"></i> When these team members are present next, remember to cover these topics with them.
+                  </p>
+                </div>
+              )}
+
               {/* Huddle Content Section */}
               <div className="huddle-content-section">
                 {visibleCategories.length === 0 && (!huddleContent?.referenceLinks || huddleContent.referenceLinks.length === 0) ? (
@@ -401,7 +514,7 @@ const HuddleInfoModal = ({ isOpen, onClose, selectedDate = new Date() }) => {
           {!showAttendance ? (
             <>
               <button className="btn btn-secondary" onClick={onClose}>
-                Close
+                <i className="fas fa-times"></i> Exit
               </button>
               {currentUserZone && (
                 <button
@@ -409,21 +522,27 @@ const HuddleInfoModal = ({ isOpen, onClose, selectedDate = new Date() }) => {
                   onClick={handleHuddleComplete}
                   disabled={loading}
                 >
-                  <i className="fas fa-check-circle"></i> Huddle Complete
+                  <i className="fas fa-check-circle"></i> Huddle Completed
                 </button>
               )}
             </>
           ) : (
             <>
               <button className="btn btn-secondary" onClick={onClose}>
-                Cancel
+                <i className="fas fa-arrow-left"></i> Back
               </button>
               <button
                 className="btn btn-primary"
                 onClick={saveAttendance}
                 disabled={saving || loading}
               >
-                {saving ? 'Saving...' : 'Save Attendance'}
+                {saving ? (
+                  'Saving...'
+                ) : (
+                  <>
+                    <i className="fas fa-save"></i> Confirm Submit
+                  </>
+                )}
               </button>
             </>
           )}

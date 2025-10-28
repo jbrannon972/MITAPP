@@ -3021,3 +3021,361 @@ input:checked + .slider:before {
         width: 100%;
     }
 }
+
+/* ============================================
+   Huddle Calendar Styles
+   ============================================ */
+
+.huddle-calendar-container {
+    padding: 20px;
+}
+
+.calendar-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+    gap: 16px;
+}
+
+.calendar-header h2 {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.calendar-header .btn {
+    padding: 8px 16px;
+}
+
+.calendar-legend {
+    display: flex;
+    gap: 24px;
+    margin-bottom: 20px;
+    padding: 12px;
+    background: var(--surface-secondary);
+    border-radius: 8px;
+    font-size: 14px;
+}
+
+.calendar-legend span {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.calendar-legend i {
+    color: var(--info-color);
+}
+
+.calendar-grid {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    overflow: hidden;
+}
+
+.calendar-weekdays {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    background: var(--primary-color);
+    color: white;
+}
+
+.weekday-label {
+    padding: 12px;
+    text-align: center;
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.calendar-days {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 1px;
+    background: #e5e7eb;
+}
+
+.calendar-day {
+    aspect-ratio: 1;
+    background: white;
+    padding: 8px;
+    cursor: pointer;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    transition: all 0.2s ease;
+}
+
+.calendar-day:hover {
+    background: var(--surface-secondary);
+    transform: scale(1.02);
+}
+
+.calendar-day.empty {
+    background: #f9fafb;
+    cursor: default;
+}
+
+.calendar-day.empty:hover {
+    transform: none;
+}
+
+.calendar-day.today {
+    background: #fef3c7;
+    border: 2px solid var(--warning-color);
+}
+
+.calendar-day.has-huddle {
+    background: #dbeafe;
+}
+
+.calendar-day.has-attendance {
+    background: #d1fae5;
+}
+
+.day-number {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+}
+
+.day-indicator {
+    font-size: 12px;
+    color: var(--info-color);
+}
+
+.attendance-badge {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    background: var(--success-color);
+    color: white;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+/* Huddle Detail Modal */
+.huddle-detail-content,
+.huddle-attendance-summary {
+    padding: 20px 0;
+}
+
+.content-summary {
+    padding: 16px;
+    background: var(--surface-secondary);
+    border-radius: 8px;
+    margin-top: 12px;
+}
+
+.status-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.status-badge.success {
+    background: var(--status-completed-bg);
+    color: var(--success-color);
+}
+
+.status-badge.warning {
+    background: var(--status-pending-bg);
+    color: var(--warning-color);
+}
+
+.hint {
+    margin-top: 12px;
+    font-size: 14px;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.zones-attendance {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    margin-top: 16px;
+}
+
+.zone-attendance-card {
+    background: var(--surface-color);
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 16px;
+}
+
+.zone-attendance-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid #e5e7eb;
+}
+
+.zone-attendance-header h4 {
+    margin: 0;
+    font-size: 18px;
+    color: var(--text-primary);
+}
+
+.attendance-count {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--info-color);
+}
+
+.attendance-lists {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 16px;
+}
+
+.present-list,
+.absent-list {
+    background: var(--surface-secondary);
+    padding: 12px;
+    border-radius: 6px;
+}
+
+.present-list h5,
+.absent-list h5 {
+    margin: 0 0 12px 0;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.present-list ul,
+.absent-list ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.present-list li,
+.absent-list li {
+    padding: 6px 0;
+    font-size: 14px;
+    color: var(--text-primary);
+}
+
+.absent-member {
+    color: var(--text-secondary) !important;
+    font-style: italic;
+}
+
+.zone-tag {
+    font-size: 12px;
+    color: var(--text-secondary);
+    font-style: italic;
+}
+
+.empty-list {
+    color: var(--text-secondary);
+    font-size: 13px;
+    margin: 0;
+}
+
+.record-info {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid #e5e7eb;
+}
+
+.record-info small {
+    color: var(--text-secondary);
+    font-size: 12px;
+}
+
+.huddle-content-reference {
+    margin-top: 24px;
+    padding: 16px;
+    background: var(--active-bg);
+    border-radius: 8px;
+}
+
+.huddle-content-reference h3 {
+    margin: 0 0 12px 0;
+    font-size: 16px;
+    color: var(--text-primary);
+}
+
+.topics-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.topics-list li {
+    padding: 8px 0;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.topics-list li:last-child {
+    border-bottom: none;
+}
+
+.topics-list strong {
+    color: var(--info-color);
+    display: block;
+    margin-bottom: 4px;
+}
+
+.no-attendance {
+    text-align: center;
+    color: var(--text-secondary);
+    padding: 40px 20px;
+    font-size: 16px;
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+    .calendar-header {
+        flex-direction: column;
+    }
+
+    .calendar-legend {
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .attendance-lists {
+        grid-template-columns: 1fr;
+    }
+
+    .calendar-day {
+        padding: 4px;
+        font-size: 12px;
+    }
+
+    .day-number {
+        font-size: 14px;
+    }
+
+    .day-indicator {
+        font-size: 10px;
+    }
+
+    .attendance-badge {
+        width: 20px;
+        height: 20px;
+        font-size: 10px;
+    }
+}

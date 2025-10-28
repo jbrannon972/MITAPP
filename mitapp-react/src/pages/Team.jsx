@@ -7,6 +7,7 @@ import EditProfileModal from '../components/team/EditProfileModal';
 import DriverLeaderboard from '../components/team/DriverLeaderboard';
 import Evaluations from '../components/team/Evaluations';
 import HuddleManager from '../components/team/HuddleManager';
+import HuddleCalendar from '../components/team/HuddleCalendar';
 import { getTotalStaff, getMITTechCount, getDemoTechCount } from '../utils/calculations';
 import { exportToCSV, prepareTeamDataForExport } from '../utils/exportUtils';
 import firebaseService from '../services/firebaseService';
@@ -319,12 +320,20 @@ const Team = () => {
                 <i className="fas fa-list"></i> Full Roster
               </button>
               {currentUser?.role === 'Manager' && (
-                <button
-                  className={'sub-nav-btn ' + (activeView === 'huddle-info' ? 'active' : '')}
-                  onClick={() => setActiveView('huddle-info')}
-                >
-                  <i className="fas fa-comments"></i> Huddle Info
-                </button>
+                <>
+                  <button
+                    className={'sub-nav-btn ' + (activeView === 'huddle-info' ? 'active' : '')}
+                    onClick={() => setActiveView('huddle-info')}
+                  >
+                    <i className="fas fa-comments"></i> Huddle Info
+                  </button>
+                  <button
+                    className={'sub-nav-btn ' + (activeView === 'huddle-calendar' ? 'active' : '')}
+                    onClick={() => setActiveView('huddle-calendar')}
+                  >
+                    <i className="fas fa-calendar-alt"></i> Huddle Calendar
+                  </button>
+                </>
               )}
             </div>
           </div>
@@ -558,6 +567,12 @@ const Team = () => {
         {activeView === 'huddle-info' && (
           <div className="team-view active">
             <HuddleManager />
+          </div>
+        )}
+
+        {activeView === 'huddle-calendar' && (
+          <div className="team-view active">
+            <HuddleCalendar />
           </div>
         )}
 
