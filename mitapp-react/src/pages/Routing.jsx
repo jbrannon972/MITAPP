@@ -872,93 +872,97 @@ const Routing = () => {
     );
   };
 
-  const content = (
-    <div className="tab-content active" style={{ maxWidth: 'none' }}>
-      <div className="tab-controls" style={{ marginBottom: '16px', padding: isFullScreen ? '16px 16px 0 16px' : '0' }}>
-        <div className="sub-nav">
-          <button
-            className={`sub-nav-btn ${activeView === 'routing' ? 'active' : ''}`}
-            onClick={() => setActiveView('routing')}
-          >
-            <i className="fas fa-route"></i> Routing
-          </button>
-          <button
-            className={`sub-nav-btn ${activeView === 'kanban' ? 'active' : ''}`}
-            onClick={() => setActiveView('kanban')}
-          >
-            <i className="fas fa-columns"></i> Kanban Calendar
-          </button>
-          <button
-            className={`sub-nav-btn ${activeView === 'jobs' ? 'active' : ''}`}
-            onClick={() => setActiveView('jobs')}
-          >
-            <i className="fas fa-clipboard-list"></i> Jobs
-          </button>
-          <button
-            className="sub-nav-btn"
-            onClick={() => setIsFullScreen(!isFullScreen)}
-            style={{
-              marginLeft: 'auto',
-              backgroundColor: isFullScreen ? 'var(--info-color)' : undefined,
-              color: isFullScreen ? 'white' : undefined
-            }}
-            title={isFullScreen ? 'Exit Full Screen' : 'Enter Full Screen'}
-          >
-            <i className={`fas ${isFullScreen ? 'fa-compress' : 'fa-expand'}`}></i> {isFullScreen ? 'Exit' : 'Full Screen'}
-          </button>
+  // Full-screen mode: Render without Layout
+  if (isFullScreen) {
+    return (
+      <div style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'var(--surface-color)',
+        zIndex: 9999,
+        overflow: 'auto',
+        padding: '16px'
+      }}>
+        <div className="tab-content active">
+        <div className="tab-controls" style={{ marginBottom: '16px' }}>
+          <div className="sub-nav">
+            <button
+              className={`sub-nav-btn ${activeView === 'routing' ? 'active' : ''}`}
+              onClick={() => setActiveView('routing')}
+            >
+              <i className="fas fa-route"></i> Routing
+            </button>
+            <button
+              className={`sub-nav-btn ${activeView === 'kanban' ? 'active' : ''}`}
+              onClick={() => setActiveView('kanban')}
+            >
+              <i className="fas fa-columns"></i> Kanban Calendar
+            </button>
+            <button
+              className={`sub-nav-btn ${activeView === 'jobs' ? 'active' : ''}`}
+              onClick={() => setActiveView('jobs')}
+            >
+              <i className="fas fa-clipboard-list"></i> Jobs
+            </button>
+            <button
+              className="sub-nav-btn"
+              onClick={() => setIsFullScreen(!isFullScreen)}
+              style={{
+                marginLeft: 'auto',
+                backgroundColor: isFullScreen ? 'var(--info-color)' : undefined,
+                color: isFullScreen ? 'white' : undefined
+              }}
+              title={isFullScreen ? 'Exit Full Screen' : 'Enter Full Screen'}
+            >
+              <i className={`fas ${isFullScreen ? 'fa-compress' : 'fa-expand'}`}></i> {isFullScreen ? 'Exit' : 'Full Screen'}
+            </button>
+          </div>
+
+          {/* Active Users Indicator */}
+          {activeUsers.length > 0 && (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '8px 12px',
+              backgroundColor: 'var(--status-in-progress-bg)',
+              borderRadius: '6px',
+              fontSize: '12px',
+              marginBottom: '12px'
+            }}>
+              <i className="fas fa-users" style={{ color: 'var(--success-color)' }}></i>
+              <span style={{ fontWeight: '600', color: 'var(--success-color)' }}>
+                {activeUsers.length} {activeUsers.length === 1 ? 'person' : 'people'} viewing:
+              </span>
+              {activeUsers.map((user, idx) => (
+                <span key={idx} style={{
+                  padding: '2px 8px',
+                  backgroundColor: 'var(--success-color)',
+                  color: 'white',
+                  borderRadius: '12px',
+                  fontSize: '11px',
+                  fontWeight: '600'
+                }}>
+                  {user.userName}
+                </span>
+              ))}
+              <span style={{ fontSize: '10px', color: 'var(--text-secondary)', fontStyle: 'italic', marginLeft: 'auto' }}>
+                Live updates enabled
+              </span>
+            </div>
+          )}
         </div>
 
-        {/* Active Users Indicator */}
-        {activeUsers.length > 0 && (
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            padding: '8px 12px',
-            backgroundColor: 'var(--status-in-progress-bg)',
-            borderRadius: '6px',
-            fontSize: '12px',
-            marginBottom: '12px',
-            marginLeft: isFullScreen ? '16px' : '0',
-            marginRight: isFullScreen ? '16px' : '0'
-          }}>
-            <i className="fas fa-users" style={{ color: 'var(--success-color)' }}></i>
-            <span style={{ fontWeight: '600', color: 'var(--success-color)' }}>
-              {activeUsers.length} {activeUsers.length === 1 ? 'person' : 'people'} viewing:
-            </span>
-            {activeUsers.map((user, idx) => (
-              <span key={idx} style={{
-                padding: '2px 8px',
-                backgroundColor: 'var(--success-color)',
-                color: 'white',
-                borderRadius: '12px',
-                fontSize: '11px',
-                fontWeight: '600'
-              }}>
-                {user.userName}
-              </span>
-            ))}
-            <span style={{ fontSize: '10px', color: 'var(--text-secondary)', fontStyle: 'italic', marginLeft: 'auto' }}>
-              Live updates enabled
-            </span>
-          </div>
-        )}
-
         {loading ? (
-          <p style={{ padding: isFullScreen ? '0 16px' : '0' }}>Loading...</p>
+          <p>Loading...</p>
         ) : (
           <>
-            {activeView === 'routing' && (
-              <div style={{ padding: isFullScreen ? '0 16px' : '0' }}>
-                {renderRoutingView()}
-              </div>
-            )}
+            {activeView === 'routing' && renderRoutingView()}
             {activeView === 'kanban' && renderKanbanView()}
-            {activeView === 'jobs' && (
-              <div style={{ padding: isFullScreen ? '0 16px' : '0' }}>
-                {renderJobsView()}
-              </div>
-            )}
+            {activeView === 'jobs' && renderJobsView()}
           </>
         )}
 
@@ -1087,27 +1091,204 @@ const Routing = () => {
         )}
       </div>
     </div>
-  );
-
-  // Render in full-screen mode without Layout, or normal mode with Layout
-  if (isFullScreen) {
-    return (
-      <div style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: 'var(--surface-color)',
-        zIndex: 9999,
-        overflow: 'auto'
-      }}>
-        {content}
-      </div>
     );
   }
 
-  return <Layout>{content}</Layout>;
+  // Normal mode: Render with Layout (original structure)
+  return (
+    <Layout>
+      <div className="tab-content active">
+        <div className="tab-controls" style={{ marginBottom: '16px' }}>
+          <div className="sub-nav">
+            <button
+              className={`sub-nav-btn ${activeView === 'routing' ? 'active' : ''}`}
+              onClick={() => setActiveView('routing')}
+            >
+              <i className="fas fa-route"></i> Routing
+            </button>
+            <button
+              className={`sub-nav-btn ${activeView === 'kanban' ? 'active' : ''}`}
+              onClick={() => setActiveView('kanban')}
+            >
+              <i className="fas fa-columns"></i> Kanban Calendar
+            </button>
+            <button
+              className={`sub-nav-btn ${activeView === 'jobs' ? 'active' : ''}`}
+              onClick={() => setActiveView('jobs')}
+            >
+              <i className="fas fa-clipboard-list"></i> Jobs
+            </button>
+            <button
+              className="sub-nav-btn"
+              onClick={() => setIsFullScreen(!isFullScreen)}
+              style={{
+                marginLeft: 'auto'
+              }}
+              title="Enter Full Screen"
+            >
+              <i className="fas fa-expand"></i> Full Screen
+            </button>
+          </div>
+
+          {/* Active Users Indicator */}
+          {activeUsers.length > 0 && (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '8px 12px',
+              backgroundColor: 'var(--status-in-progress-bg)',
+              borderRadius: '6px',
+              fontSize: '12px',
+              marginBottom: '12px'
+            }}>
+              <i className="fas fa-users" style={{ color: 'var(--success-color)' }}></i>
+              <span style={{ fontWeight: '600', color: 'var(--success-color)' }}>
+                {activeUsers.length} {activeUsers.length === 1 ? 'person' : 'people'} viewing:
+              </span>
+              {activeUsers.map((user, idx) => (
+                <span key={idx} style={{
+                  padding: '2px 8px',
+                  backgroundColor: 'var(--success-color)',
+                  color: 'white',
+                  borderRadius: '12px',
+                  fontSize: '11px',
+                  fontWeight: '600'
+                }}>
+                  {user.userName}
+                </span>
+              ))}
+              <span style={{ fontSize: '10px', color: 'var(--text-secondary)', fontStyle: 'italic', marginLeft: 'auto' }}>
+                Live updates enabled
+              </span>
+            </div>
+          )}
+        </div>
+
+        {loading ? (
+          <p>Loading...</p>
+        ) : (
+          <>
+            {activeView === 'routing' && renderRoutingView()}
+            {activeView === 'kanban' && renderKanbanView()}
+            {activeView === 'jobs' && renderJobsView()}
+          </>
+        )}
+
+        {/* CSV Import Modal */}
+        {showImportModal && (
+          <div className="modal-overlay active" onClick={() => setShowImportModal(false)}>
+            <div className="modal" onClick={(e) => e.stopPropagation()}>
+              <div className="modal-header">
+                <h3><i className="fas fa-upload"></i> Import Daily Jobs</h3>
+                <button className="modal-close" onClick={() => setShowImportModal(false)}>
+                  <i className="fas fa-times"></i>
+                </button>
+              </div>
+              <div className="modal-body">
+                <p style={{ marginBottom: '16px', color: 'var(--text-secondary)' }}>
+                  Select your daily export CSV file. The file should include customer info, addresses, timeframes, durations, and zone assignments.
+                </p>
+                <div style={{ marginBottom: '20px' }}>
+                  <label htmlFor="csvFile" className="btn btn-secondary" style={{ cursor: 'pointer', display: 'inline-block' }}>
+                    <i className="fas fa-file-csv"></i> Choose CSV File
+                  </label>
+                  <input
+                    type="file"
+                    id="csvFile"
+                    accept=".csv"
+                    onChange={handleCSVImport}
+                    style={{ display: 'none' }}
+                  />
+                </div>
+                <div style={{ padding: '12px', backgroundColor: 'var(--active-bg)', borderRadius: '6px', fontSize: '14px' }}>
+                  <strong>Houston Branch CSV Format:</strong>
+                  <ul style={{ marginTop: '8px', marginBottom: 0, paddingLeft: '20px' }}>
+                    <li>text (Job ID)</li>
+                    <li>route_title (Customer Name | Job Type)</li>
+                    <li>customer_address (Houston area)</li>
+                    <li>Zone</li>
+                    <li>duration (hours)</li>
+                    <li>workers (assigned workers array)</li>
+                    <li>route_description (includes TF(HH:MM-HH:MM))</li>
+                  </ul>
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button className="btn btn-secondary" onClick={() => setShowImportModal(false)}>
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Auto-Optimize Modal */}
+        {showOptimizeModal && (
+          <div className="modal-overlay active" onClick={() => setShowOptimizeModal(false)}>
+            <div className="modal" onClick={(e) => e.stopPropagation()}>
+              <div className="modal-header">
+                <h3><i className="fas fa-magic"></i> Auto-Optimize Routes</h3>
+                <button className="modal-close" onClick={() => setShowOptimizeModal(false)}>
+                  <i className="fas fa-times"></i>
+                </button>
+              </div>
+              <div className="modal-body">
+                <p style={{ marginBottom: '16px', color: 'var(--text-secondary)' }}>
+                  This will automatically optimize all routes using geographic proximity and drive times.
+                </p>
+
+                <div className="form-group" style={{ marginBottom: '16px' }}>
+                  <label htmlFor="mapboxToken">
+                    Mapbox API Token
+                    <span style={{ marginLeft: '8px', fontSize: '12px', color: 'var(--text-secondary)' }}>
+                      (Required for drive time calculations)
+                    </span>
+                  </label>
+                  <input
+                    type="text"
+                    id="mapboxToken"
+                    className="form-control"
+                    value={mapboxToken}
+                    onChange={(e) => setMapboxToken(e.target.value)}
+                    placeholder="pk.your-mapbox-token-here"
+                  />
+                  <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                    Get a free token at{' '}
+                    <a href="https://www.mapbox.com" target="_blank" rel="noopener noreferrer">
+                      mapbox.com
+                    </a>
+                  </p>
+                </div>
+
+                {mapboxToken && (
+                  <button
+                    className="btn btn-secondary"
+                    onClick={handleSaveMapboxToken}
+                    style={{ marginBottom: '16px' }}
+                  >
+                    <i className="fas fa-save"></i> Save Token
+                  </button>
+                )}
+              </div>
+              <div className="modal-footer">
+                <button className="btn btn-secondary" onClick={() => setShowOptimizeModal(false)}>
+                  Cancel
+                </button>
+                <button
+                  className="btn btn-success"
+                  onClick={handleAutoOptimize}
+                  disabled={!mapboxToken}
+                >
+                  <i className="fas fa-magic"></i> Optimize Routes
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </Layout>
+  );
 };
 
 export default Routing;
