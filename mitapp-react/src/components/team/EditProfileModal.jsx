@@ -6,6 +6,7 @@ const EditProfileModal = ({ person, onClose, onSave }) => {
     name: person.name || '',
     role: person.role || 'MIT Tech',
     email: person.email || '',
+    office: person.office || 'office_1',
     hireDate: person.hireDate || '',
     endDate: person.endDate || '',
     inTraining: person.inTraining || false,
@@ -191,6 +192,27 @@ const EditProfileModal = ({ person, onClose, onSave }) => {
                   <option key={role} value={role}>{role}</option>
                 ))}
               </select>
+            </div>
+            <div className="form-group">
+              <label htmlFor="office">
+                Starting Office <span style={{ color: 'var(--danger-color)' }}>*</span>
+                <span style={{ marginLeft: '8px', fontSize: '12px', color: 'var(--text-secondary)' }}>
+                  (Used for route planning)
+                </span>
+              </label>
+              <select
+                id="office"
+                name="office"
+                className="form-input"
+                value={formData.office}
+                onChange={handleChange}
+              >
+                <option value="office_1">Conroe Office</option>
+                <option value="office_2">Katy Office</option>
+              </select>
+              <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px', marginBottom: 0 }}>
+                Determines the starting location for drive time calculations and route optimization
+              </p>
             </div>
             <div className="form-group">
               <label htmlFor="email">
