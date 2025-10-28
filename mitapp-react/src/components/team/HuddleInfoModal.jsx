@@ -24,21 +24,22 @@ const HuddleInfoModal = ({ isOpen, onClose, selectedDate = new Date() }) => {
   const dateStr = format(selectedDate, 'yyyy-MM-dd');
   const isManager = currentUser?.role === 'Manager';
 
-  // Get current user's zone
-  const currentUserZone = staffingData?.zones?.find(zone => {
-    const isMember = zone.members?.some(member => member.id === currentUser?.userId);
-    const isLead = zone.lead?.id === currentUser?.userId;
-    return isMember || isLead;
-  });
-
   // Get all zones with their techs
   const allZonesWithTechs = (staffingData?.zones || []).map(zone => ({
     ...zone,
     allTechs: [...(zone.members || []), ...(zone.lead ? [zone.lead] : [])]
   }));
 
-  // Get current user's zone with techs included
-  const currentUserZoneWithTechs = allZonesWithTechs.find(zone => zone.id === currentUserZone?.id);
+  // Get current user's zone with techs included (single lookup to avoid mismatches)
+  const currentUserZoneWithTechs = allZonesWithTechs.find(zone => {
+    const isMember = zone.members?.some(member => member.id === currentUser?.userId);
+    const isLead = zone.lead?.id === currentUser?.userId;
+    return isMember || isLead;
+  });
+
+  console.log('Current User ID:', currentUser?.userId);
+  console.log('Current User Zone:', currentUserZoneWithTechs?.name);
+  console.log('All zones:', allZonesWithTechs.map(z => ({ name: z.name, lead: z.lead?.id, members: z.members?.map(m => m.id) })));
 
   // Load huddle content when modal opens
   useEffect(() => {
