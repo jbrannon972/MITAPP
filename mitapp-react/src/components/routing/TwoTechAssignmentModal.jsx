@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 const TwoTechAssignmentModal = ({
   isOpen,
@@ -15,11 +15,25 @@ const TwoTechAssignmentModal = ({
   const [currentJobIndex, setCurrentJobIndex] = useState(0);
   const [jobAssignments, setJobAssignments] = useState({});
   const [customHours, setCustomHours] = useState('');
+  const [isPerJobMode, setIsPerJobMode] = useState(false);
+
+  // Reset state when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setStep('initial');
+      setSelectedDT(null);
+      setCurrentJobIndex(0);
+      setJobAssignments({});
+      setCustomHours('');
+      setIsPerJobMode(false);
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
   const twoTechJobs = routeJobs.filter(j => j.requiresTwoTechs);
-  const currentJob = step === 'per-job' ? twoTechJobs[currentJobIndex] : null;
+  // Current job is available in per-job mode for all sub-steps
+  const currentJob = isPerJobMode && currentJobIndex < twoTechJobs.length ? twoTechJobs[currentJobIndex] : null;
 
   const handleRouteLevelDT = () => {
     setStep('select-dt');
@@ -28,6 +42,7 @@ const TwoTechAssignmentModal = ({
   const handlePerJobAssignment = () => {
     setStep('per-job');
     setCurrentJobIndex(0);
+    setIsPerJobMode(true);
   };
 
   const handleNoDTNeeded = () => {
@@ -171,8 +186,17 @@ const TwoTechAssignmentModal = ({
 
           {step === 'select-dt' && (
             <>
-              <h4>Select Demo Tech for Route</h4>
-              <p>This demo tech will be assigned to all {twoTechJobs.length} two-tech jobs on {targetTech.name}'s route.</p>
+              <h4>Select Demo Tech {isPerJobMode && currentJob ? 'for Job' : 'for Route'}</h4>
+              {isPerJobMode && currentJob ? (
+                <div style={{ marginBottom: '16px', padding: '12px', backgroundColor: 'var(--info-bg)', borderLeft: '4px solid var(--info-color)', borderRadius: '4px' }}>
+                  <div style={{ fontWeight: '600' }}>{currentJob.customerName}</div>
+                  <div style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>
+                    {currentJob.jobType} • {currentJob.duration} hours
+                  </div>
+                </div>
+              ) : (
+                <p>This demo tech will be assigned to all {twoTechJobs.length} two-tech jobs on {targetTech.name}'s route.</p>
+              )}
 
               {availableDemoTechs.length === 0 ? (
                 <div className="alert alert-warning">
@@ -196,7 +220,10 @@ const TwoTechAssignmentModal = ({
 
               <button
                 className="btn btn-ghost"
-                onClick={() => setStep('initial')}
+                onClick={() => {
+                  setStep('initial');
+                  setIsPerJobMode(false);
+                }}
                 style={{ marginTop: '16px' }}
               >
                 <i className="fas fa-arrow-left"></i> Back

@@ -364,7 +364,7 @@ const ManualMode = ({
       // Get all members with Demo Tech role
       const zoneDemoTechs = zone.members?.filter(member =>
         member.role === 'Demo Tech' &&
-        member.office === targetTech.office  // Same office as lead tech
+        (member.office === targetTech.office || !member.office)  // Same office OR no office set (backward compatibility)
       ) || [];
 
       demoTechs.push(...zoneDemoTechs);
