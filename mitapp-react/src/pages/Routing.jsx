@@ -239,16 +239,48 @@ const Routing = () => {
   };
 
   const parseCSV = (csvText) => {
-    const lines = csvText.split('\n');
-    if (lines.length === 0) return [];
+    // Parse CSV properly handling newlines within quoted fields
+    const rows = [];
+    let currentRow = '';
+    let insideQuotes = false;
 
-    const headers = parseCSVLine(lines[0]);
+    for (let i = 0; i < csvText.length; i++) {
+      const char = csvText[i];
+      const nextChar = csvText[i + 1];
+
+      if (char === '"') {
+        if (insideQuotes && nextChar === '"') {
+          currentRow += '"';
+          i++; // Skip the next quote
+        } else {
+          insideQuotes = !insideQuotes;
+        }
+        currentRow += char;
+      } else if (char === '\n' && !insideQuotes) {
+        // Only split on newlines outside of quotes
+        if (currentRow.trim()) {
+          rows.push(currentRow);
+        }
+        currentRow = '';
+      } else {
+        currentRow += char;
+      }
+    }
+
+    // Add last row
+    if (currentRow.trim()) {
+      rows.push(currentRow);
+    }
+
+    if (rows.length === 0) return [];
+
+    const headers = parseCSVLine(rows[0]);
 
     const jobs = [];
-    for (let i = 1; i < lines.length; i++) {
-      if (!lines[i].trim()) continue;
+    for (let i = 1; i < rows.length; i++) {
+      if (!rows[i].trim()) continue;
 
-      const values = parseCSVLine(lines[i]);
+      const values = parseCSVLine(rows[i]);
       const job = {};
 
       headers.forEach((header, index) => {
@@ -259,24 +291,26 @@ const Routing = () => {
       const titleParts = (job.route_title || '').split('|').map(p => p.trim());
       const customerName = titleParts[0] || '';
       const jobType = titleParts[2] || 'Other';
+      const zone = titleParts[3] || 'Other'; // Extract zone from route_title (Z1, Z2, Z3, etc.)
 
       // Parse timeframe from route_description
       const tfMatch = job.route_description?.match(/TF\((\d+:\d+)-(\d+:\d+)\)/);
 
-      // Clean phone number
+      // Clean phone number and make it a tel: link
       const cleanPhone = cleanPhoneNumber(job.customer_phone);
 
-      // Determine if 2 techs needed based on job type
+      // Determine if 2 techs needed - be more specific
+      // Only mark as needing 2 techs if it explicitly has "demo prep" or "install"
+      const jobTypeLower = jobType.toLowerCase();
       const requiresTwoTechs =
-        jobType.toLowerCase().includes('install') ||
-        jobType.toLowerCase().includes('demo prep') ||
-        (jobType.toLowerCase().includes('demo') && !jobType.toLowerCase().includes('check'));
+        jobTypeLower.includes('install') ||
+        jobTypeLower.includes('demo prep');
 
       jobs.push({
         id: job.text || `job_${Date.now()}_${i}`,
         customerName: customerName,
         address: job.customer_address || '',
-        zone: job.Zone || '',
+        zone: zone,
         duration: parseFloat(job.duration) || 1,
         timeframeStart: tfMatch ? tfMatch[1] : '09:00',
         timeframeEnd: tfMatch ? tfMatch[2] : '17:00',
@@ -289,7 +323,7 @@ const Routing = () => {
           next_visit_date: job.next_visit_date,
           route_title: job.route_title,
           customer_address: job.customer_address,
-          zone: job.Zone,
+          zone: zone,
           text: job.text
         }
       });

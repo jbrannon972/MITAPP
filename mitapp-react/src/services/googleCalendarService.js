@@ -237,7 +237,9 @@ class GoogleCalendarService {
     }
 
     if (job.phone) {
-      description += `\nCustomer Phone: ${job.phone}\n`;
+      // Format phone number as clickable tel: link for mobile devices
+      const phoneDigits = job.phone.replace(/\D/g, ''); // Extract only digits
+      description += `\nCustomer Phone: tel:${phoneDigits} (${job.phone})\n`;
     }
 
     if (job.description) {
