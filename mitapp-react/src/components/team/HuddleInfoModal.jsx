@@ -69,14 +69,17 @@ const HuddleInfoModal = ({ isOpen, onClose, selectedDate = new Date() }) => {
   };
 
   const handleHuddleComplete = () => {
-    // Initialize attendance for all zones
+    // Initialize attendance for all zones (only zones with valid IDs)
     const initialAttendance = {};
     allZonesWithTechs.forEach(zone => {
-      initialAttendance[zone.id] = {
-        zoneName: zone.name,
-        present: [],
-        manuallyAdded: []
-      };
+      // Only add zones that have a valid ID
+      if (zone.id) {
+        initialAttendance[zone.id] = {
+          zoneName: zone.name,
+          present: [],
+          manuallyAdded: []
+        };
+      }
     });
     setAttendance(initialAttendance);
     setWorkflowStep('attendance');
@@ -185,14 +188,15 @@ const HuddleInfoModal = ({ isOpen, onClose, selectedDate = new Date() }) => {
     try {
       // Save attendance for each zone
       const savePromises = Object.entries(attendance).map(async ([zoneId, zoneData]) => {
-        if (zoneData.present.length > 0) {
+        // Only save if zone has an ID, has attendees, and zone data exists
+        if (zoneId && zoneId !== 'undefined' && zoneData && zoneData.present.length > 0) {
           const attendanceId = `${dateStr}_${zoneId}`;
           const attendanceDoc = {
             date: dateStr,
             zoneId,
             zoneName: zoneData.zoneName,
             present: zoneData.present,
-            manuallyAdded: zoneData.manuallyAdded,
+            manuallyAdded: zoneData.manuallyAdded || [],
             recordedBy: currentUser.userId,
             recordedByName: currentUser.username,
             recordedAt: new Date().toISOString()
@@ -310,7 +314,7 @@ const HuddleInfoModal = ({ isOpen, onClose, selectedDate = new Date() }) => {
                       <p style={{ marginBottom: '16px', color: 'var(--text-secondary)', fontSize: '14px' }}>
                         Select all team members who attended today's huddle:
                       </p>
-                      {allZonesWithTechs.map(zone => (
+                      {allZonesWithTechs.filter(zone => zone.id).map(zone => (
                         <div key={zone.id} style={{ marginBottom: '20px', background: 'var(--surface-secondary)', padding: '12px', borderRadius: '8px' }}>
                           <h4 style={{ margin: '0 0 12px 0', color: 'var(--info-color)' }}>{zone.name}</h4>
                           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '8px' }}>
@@ -395,7 +399,7 @@ const HuddleInfoModal = ({ isOpen, onClose, selectedDate = new Date() }) => {
                     ) : (
                       <div style={{ background: 'var(--surface-secondary)', padding: '12px', borderRadius: '8px' }}>
                         <h4 style={{ fontSize: '14px', marginBottom: '12px' }}>Select Member from Other Zones</h4>
-                        {allZonesWithTechs.map(zone => (
+                        {allZonesWithTechs.filter(zone => zone.id).map(zone => (
                           <div key={zone.id} style={{ marginBottom: '12px' }}>
                             <h5 style={{ fontSize: '13px', marginBottom: '6px', color: 'var(--info-color)' }}>{zone.name}</h5>
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
