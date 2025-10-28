@@ -406,6 +406,12 @@ const ManualMode = ({
 
     const { routeJobs, targetTechId, targetTech, shift, startLocation, fromTechId } = pendingRouteDropData;
 
+    console.log('📋 Two-tech modal completed:', {
+      totalRouteJobs: routeJobs.length,
+      assignments: Object.keys(assignments).length,
+      assignmentTypes: Object.values(assignments).map(a => a.type)
+    });
+
     try {
       // Process assignments and update jobs
       const updatedRouteJobs = [...routeJobs];
@@ -435,6 +441,12 @@ const ManualMode = ({
             requiresTwoTechs: false
           };
         }
+      });
+
+      console.log('📤 Sending to route assignment:', {
+        updatedRouteJobs: updatedRouteJobs.length,
+        helperJobs: helperJobsToCreate.length,
+        jobsWithDT: updatedRouteJobs.filter(j => j.assignedDemoTech).length
       });
 
       // Continue with normal route assignment flow
@@ -495,6 +507,25 @@ const ManualMode = ({
         distanceMatrix,
         shift
       );
+
+      console.log('🔍 Route optimization results:', {
+        inputJobs: allJobsForTech.length,
+        optimizedJobs: optimized.optimizedJobs.length,
+        unassignableJobs: optimized.unassignableJobs?.length || 0
+      });
+
+      // Check if any jobs were lost during optimization
+      if (optimized.optimizedJobs.length < allJobsForTech.length) {
+        const lostJobs = allJobsForTech.filter(j =>
+          !optimized.optimizedJobs.find(oj => oj.id === j.id)
+        );
+        console.warn('⚠️ Jobs lost during optimization:', lostJobs.map(j => j.customerName));
+
+        if (optimized.unassignableJobs && optimized.unassignableJobs.length > 0) {
+          const unassignableNames = optimized.unassignableJobs.map(j => j.customerName).join(', ');
+          alert(`⚠️ Could not optimize all jobs. The following jobs could not be scheduled:\n\n${unassignableNames}\n\nThey may have conflicting time windows or other constraints.`);
+        }
+      }
 
       // Check for timeframe violations
       const violations = optimized.optimizedJobs.filter(job => {
@@ -1317,15 +1348,17 @@ const ManualMode = ({
                         <div>{totalHours.toFixed(1)}h work</div>
                         {(() => {
                           const assignedDTs = new Set();
+                          let jobsWithDT = 0;
                           techRoute.jobs.forEach(job => {
                             if (job.assignedDemoTech) {
                               assignedDTs.add(job.assignedDemoTech.name);
+                              jobsWithDT++;
                             }
                           });
                           if (assignedDTs.size > 0) {
                             return (
                               <div style={{ fontSize: '9px', color: 'var(--warning-color)', marginTop: '2px' }}>
-                                <i className="fas fa-user-plus"></i> DT: {Array.from(assignedDTs).join(', ')}
+                                <i className="fas fa-user-plus"></i> DT ({jobsWithDT}): {Array.from(assignedDTs).join(', ')}
                               </div>
                             );
                           }
