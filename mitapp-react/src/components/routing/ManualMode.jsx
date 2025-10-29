@@ -91,10 +91,10 @@ const ManualMode = ({
     const type = jobType.toLowerCase();
     if (type.includes('install')) return 'var(--purple-color)'; // Purple
     if (type.includes('demo prep') || type.includes('demo-prep')) return 'var(--warning-color)'; // Orange
-    if (type.includes('demo') && !type.includes('check')) return 'var(--danger-color)'; // Pink
-    if (type.includes('service') || type.includes('repair')) return 'var(--info-color)'; // Blue
-    if (type.includes('maintenance') || type.includes('maint')) return 'var(--success-color)'; // Green
-    if (type.includes('inspection') || type.includes('check')) return 'var(--info-color)'; // Cyan
+    if (type.includes('demo') && !type.includes('prep') && !type.includes('check')) return 'var(--danger-color)'; // Red/Pink
+    if (type.includes('check') || type.includes('service')) return 'var(--info-color)'; // Blue
+    if (type.includes('pull')) return 'var(--success-color)'; // Green
+    if (type.includes('fs visit') || type.includes('fs-visit')) return '#14b8a6'; // Teal
     return 'var(--text-secondary)'; // Gray for other/unknown
   };
 
@@ -192,7 +192,7 @@ const ManualMode = ({
 
         // Override with status colors
         if (buildingRoute.some(j => j.id === job.id)) {
-          markerColor = 'var(--warning-color)'; // Bright yellow for in building route
+          markerColor = '#FFD700'; // Bright yellow for selected jobs in building route
         } else if (job.assignedTech && !showAllJobs) {
           continue; // Skip assigned jobs if not showing all
         } else if (job.assignedTech) {
@@ -1046,11 +1046,12 @@ const ManualMode = ({
               bottom: '16px',
               right: '16px',
               backgroundColor: 'var(--surface-color)',
-              padding: '16px',
-              borderRadius: '8px',
+              padding: '12px',
+              borderRadius: '6px',
               boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-              minWidth: '300px',
-              maxHeight: '400px',
+              minWidth: '280px',
+              maxWidth: '300px',
+              maxHeight: '450px',
               overflow: 'auto',
               zIndex: 1
             }}>
@@ -1058,19 +1059,19 @@ const ManualMode = ({
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
-                marginBottom: '12px',
-                paddingBottom: '12px',
+                marginBottom: '8px',
+                paddingBottom: '8px',
                 borderBottom: '2px solid #e5e7eb'
               }}>
-                <h4 style={{ margin: 0, color: 'var(--warning-color)' }}>
+                <h4 style={{ margin: 0, fontSize: '12px', color: '#FFD700' }}>
                   <i className="fas fa-route"></i> Building Route ({buildingRoute.length})
                 </h4>
                 <button
                   onClick={clearBuildingRoute}
                   className="btn btn-secondary btn-small"
-                  style={{ padding: '4px 8px', fontSize: '12px' }}
+                  style={{ padding: '2px 6px', fontSize: '10px' }}
                 >
-                  <i className="fas fa-times"></i> Clear
+                  <i className="fas fa-times"></i>
                 </button>
               </div>
 
@@ -1079,15 +1080,16 @@ const ManualMode = ({
                 onDragStart={(e) => handleDragStart(e, buildingRoute)}
                 style={{
                   cursor: 'grab',
-                  padding: '8px',
-                  backgroundColor: 'var(--status-pending-bg)',
-                  borderRadius: '6px',
-                  marginBottom: '8px',
-                  border: '2px dashed var(--warning-color)'
+                  padding: '6px',
+                  backgroundColor: '#fff9e6',
+                  borderRadius: '4px',
+                  marginBottom: '6px',
+                  border: '2px dashed #FFD700',
+                  textAlign: 'center'
                 }}
               >
-                <div style={{ fontSize: '12px', color: 'var(--warning-color)', marginBottom: '8px', fontWeight: '500' }}>
-                  <i className="fas fa-hand-paper"></i> Drag this route to a tech
+                <div style={{ fontSize: '10px', color: '#d4a200', fontWeight: '600' }}>
+                  <i className="fas fa-hand-paper"></i> Drag to Tech
                 </div>
               </div>
 
@@ -1095,30 +1097,35 @@ const ManualMode = ({
                 <div
                   key={job.id}
                   style={{
-                    padding: '10px',
+                    padding: '6px',
                     backgroundColor: 'var(--surface-secondary)',
-                    borderRadius: '6px',
-                    marginBottom: '6px',
-                    borderLeft: '3px solid var(--warning-color)',
-                    fontSize: '13px'
+                    borderRadius: '4px',
+                    marginBottom: '4px',
+                    borderLeft: '3px solid #FFD700',
+                    fontSize: '10px'
                   }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
                     <div style={{ flex: 1 }}>
-                      <strong>{idx + 1}. {job.customerName}</strong>
-                      <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '4px' }}>
-                        {job.jobType} • {job.duration}h
-                        {job.requiresTwoTechs && (
-                          <span style={{ color: 'var(--warning-color)', marginLeft: '6px' }}>
-                            <i className="fas fa-users"></i> 2 Techs
-                          </span>
-                        )}
+                      <div style={{ fontWeight: '600', fontSize: '11px', marginBottom: '2px' }}>
+                        {idx + 1}. {job.customerName}
                       </div>
+                      <div style={{ fontSize: '10px', color: 'var(--text-secondary)', marginBottom: '2px' }}>
+                        {job.jobType} • {job.duration}h
+                      </div>
+                      <div style={{ fontSize: '10px', color: 'var(--success-color)', fontWeight: '600' }}>
+                        <i className="fas fa-clock"></i> {job.timeframeStart}-{job.timeframeEnd}
+                      </div>
+                      {job.requiresTwoTechs && (
+                        <div style={{ fontSize: '9px', color: 'var(--warning-color)', marginTop: '2px', fontWeight: '600' }}>
+                          <i className="fas fa-users"></i> 2 Techs
+                        </div>
+                      )}
                     </div>
                     <button
                       onClick={() => removeJobFromBuildingRoute(job.id)}
                       className="btn btn-secondary btn-small"
-                      style={{ padding: '2px 6px', fontSize: '11px' }}
+                      style={{ padding: '2px 4px', fontSize: '9px' }}
                     >
                       <i className="fas fa-times"></i>
                     </button>
@@ -1147,35 +1154,39 @@ const ManualMode = ({
             padding: '10px',
             borderRadius: '6px',
             boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-            fontSize: '11px',
+            fontSize: '10px',
             zIndex: 1,
-            maxWidth: '200px'
+            maxWidth: '220px'
           }}>
-            <div style={{ fontWeight: '600', marginBottom: '6px' }}>Job Types</div>
+            <div style={{ fontWeight: '600', marginBottom: '6px', fontSize: '11px' }}>Job Types</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: 'var(--purple-color)' }}></div>
+                <div style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: 'var(--purple-color)' }}></div>
                 <span>Install</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: 'var(--danger-color)' }}></div>
+                <div style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: 'var(--danger-color)' }}></div>
                 <span>Demo</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: 'var(--info-color)' }}></div>
-                <span>Service</span>
+                <div style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: 'var(--warning-color)' }}></div>
+                <span>Demo Prep</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: 'var(--success-color)' }}></div>
-                <span>Maint</span>
+                <div style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: 'var(--info-color)' }}></div>
+                <span>Check/Service</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: 'var(--info-color)' }}></div>
-                <span>Inspect</span>
+                <div style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: 'var(--success-color)' }}></div>
+                <span>Pull</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: 'var(--warning-color)' }}></div>
-                <span>Building</span>
+                <div style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#14b8a6' }}></div>
+                <span>FS Visit</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <div style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#FFD700' }}></div>
+                <span>Selected</span>
               </div>
             </div>
           </div>
@@ -1199,30 +1210,41 @@ const ManualMode = ({
                 bottom: '16px',
                 left: '12px',
                 backgroundColor: 'var(--surface-color)',
-                padding: '10px',
+                padding: '12px',
                 borderRadius: '6px',
                 boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
-                maxWidth: '280px',
+                maxWidth: '350px',
                 zIndex: 1000,
                 border: '2px solid var(--info-color)',
                 pointerEvents: 'auto',
                 fontSize: '11px'
               }}
             >
-              <div style={{ fontWeight: '600', marginBottom: '6px', fontSize: '12px' }}>
+              <div style={{ fontWeight: '600', marginBottom: '6px', fontSize: '13px', color: 'var(--text-primary)' }}>
                 {hoveredJob.customerName}
               </div>
-              <div style={{ fontSize: '10px', color: 'var(--text-secondary)', marginBottom: '4px' }}>
-                {hoveredJob.jobType} • {hoveredJob.duration}h • {hoveredJob.timeframeStart}-{hoveredJob.timeframeEnd}
+              <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '4px' }}>
+                <i className="fas fa-map-marker-alt"></i> {hoveredJob.address}
+              </div>
+              <div style={{ fontSize: '11px', color: 'var(--text-primary)', marginBottom: '4px' }}>
+                <strong>{hoveredJob.jobType}</strong> • {hoveredJob.duration}h
+              </div>
+              <div style={{ fontSize: '11px', color: 'var(--success-color)', fontWeight: '600', marginBottom: '4px' }}>
+                <i className="fas fa-clock"></i> Timeframe: {hoveredJob.timeframeStart} - {hoveredJob.timeframeEnd}
               </div>
               {hoveredJob.phone && (
-                <div style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>
-                  📞 {hoveredJob.phone}
+                <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '4px' }}>
+                  <i className="fas fa-phone"></i> {hoveredJob.phone}
+                </div>
+              )}
+              {hoveredJob.description && (
+                <div style={{ marginTop: '6px', padding: '6px', backgroundColor: 'var(--surface-secondary)', borderRadius: '4px', fontSize: '10px', borderLeft: '3px solid var(--info-color)' }}>
+                  <strong>Notes:</strong> {hoveredJob.description}
                 </div>
               )}
               {hoveredJob.requiresTwoTechs && (
-                <div style={{ marginTop: '4px', padding: '4px', backgroundColor: 'var(--warning-color)', color: 'white', borderRadius: '4px', fontSize: '10px', textAlign: 'center', fontWeight: '600' }}>
-                  <i className="fas fa-users"></i> 2 Techs
+                <div style={{ marginTop: '6px', padding: '4px', backgroundColor: 'var(--warning-color)', color: 'white', borderRadius: '4px', fontSize: '10px', textAlign: 'center', fontWeight: '600' }}>
+                  <i className="fas fa-users"></i> Requires 2 Technicians
                 </div>
               )}
             </div>
