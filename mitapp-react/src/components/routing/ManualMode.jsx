@@ -36,6 +36,33 @@ const ManualMode = ({
   const [showGoogleSetup, setShowGoogleSetup] = useState(false);
   const [showTwoTechModal, setShowTwoTechModal] = useState(false);
   const [pendingRouteDropData, setPendingRouteDropData] = useState(null);
+  const [officeCoordinates, setOfficeCoordinates] = useState({});
+
+  // Geocode office addresses on mount
+  useEffect(() => {
+    const geocodeOffices = async () => {
+      const mapbox = getMapboxService();
+      const coords = {};
+
+      for (const [key, office] of Object.entries(offices)) {
+        if (office.address) {
+          try {
+            const coordinates = await mapbox.geocodeAddress(office.address);
+            coords[key] = { ...coordinates, name: office.name };
+            console.log(`📍 Geocoded ${office.name}:`, coordinates);
+          } catch (error) {
+            console.error(`Error geocoding ${office.name}:`, error);
+          }
+        }
+      }
+
+      setOfficeCoordinates(coords);
+    };
+
+    if (offices && Object.keys(offices).length > 0) {
+      geocodeOffices();
+    }
+  }, [offices]);
 
   // Update local state when props change
   useEffect(() => {
@@ -122,13 +149,10 @@ const ManualMode = ({
       if (map.getLayer('route')) map.removeLayer('route');
       if (map.getSource('route')) map.removeSource('route');
 
-      // Add office markers
-      const officeLocations = {
-        office_1: { lng: -95.4559, lat: 30.3119, name: 'Conroe' },
-        office_2: { lng: -95.6508, lat: 29.7858, name: 'Katy' }
-      };
+      // Add office markers using geocoded coordinates
+      Object.values(officeCoordinates).forEach(office => {
+        if (!office.lng || !office.lat) return;
 
-      Object.values(officeLocations).forEach(office => {
         const el = document.createElement('div');
         el.innerHTML = `<div style="background-color: var(--info-color); color: var(--surface-color); padding: 6px 10px; border-radius: 4px; font-weight: bold; font-size: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.2);"><i class="fas fa-building"></i> ${office.name}</div>`;
 
@@ -232,12 +256,13 @@ const ManualMode = ({
       // Draw selected tech's route on the map
       if (selectedTech && routes[selectedTech]) {
         const techRoute = routes[selectedTech];
-        const officeLocations = {
-          office_1: { lng: -95.4559, lat: 30.3119 },
-          office_2: { lng: -95.6508, lat: 29.7858 }
-        };
+        const officeCoords = officeCoordinates[techRoute.tech.office];
 
-        const officeCoords = officeLocations[techRoute.tech.office];
+        if (!officeCoords || !officeCoords.lng || !officeCoords.lat) {
+          console.warn('Office coordinates not available for route drawing');
+          return;
+        }
+
         const coordinates = [[officeCoords.lng, officeCoords.lat]];
 
         // Add route job markers
@@ -326,7 +351,7 @@ const ManualMode = ({
     };
 
     renderJobMarkers();
-  }, [jobs, showAllJobs, buildingRoute, selectedTech, routes]);
+  }, [jobs, showAllJobs, buildingRoute, selectedTech, routes, officeCoordinates]);
 
   const handleJobClick = (job) => {
     // Don't add assigned jobs to building route unless showing all
