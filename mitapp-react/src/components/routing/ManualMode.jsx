@@ -583,8 +583,11 @@ const ManualMode = ({
         }
       }
 
-      // Check for timeframe violations
+      // Check for timeframe violations (exclude manually added jobs since user approved them)
       const violations = optimized.optimizedJobs.filter(job => {
+        // Skip jobs that were manually added after being unassignable
+        if (job.wasUnassignable) return false;
+
         const startMinutes = parseInt(job.timeframeStart.split(':')[0]) * 60 + parseInt(job.timeframeStart.split(':')[1]);
         const endMinutes = parseInt(job.timeframeEnd.split(':')[0]) * 60 + parseInt(job.timeframeEnd.split(':')[1]);
         const arrivalMinutes = parseInt(job.arrivalTime.split(':')[0]) * 60 + parseInt(job.arrivalTime.split(':')[1]);
