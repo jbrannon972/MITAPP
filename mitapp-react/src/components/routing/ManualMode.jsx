@@ -1030,7 +1030,7 @@ const ManualMode = ({
       </div>
 
       {/* Main layout: Map + Compact Tech List */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 280px', gap: '12px', flex: 1, minHeight: 0 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 200px', gap: '12px', flex: 1, minHeight: 0 }}>
 
         {/* Map Section */}
         <div className="card" style={{ padding: 0, overflow: 'hidden', position: 'relative', height: '100%' }}>
@@ -1039,12 +1039,12 @@ const ManualMode = ({
             style={{ width: '100%', height: '100%' }}
           />
 
-          {/* Building Route Overlay */}
+          {/* Building Route Overlay - Bottom Right */}
           {buildingRoute.length > 0 && (
             <div style={{
               position: 'absolute',
               bottom: '16px',
-              left: '16px',
+              right: '16px',
               backgroundColor: 'var(--surface-color)',
               padding: '16px',
               borderRadius: '8px',
@@ -1180,7 +1180,7 @@ const ManualMode = ({
             </div>
           </div>
 
-          {/* Centered Job Hover Popup */}
+          {/* Job Hover Popup - Bottom Left */}
           {hoveredJob && !selectedTech && (
             <div
               onMouseEnter={() => {
@@ -1196,68 +1196,44 @@ const ManualMode = ({
               }}
               style={{
                 position: 'absolute',
-                top: '16px',
-                left: '16px',
+                bottom: '16px',
+                left: '12px',
                 backgroundColor: 'var(--surface-color)',
-                padding: '16px',
-                borderRadius: '8px',
-                boxShadow: '0 8px 24px rgba(0,0,0,0.25)',
-                maxWidth: '400px',
+                padding: '10px',
+                borderRadius: '6px',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+                maxWidth: '280px',
                 zIndex: 1000,
                 border: '2px solid var(--info-color)',
-                pointerEvents: 'auto'
+                pointerEvents: 'auto',
+                fontSize: '11px'
               }}
             >
-              <div style={{ marginBottom: '12px' }}>
-                <strong style={{ fontSize: '16px', color: 'var(--text-primary)' }}>{hoveredJob.customerName}</strong>
+              <div style={{ fontWeight: '600', marginBottom: '6px', fontSize: '12px' }}>
+                {hoveredJob.customerName}
               </div>
-              <div style={{ fontSize: '13px', color: 'var(--text-primary)', lineHeight: '1.6' }}>
-                <div style={{ marginBottom: '6px', display: 'flex', alignItems: 'start' }}>
-                  <i className="fas fa-map-marker-alt" style={{ width: '20px', marginTop: '2px', color: 'var(--info-color)' }}></i>
-                  <span>{hoveredJob.address}</span>
-                </div>
-                <div style={{ marginBottom: '6px', display: 'flex', alignItems: 'center' }}>
-                  <i className="fas fa-wrench" style={{ width: '20px', color: 'var(--purple-color)' }}></i>
-                  <span>{hoveredJob.jobType}</span>
-                </div>
-                <div style={{ marginBottom: '6px', display: 'flex', alignItems: 'center' }}>
-                  <i className="fas fa-hourglass-half" style={{ width: '20px', color: 'var(--warning-color)' }}></i>
-                  <span style={{ fontWeight: '600' }}>Duration: {hoveredJob.duration}h</span>
-                </div>
-                <div style={{ marginBottom: '6px', display: 'flex', alignItems: 'center' }}>
-                  <i className="fas fa-clock" style={{ width: '20px', color: 'var(--success-color)' }}></i>
-                  <span style={{ fontWeight: '600' }}>TF: {hoveredJob.timeframeStart} - {hoveredJob.timeframeEnd}</span>
-                </div>
-                {hoveredJob.phone && (
-                  <div style={{ marginBottom: '6px', display: 'flex', alignItems: 'center' }}>
-                    <i className="fas fa-phone" style={{ width: '20px', color: 'var(--info-color)' }}></i>
-                    <span>{hoveredJob.phone}</span>
-                  </div>
-                )}
-                {hoveredJob.description && (
-                  <div style={{ marginTop: '12px', padding: '10px', backgroundColor: '#f3f4f6', borderRadius: '6px', borderLeft: '3px solid var(--info-color)' }}>
-                    <strong style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Notes:</strong>
-                    <div style={{ fontSize: '12px', marginTop: '4px', color: 'var(--text-primary)' }}>{hoveredJob.description}</div>
-                  </div>
-                )}
-                {hoveredJob.requiresTwoTechs && (
-                  <div style={{ marginTop: '12px', padding: '8px', backgroundColor: 'var(--status-pending-bg)', color: 'var(--warning-color)', borderRadius: '6px', fontWeight: '600', textAlign: 'center', border: '2px solid var(--warning-color)' }}>
-                    <i className="fas fa-users"></i> Requires 2 Technicians
-                  </div>
-                )}
+              <div style={{ fontSize: '10px', color: 'var(--text-secondary)', marginBottom: '4px' }}>
+                {hoveredJob.jobType} • {hoveredJob.duration}h • {hoveredJob.timeframeStart}-{hoveredJob.timeframeEnd}
               </div>
-              <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #e5e7eb', fontSize: '11px', color: 'var(--text-secondary)', textAlign: 'center' }}>
-                Click marker to add to route
-              </div>
+              {hoveredJob.phone && (
+                <div style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>
+                  📞 {hoveredJob.phone}
+                </div>
+              )}
+              {hoveredJob.requiresTwoTechs && (
+                <div style={{ marginTop: '4px', padding: '4px', backgroundColor: 'var(--warning-color)', color: 'white', borderRadius: '4px', fontSize: '10px', textAlign: 'center', fontWeight: '600' }}>
+                  <i className="fas fa-users"></i> 2 Techs
+                </div>
+              )}
             </div>
           )}
 
-          {/* Selected Tech Route on Map */}
+          {/* Selected Tech Route - Top Right Above Nav Controls */}
           {selectedTech && routes[selectedTech] && routes[selectedTech].jobs?.length > 0 && (
             <div style={{
               position: 'absolute',
               top: '12px',
-              right: '12px',
+              right: '50px',
               backgroundColor: 'var(--surface-color)',
               padding: '12px',
               borderRadius: '6px',
