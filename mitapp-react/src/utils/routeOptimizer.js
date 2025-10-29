@@ -22,31 +22,40 @@ const minutesToTime = (minutes) => {
 
 /**
  * Check if arrival time is within job's time window
+ * Allows arrival up to 60 minutes early (techs can wait/arrive early)
  */
 const isWithinTimeWindow = (arrivalTime, job) => {
   const startWindow = timeToMinutes(job.timeframeStart);
   const endWindow = timeToMinutes(job.timeframeEnd);
-  return arrivalTime >= startWindow && arrivalTime <= endWindow;
+  const earlyArrivalBuffer = 60; // Can arrive up to 60 minutes early
+  return arrivalTime >= (startWindow - earlyArrivalBuffer) && arrivalTime <= endWindow;
 };
 
 /**
  * Calculate the score for assigning a job to a time slot
  * Lower score is better
+ * Allows arrival up to 60 minutes before timeframe start
  */
 const calculateJobScore = (currentTime, job, travelTime) => {
   const arrivalTime = currentTime + travelTime;
   const windowStart = timeToMinutes(job.timeframeStart);
   const windowEnd = timeToMinutes(job.timeframeEnd);
+  const earlyArrivalBuffer = 60; // Can arrive up to 60 minutes early
 
   // Can't arrive after window ends
   if (arrivalTime > windowEnd) {
     return Infinity;
   }
 
-  // Wait time if we arrive early
+  // Can't arrive more than 60 minutes before window starts
+  if (arrivalTime < (windowStart - earlyArrivalBuffer)) {
+    return Infinity;
+  }
+
+  // Wait time if we arrive early (up to 60 min early is ok)
   const waitTime = Math.max(0, windowStart - arrivalTime);
 
-  // Preference for arriving closer to window start
+  // Preference for arriving closer to window start (but early is acceptable)
   const timeWindowScore = Math.abs(arrivalTime + waitTime - windowStart);
 
   // Total score (lower is better)
