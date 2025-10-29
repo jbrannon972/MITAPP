@@ -670,9 +670,27 @@ const ManualMode = ({
         };
       }
 
+      // Determine route-level demo tech based on job assignments
+      // If all jobs with assigned demo techs have the same DT, set it at route level
+      const jobsWithDT = optimized.optimizedJobs.filter(j => j.assignedDemoTech);
+      let routeLevelDemoTech = null;
+
+      if (jobsWithDT.length > 0) {
+        const uniqueDTs = [...new Set(jobsWithDT.map(j => j.assignedDemoTech.name))];
+        if (uniqueDTs.length === 1) {
+          // All jobs have same DT - set at route level
+          routeLevelDemoTech = uniqueDTs[0];
+          console.log(`✅ Setting route-level DT: ${routeLevelDemoTech} (${jobsWithDT.length} jobs)`);
+        } else {
+          // Multiple DTs - use most common one or leave null
+          console.log(`⚠️ Multiple DTs on route: ${uniqueDTs.join(', ')}`);
+        }
+      }
+
       updatedRoutes[targetTechId] = {
         ...updatedRoutes[targetTechId],
         jobs: optimized.optimizedJobs,
+        demoTech: routeLevelDemoTech, // Set route-level DT for Kanban display
         summary: {
           totalDuration: optimized.totalDuration,
           totalDistance: optimized.totalDistance
