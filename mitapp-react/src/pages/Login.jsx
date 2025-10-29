@@ -92,7 +92,7 @@ const Login = () => {
     }}>
       <div className="login-container">
         <h1>
-          <i className="fas fa-lock"></i> Labor Tool Login
+          <i className="fas fa-lock"></i> Entrusted Mitigation
         </h1>
 
         {error && (
