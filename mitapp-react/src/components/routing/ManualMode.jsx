@@ -474,6 +474,17 @@ const ManualMode = ({
         })
       );
 
+      // Geocode helper jobs too (they need coordinates to show on map)
+      const geocodedHelperJobs = await Promise.all(
+        (helperJobs || []).map(async (job) => {
+          if (job.coordinates) return job;
+          const coords = await mapbox.geocodeAddress(job.address);
+          return { ...job, coordinates: coords };
+        })
+      );
+
+      console.log('📍 Geocoded helper jobs:', geocodedHelperJobs.length);
+
       // Get existing jobs for this tech
       let existingJobs = [];
       if (routes[targetTechId] && routes[targetTechId].jobs) {
@@ -655,9 +666,10 @@ const ManualMode = ({
         return job;
       });
 
-      // Add helper jobs to jobs list
-      if (helperJobs && helperJobs.length > 0) {
-        updatedJobs = [...updatedJobs, ...helperJobs];
+      // Add helper jobs to jobs list (use geocoded version)
+      if (geocodedHelperJobs && geocodedHelperJobs.length > 0) {
+        console.log('➕ Adding helper jobs to job list:', geocodedHelperJobs.map(j => j.customerName));
+        updatedJobs = [...updatedJobs, ...geocodedHelperJobs];
       }
 
       // Clear building route if it was dragged
