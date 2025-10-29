@@ -309,7 +309,7 @@ const Routing = () => {
         address: job.customer_address || '',
         zone: zone,
         duration: parseFloat(job.duration) || 1,
-        timeframeStart: tfMatch ? tfMatch[1] : '09:00',
+        timeframeStart: tfMatch ? tfMatch[1] : '08:00',  // Allow jobs to start as early as 8:00 (techs leave office at 8:15)
         timeframeEnd: tfMatch ? tfMatch[2] : '17:00',
         jobType: jobType,
         requiresTwoTechs: requiresTwoTechs,
