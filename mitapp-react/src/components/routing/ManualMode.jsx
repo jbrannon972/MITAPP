@@ -1049,9 +1049,8 @@ const ManualMode = ({
               padding: '12px',
               borderRadius: '6px',
               boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-              minWidth: '280px',
-              maxWidth: '300px',
-              maxHeight: '450px',
+              width: '240px',
+              maxHeight: '600px',
               overflow: 'auto',
               zIndex: 1
             }}>
