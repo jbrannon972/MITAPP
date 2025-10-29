@@ -79,7 +79,7 @@ const TwoTechAssignmentModal = ({
         wholeDuration: true
       };
       setJobAssignments(updates);
-      moveToNextJob();
+      moveToNextJob(updates); // Pass updated assignments directly
     }
   };
 
@@ -98,23 +98,26 @@ const TwoTechAssignmentModal = ({
     };
     setJobAssignments(updates);
     setCustomHours('');
-    moveToNextJob();
+    moveToNextJob(updates); // Pass updated assignments directly
   };
 
   const handleJobNoDT = () => {
     const updates = { ...jobAssignments };
     updates[currentJob.id] = { type: 'no-dt' };
     setJobAssignments(updates);
-    moveToNextJob();
+    moveToNextJob(updates); // Pass updated assignments directly
   };
 
-  const moveToNextJob = () => {
+  const moveToNextJob = (updatedAssignments) => {
+    // Use the passed assignments if provided, otherwise fall back to state
+    const assignmentsToUse = updatedAssignments || jobAssignments;
+
     if (currentJobIndex < twoTechJobs.length - 1) {
       setCurrentJobIndex(currentJobIndex + 1);
       setStep('per-job');
     } else {
-      // All jobs processed
-      onComplete(jobAssignments);
+      // All jobs processed - use the updated assignments
+      onComplete(assignmentsToUse);
       onClose();
     }
   };
