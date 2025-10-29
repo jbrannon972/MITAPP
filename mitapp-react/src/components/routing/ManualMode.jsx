@@ -522,8 +522,64 @@ const ManualMode = ({
         console.warn('⚠️ Jobs lost during optimization:', lostJobs.map(j => j.customerName));
 
         if (optimized.unassignableJobs && optimized.unassignableJobs.length > 0) {
-          const unassignableNames = optimized.unassignableJobs.map(j => j.customerName).join(', ');
-          alert(`⚠️ Could not optimize all jobs. The following jobs could not be scheduled:\n\n${unassignableNames}\n\nThey may have conflicting time windows or other constraints.`);
+          const unassignableNames = optimized.unassignableJobs.map(j => `• ${j.customerName} (${j.timeframeStart}-${j.timeframeEnd})`).join('\n');
+
+          const shouldAddAnyway = confirm(
+            `⚠️ Route optimizer couldn't fit all jobs within their time windows:\n\n` +
+            unassignableNames +
+            `\n\nWould you like to add them to the route anyway?\n\n` +
+            `Click OK to add them at the end (you can manually adjust timing later)\n` +
+            `Click Cancel to skip these jobs`
+          );
+
+          if (shouldAddAnyway) {
+            console.log('📌 User chose to add unassignable jobs manually');
+
+            // Add unassignable jobs to the end of the route with estimated times
+            let currentTime = shift === 'second' ? 14 * 60 : 8 * 60; // Start time in minutes (2pm or 8am)
+
+            // If there are optimized jobs, start from the end of the last job
+            if (optimized.optimizedJobs.length > 0) {
+              const lastJob = optimized.optimizedJobs[optimized.optimizedJobs.length - 1];
+              const endTimeParts = lastJob.endTime.split(':');
+              currentTime = parseInt(endTimeParts[0]) * 60 + parseInt(endTimeParts[1]);
+              // Add 30 minutes for travel time as a buffer
+              currentTime += 30;
+            }
+
+            // Format time helper
+            const formatTime = (minutes) => {
+              const hours = Math.floor(minutes / 60);
+              const mins = minutes % 60;
+              return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
+            };
+
+            // Add each unassignable job with estimated times
+            optimized.unassignableJobs.forEach(job => {
+              const arrivalTime = currentTime;
+              const startTime = arrivalTime;
+              const endTime = startTime + (job.duration * 60);
+
+              // Add job to optimized list
+              optimized.optimizedJobs.push({
+                ...job,
+                arrivalTime: formatTime(arrivalTime),
+                startTime: formatTime(startTime),
+                endTime: formatTime(endTime),
+                travelTime: 30, // Estimated travel time
+                wasUnassignable: true // Flag to indicate this was manually added
+              });
+
+              console.log(`  ✅ Added ${job.customerName} at ${formatTime(startTime)}-${formatTime(endTime)}`);
+
+              // Update current time for next job (add buffer between jobs)
+              currentTime = endTime + 30;
+            });
+
+            console.log(`📋 Final route has ${optimized.optimizedJobs.length} jobs (${optimized.unassignableJobs.length} manually added)`);
+          } else {
+            console.log('❌ User chose to skip unassignable jobs');
+          }
         }
       }
 
