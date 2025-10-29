@@ -409,7 +409,8 @@ const ManualMode = ({
     console.log('📋 Two-tech modal completed:', {
       totalRouteJobs: routeJobs.length,
       assignments: Object.keys(assignments).length,
-      assignmentTypes: Object.values(assignments).map(a => a.type)
+      assignmentTypes: Object.values(assignments).map(a => a.type),
+      assignmentDetails: assignments
     });
 
     try {
@@ -419,12 +420,17 @@ const ManualMode = ({
 
       Object.entries(assignments).forEach(([jobId, assignment]) => {
         const jobIndex = updatedRouteJobs.findIndex(j => j.id === jobId);
-        if (jobIndex === -1) return;
+        if (jobIndex === -1) {
+          console.warn('⚠️ Job ID not found in route:', jobId);
+          return;
+        }
 
         const job = updatedRouteJobs[jobIndex];
+        console.log(`🔧 Processing assignment for ${job.customerName}:`, assignment);
 
         if (assignment.type === 'demo-tech') {
           // Assign demo tech to job
+          console.log(`  ✅ Assigning demo tech ${assignment.demoTech.name} to ${job.customerName}`);
           updatedRouteJobs[jobIndex] = {
             ...job,
             assignedDemoTech: assignment.demoTech,
@@ -432,10 +438,13 @@ const ManualMode = ({
           };
         } else if (assignment.type === 'second-tech') {
           // Create helper job
+          console.log(`  ➕ Creating helper job for ${job.customerName} (${assignment.hours}h)`);
           const helperJob = createHelperJob(job, assignment.hours, targetTech.name);
+          console.log(`  📝 Helper job created:`, helperJob.id, helperJob.customerName);
           helperJobsToCreate.push(helperJob);
         } else if (assignment.type === 'no-dt') {
           // Remove DT requirement
+          console.log(`  ❌ Removing DT requirement from ${job.customerName}`);
           updatedRouteJobs[jobIndex] = {
             ...job,
             requiresTwoTechs: false
@@ -446,6 +455,7 @@ const ManualMode = ({
       console.log('📤 Sending to route assignment:', {
         updatedRouteJobs: updatedRouteJobs.length,
         helperJobs: helperJobsToCreate.length,
+        helperJobNames: helperJobsToCreate.map(h => h.customerName),
         jobsWithDT: updatedRouteJobs.filter(j => j.assignedDemoTech).length
       });
 
