@@ -464,7 +464,7 @@ const TrendsView = () => {
           <div style={{ padding: '24px' }}>
             <div style={{ fontSize: '14px', opacity: 0.9, marginBottom: '8px' }}>Top Requester</div>
             <div style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '4px' }}>{stats.techMostLosses}</div>
-            <div style={{ fontSize: '12px', opacity: 0.8' }}>
+            <div style={{ fontSize: '12px', opacity: '0.8' }}>
               <i className="fas fa-user"></i> {stats.techMostLossesCount} requests
             </div>
           </div>
