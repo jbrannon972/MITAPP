@@ -1,11 +1,17 @@
 import { useState, useEffect } from 'react';
+import Layout from '../components/common/Layout';
 import firebaseService from '../services/firebaseService';
 import { exportToCSV, prepareToolsDataForExport } from '../utils/exportUtils';
+import PendingRequestsView from '../components/tools/PendingRequestsView';
+import CompletedRequestsView from '../components/tools/CompletedRequestsView';
+import RequestToolModal from '../components/tools/RequestToolModal';
 
 const Tools = () => {
+  const [activeView, setActiveView] = useState('pending');
   const [tools, setTools] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [showRequestModal, setShowRequestModal] = useState(false);
   const [editingTool, setEditingTool] = useState(null);
   const [formData, setFormData] = useState({
     toolId: '',
@@ -13,7 +19,8 @@ const Tools = () => {
     category: '',
     assignedTo: '',
     status: 'Available',
-    location: ''
+    location: '',
+    cost: 0
   });
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -44,7 +51,8 @@ const Tools = () => {
       category: '',
       assignedTo: '',
       status: 'Available',
-      location: ''
+      location: '',
+      cost: 0
     });
     setShowModal(true);
   };
@@ -57,7 +65,8 @@ const Tools = () => {
       category: tool.category || '',
       assignedTo: tool.assignedTo || '',
       status: tool.status || 'Available',
-      location: tool.location || ''
+      location: tool.location || '',
+      cost: tool.cost || 0
     });
     setShowModal(true);
   };
@@ -185,177 +194,236 @@ const Tools = () => {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="tab-content active">
-        <p>Loading tools...</p>
-      </div>
-    );
-  }
-
   return (
-    <div className="tab-content active">
-        <div className="tab-header">
-          <h2>Tools Management</h2>
+    <Layout>
+      <div className="container" style={{ maxWidth: '100%', padding: '20px' }}>
+        {/* Header */}
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: '20px'
+        }}>
+          <h1 style={{ margin: 0 }}>
+            <i className="fas fa-wrench"></i> Tool Management
+          </h1>
+
+          <button
+            className="btn btn-primary"
+            onClick={() => setShowRequestModal(true)}
+          >
+            <i className="fas fa-plus"></i> Request Tool
+          </button>
         </div>
 
-        {/* Search and Filter */}
-        <div className="card">
-          <div className="card-header">
-            <h3><i className="fas fa-filter"></i> Search & Filter</h3>
-          </div>
-          <div style={{ padding: '20px' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '16px', alignItems: 'end' }}>
-              <div className="form-group" style={{ margin: 0 }}>
-                <label htmlFor="searchInput">Search Tools</label>
-                <input
-                  type="text"
-                  id="searchInput"
-                  className="form-control"
-                  placeholder="Search by tool ID, name, category, assignment, or location..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
+        {/* Sub Navigation */}
+        <div style={{
+          display: 'flex',
+          gap: '8px',
+          marginBottom: '20px',
+          borderBottom: '2px solid #e5e7eb',
+          paddingBottom: '8px'
+        }}>
+          <button
+            className={`btn ${activeView === 'pending' ? 'btn-primary' : 'btn-secondary'}`}
+            onClick={() => setActiveView('pending')}
+            style={{ fontSize: '14px' }}
+          >
+            <i className="fas fa-clock"></i> Pending Requests
+          </button>
+          <button
+            className={`btn ${activeView === 'completed' ? 'btn-primary' : 'btn-secondary'}`}
+            onClick={() => setActiveView('completed')}
+            style={{ fontSize: '14px' }}
+          >
+            <i className="fas fa-check-circle"></i> Completed
+          </button>
+          <button
+            className={`btn ${activeView === 'inventory' ? 'btn-primary' : 'btn-secondary'}`}
+            onClick={() => setActiveView('inventory')}
+            style={{ fontSize: '14px' }}
+          >
+            <i className="fas fa-boxes"></i> Inventory
+          </button>
+        </div>
+
+        {/* Views */}
+        {activeView === 'pending' && <PendingRequestsView />}
+
+        {activeView === 'completed' && <CompletedRequestsView />}
+
+        {activeView === 'inventory' && (
+          <>
+            {/* Search and Filter */}
+            <div className="card">
+              <div className="card-header">
+                <h3><i className="fas fa-filter"></i> Search & Filter</h3>
               </div>
-              <div className="form-group" style={{ margin: 0, minWidth: '200px' }}>
-                <label htmlFor="statusFilter">Filter by Status</label>
-                <select
-                  id="statusFilter"
-                  className="form-control"
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                >
-                  <option value="all">All Statuses</option>
-                  <option value="Available">Available</option>
-                  <option value="In Use">In Use</option>
-                  <option value="In Repairs">In Repairs</option>
-                  <option value="Lost">Lost</option>
-                  <option value="Out of Service">Out of Service</option>
-                </select>
+              <div style={{ padding: '20px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '16px', alignItems: 'end' }}>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label htmlFor="searchInput">Search Tools</label>
+                    <input
+                      type="text"
+                      id="searchInput"
+                      className="form-control"
+                      placeholder="Search by tool ID, name, category, assignment, or location..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                  </div>
+                  <div className="form-group" style={{ margin: 0, minWidth: '200px' }}>
+                    <label htmlFor="statusFilter">Filter by Status</label>
+                    <select
+                      id="statusFilter"
+                      className="form-control"
+                      value={statusFilter}
+                      onChange={(e) => setStatusFilter(e.target.value)}
+                    >
+                      <option value="all">All Statuses</option>
+                      <option value="Available">Available</option>
+                      <option value="In Use">In Use</option>
+                      <option value="In Repairs">In Repairs</option>
+                      <option value="Lost">Lost</option>
+                      <option value="Out of Service">Out of Service</option>
+                    </select>
+                  </div>
+                </div>
+                {(searchTerm || statusFilter !== 'all') && (
+                  <div style={{ marginTop: '12px', fontSize: '14px', color: 'var(--text-secondary)' }}>
+                    Showing {filteredTools.length} of {tools.length} tools
+                  </div>
+                )}
               </div>
             </div>
-            {(searchTerm || statusFilter !== 'all') && (
-              <div style={{ marginTop: '12px', fontSize: '14px', color: 'var(--text-secondary)' }}>
-                Showing {filteredTools.length} of {tools.length} tools
+
+            {/* Bulk Actions Bar */}
+            {showBulkActions && (
+              <div className="card" style={{ backgroundColor: 'var(--active-bg)', borderColor: 'var(--info-color)' }}>
+                <div style={{ padding: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <i className="fas fa-check-circle" style={{ color: 'var(--info-color)', fontSize: '20px' }}></i>
+                    <span style={{ fontWeight: '500' }}>{selectedTools.length} tool(s) selected</span>
+                  </div>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <select
+                      className="form-control"
+                      style={{ width: 'auto', display: 'inline-block' }}
+                      onChange={(e) => {
+                        if (e.target.value) {
+                          handleBulkStatusChange(e.target.value);
+                          e.target.value = '';
+                        }
+                      }}
+                      defaultValue=""
+                    >
+                      <option value="">Change Status...</option>
+                      <option value="Available">Available</option>
+                      <option value="In Use">In Use</option>
+                      <option value="In Repairs">In Repairs</option>
+                      <option value="Lost">Lost</option>
+                      <option value="Out of Service">Out of Service</option>
+                    </select>
+                    <button className="btn btn-danger" onClick={handleBulkDelete}>
+                      <i className="fas fa-trash"></i> Delete Selected
+                    </button>
+                  </div>
+                </div>
               </div>
             )}
-          </div>
-        </div>
 
-        {/* Bulk Actions Bar */}
-        {showBulkActions && (
-          <div className="card" style={{ backgroundColor: 'var(--active-bg)', borderColor: 'var(--info-color)' }}>
-            <div style={{ padding: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <i className="fas fa-check-circle" style={{ color: 'var(--info-color)', fontSize: '20px' }}></i>
-                <span style={{ fontWeight: '500' }}>{selectedTools.length} tool(s) selected</span>
+            {loading ? (
+              <div className="card">
+                <div style={{ padding: '40px', textAlign: 'center' }}>
+                  <i className="fas fa-spinner fa-spin" style={{ fontSize: '48px', color: 'var(--primary-color)' }}></i>
+                  <p style={{ marginTop: '16px', color: 'var(--text-secondary)' }}>Loading tools inventory...</p>
+                </div>
               </div>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <select
-                  className="form-control"
-                  style={{ width: 'auto', display: 'inline-block' }}
-                  onChange={(e) => {
-                    if (e.target.value) {
-                      handleBulkStatusChange(e.target.value);
-                      e.target.value = '';
-                    }
-                  }}
-                  defaultValue=""
-                >
-                  <option value="">Change Status...</option>
-                  <option value="Available">Available</option>
-                  <option value="In Use">In Use</option>
-                  <option value="In Repairs">In Repairs</option>
-                  <option value="Lost">Lost</option>
-                  <option value="Out of Service">Out of Service</option>
-                </select>
-                <button className="btn btn-danger" onClick={handleBulkDelete}>
-                  <i className="fas fa-trash"></i> Delete Selected
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        <div className="card">
-          <div className="card-header">
-            <h3><i className="fas fa-wrench"></i> Tools Inventory</h3>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <button className="btn btn-secondary" onClick={handleExport}>
-                <i className="fas fa-download"></i> Export CSV
-              </button>
-              <button className="btn btn-primary" onClick={openAddModal}>
-                <i className="fas fa-plus"></i> Add Tool
-              </button>
-            </div>
-          </div>
-          <div className="table-container">
-            {filteredTools.length > 0 ? (
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th style={{ width: '40px' }}>
-                      <input
-                        type="checkbox"
-                        checked={selectedTools.length === filteredTools.length && filteredTools.length > 0}
-                        onChange={handleSelectAll}
-                        style={{ cursor: 'pointer' }}
-                      />
-                    </th>
-                    <th>Name</th>
-                    <th>Category</th>
-                    <th>Assigned To</th>
-                    <th>Status</th>
-                    <th>Location</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredTools.map((tool, index) => (
-                    <tr key={tool.id || index}>
-                      <td>
-                        <input
-                          type="checkbox"
-                          checked={selectedTools.includes(tool.id)}
-                          onChange={() => handleSelectTool(tool.id)}
-                          style={{ cursor: 'pointer' }}
-                        />
-                      </td>
-                      <td>{tool.name || 'N/A'}</td>
-                      <td>{tool.category || 'N/A'}</td>
-                      <td>{tool.assignedTo || 'Unassigned'}</td>
-                      <td>
-                        <span className={`status-badge status-${(tool.status || 'unknown').toLowerCase().replace(' ', '-')}`}>
-                          {tool.status || 'Unknown'}
-                        </span>
-                      </td>
-                      <td>{tool.location || 'N/A'}</td>
-                      <td>
-                        <button
-                          className="btn btn-secondary btn-small"
-                          onClick={() => openEditModal(tool)}
-                          style={{ marginRight: '8px' }}
-                        >
-                          <i className="fas fa-edit"></i> Edit
-                        </button>
-                        <button
-                          className="btn btn-danger btn-small"
-                          onClick={() => handleDeleteTool(tool)}
-                        >
-                          <i className="fas fa-trash"></i> Delete
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
             ) : (
-              <p style={{ padding: '20px', textAlign: 'center' }}>
-                {tools.length === 0 ? 'No tools in inventory.' : 'No tools match your search criteria.'}
-              </p>
+              <div className="card">
+                <div className="card-header">
+                  <h3><i className="fas fa-wrench"></i> Tools Inventory</h3>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button className="btn btn-secondary" onClick={handleExport}>
+                      <i className="fas fa-download"></i> Export CSV
+                    </button>
+                    <button className="btn btn-primary" onClick={openAddModal}>
+                      <i className="fas fa-plus"></i> Add Tool
+                    </button>
+                  </div>
+                </div>
+                <div className="table-container">
+                  {filteredTools.length > 0 ? (
+                    <table className="data-table">
+                      <thead>
+                        <tr>
+                          <th style={{ width: '40px' }}>
+                            <input
+                              type="checkbox"
+                              checked={selectedTools.length === filteredTools.length && filteredTools.length > 0}
+                              onChange={handleSelectAll}
+                              style={{ cursor: 'pointer' }}
+                            />
+                          </th>
+                          <th>Name</th>
+                          <th>Category</th>
+                          <th>Assigned To</th>
+                          <th>Status</th>
+                          <th>Location</th>
+                          <th>Cost</th>
+                          <th>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredTools.map((tool, index) => (
+                          <tr key={tool.id || index}>
+                            <td>
+                              <input
+                                type="checkbox"
+                                checked={selectedTools.includes(tool.id)}
+                                onChange={() => handleSelectTool(tool.id)}
+                                style={{ cursor: 'pointer' }}
+                              />
+                            </td>
+                            <td>{tool.name || 'N/A'}</td>
+                            <td>{tool.category || 'N/A'}</td>
+                            <td>{tool.assignedTo || 'Unassigned'}</td>
+                            <td>
+                              <span className={`status-badge status-${(tool.status || 'unknown').toLowerCase().replace(' ', '-')}`}>
+                                {tool.status || 'Unknown'}
+                              </span>
+                            </td>
+                            <td>{tool.location || 'N/A'}</td>
+                            <td>${(tool.cost || 0).toFixed(2)}</td>
+                            <td>
+                              <button
+                                className="btn btn-secondary btn-small"
+                                onClick={() => openEditModal(tool)}
+                                style={{ marginRight: '8px' }}
+                              >
+                                <i className="fas fa-edit"></i> Edit
+                              </button>
+                              <button
+                                className="btn btn-danger btn-small"
+                                onClick={() => handleDeleteTool(tool)}
+                              >
+                                <i className="fas fa-trash"></i> Delete
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  ) : (
+                    <p style={{ padding: '20px', textAlign: 'center' }}>
+                      {tools.length === 0 ? 'No tools in inventory.' : 'No tools match your search criteria.'}
+                    </p>
+                  )}
+                </div>
+              </div>
             )}
-          </div>
-        </div>
+          </>
+        )}
 
         {/* Add/Edit Tool Modal */}
         {showModal && (
@@ -452,6 +520,20 @@ const Tools = () => {
                       placeholder="Technician name"
                     />
                   </div>
+                  <div className="form-group">
+                    <label htmlFor="cost">Cost ($)</label>
+                    <input
+                      type="number"
+                      id="cost"
+                      name="cost"
+                      className="form-control"
+                      value={formData.cost}
+                      onChange={handleInputChange}
+                      placeholder="0.00"
+                      step="0.01"
+                      min="0"
+                    />
+                  </div>
                 </div>
               </div>
               <div className="modal-footer">
@@ -465,7 +547,21 @@ const Tools = () => {
             </div>
           </div>
         )}
+
+        {/* Request Tool Modal */}
+        <RequestToolModal
+          isOpen={showRequestModal}
+          onClose={() => setShowRequestModal(false)}
+          onSuccess={() => {
+            // Refresh pending requests if on that view
+            if (activeView === 'pending') {
+              window.location.reload();
+            }
+          }}
+          tools={tools}
+        />
       </div>
+    </Layout>
   );
 };
 

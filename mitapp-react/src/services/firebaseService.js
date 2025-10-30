@@ -381,6 +381,63 @@ class FirebaseService {
     }
   }
 
+  // Tool requests management
+  async getToolRequests(status) {
+    try {
+      const requestsRef = collection(db, 'hou_tool_requests');
+      const q = query(
+        requestsRef,
+        where('status', '==', status),
+        orderBy('createdAt', 'desc')
+      );
+      const snapshot = await getDocs(q);
+      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    } catch (error) {
+      console.error('Error loading tool requests:', error);
+      return [];
+    }
+  }
+
+  async updateToolRequestStatus(requestId, status) {
+    try {
+      const docRef = doc(db, 'hou_tool_requests', requestId);
+      await updateDoc(docRef, {
+        status: status,
+        completedAt: serverTimestamp()
+      });
+    } catch (error) {
+      console.error('Error updating tool request status:', error);
+      throw error;
+    }
+  }
+
+  async createToolRequest(requestData) {
+    try {
+      const requestsRef = collection(db, 'hou_tool_requests');
+      const docRef = doc(requestsRef);
+      await setDoc(docRef, {
+        ...requestData,
+        createdAt: serverTimestamp()
+      });
+      return docRef.id;
+    } catch (error) {
+      console.error('Error creating tool request:', error);
+      throw error;
+    }
+  }
+
+  async createBatchToolRequests(requestsArray) {
+    try {
+      const promises = requestsArray.map(requestData =>
+        this.createToolRequest(requestData)
+      );
+      await Promise.all(promises);
+    } catch (error) {
+      console.error('Error creating batch tool requests:', error);
+      throw error;
+    }
+  }
+
   // Generic get collection
   async getCollection(collectionName) {
     try {
