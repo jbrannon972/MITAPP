@@ -324,6 +324,19 @@ class FirebaseService {
     }
   }
 
+  async saveRecurringRules(techId, rules) {
+    try {
+      const docRef = doc(db, 'hou_recurring_rules', techId);
+      await setDoc(docRef, {
+        rules: rules,
+        updatedAt: serverTimestamp()
+      });
+    } catch (error) {
+      console.error('Error saving recurring rules:', error);
+      throw error;
+    }
+  }
+
   // Generic get document
   async getDocument(collectionName, docId) {
     try {

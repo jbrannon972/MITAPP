@@ -18,6 +18,10 @@ const Calendar = () => {
   const [showAdminModal, setShowAdminModal] = useState(false);
   const [adminPassword, setAdminPassword] = useState('');
   const [editingDate, setEditingDate] = useState(null);
+  const [showRecurringModal, setShowRecurringModal] = useState(false);
+  const [recurringModalView, setRecurringModalView] = useState('list'); // 'list' or 'edit'
+  const [selectedTechForRecurring, setSelectedTechForRecurring] = useState(null);
+  const [recurringRules, setRecurringRules] = useState([]);
 
   const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
@@ -95,7 +99,96 @@ const Calendar = () => {
       alert('Admin access required');
       return;
     }
-    alert('Manage recurring schedules (weekly patterns, regular days off, etc.). Coming soon!');
+    setRecurringModalView('list');
+    setShowRecurringModal(true);
+  };
+
+  const handleAddNewRecurringTech = () => {
+    // Show tech selector
+    const tech = unifiedTechnicianData[0]; // For now, just use first tech - we'll improve this
+    if (tech) {
+      openEditRecurringForTech(tech.id);
+    }
+  };
+
+  const openEditRecurringForTech = (techId) => {
+    const tech = unifiedTechnicianData.find(t => t.id === techId);
+    if (!tech) return;
+
+    setSelectedTechForRecurring(tech);
+    setRecurringRules(tech.recurringRules || []);
+    setRecurringModalView('edit');
+  };
+
+  const addNewRule = () => {
+    const newRule = {
+      id: `new_${Date.now()}`,
+      days: [],
+      status: 'off',
+      hours: '',
+      frequency: 'every',
+      weekAnchor: 1
+    };
+    setRecurringRules([...recurringRules, newRule]);
+  };
+
+  const deleteRule = (ruleId) => {
+    if (confirm('Are you sure you want to delete this rule?')) {
+      setRecurringRules(recurringRules.filter(r => r.id !== ruleId));
+    }
+  };
+
+  const updateRule = (ruleId, field, value) => {
+    setRecurringRules(recurringRules.map(rule =>
+      rule.id === ruleId ? { ...rule, [field]: value } : rule
+    ));
+  };
+
+  const toggleDay = (ruleId, day) => {
+    setRecurringRules(recurringRules.map(rule => {
+      if (rule.id === ruleId) {
+        const days = Array.isArray(rule.days) ? [...rule.days] : [];
+        const index = days.indexOf(day);
+        if (index > -1) {
+          days.splice(index, 1);
+        } else {
+          days.push(day);
+        }
+        return { ...rule, days };
+      }
+      return rule;
+    }));
+  };
+
+  const saveRecurringRules = async () => {
+    if (!selectedTechForRecurring) return;
+
+    try {
+      // Clean up rules - remove the 'id' field and ensure proper structure
+      const cleanedRules = recurringRules.map(rule => {
+        const cleaned = { ...rule };
+        if (cleaned.id && cleaned.id.startsWith('new_')) {
+          delete cleaned.id;
+        }
+        return cleaned;
+      });
+
+      await firebaseService.saveRecurringRules(selectedTechForRecurring.id, cleanedRules);
+      alert('Recurring rules saved successfully!');
+
+      // Reload data to refresh the calendar
+      window.location.reload();
+    } catch (error) {
+      console.error('Error saving recurring rules:', error);
+      alert('Error saving recurring rules. Please try again.');
+    }
+  };
+
+  const closeRecurringModal = () => {
+    setShowRecurringModal(false);
+    setRecurringModalView('list');
+    setSelectedTechForRecurring(null);
+    setRecurringRules([]);
   };
 
   const handleWeekendReport = () => {
@@ -445,6 +538,204 @@ const Calendar = () => {
     );
   };
 
+  const renderRecurringModal = () => {
+    if (!showRecurringModal) return null;
+
+    if (recurringModalView === 'list') {
+      // Show list of techs with recurring rules
+      const techsWithRules = unifiedTechnicianData.filter(tech =>
+        tech.recurringRules && tech.recurringRules.length > 0
+      );
+
+      return (
+        <div className="modal-overlay active" onClick={closeRecurringModal}>
+          <div className="modal modal-lg" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Manage Recurring Schedules</h3>
+              <button className="modal-close" onClick={closeRecurringModal}>
+                <i className="fas fa-times"></i>
+              </button>
+            </div>
+            <div className="modal-body">
+              <div className="recurring-tech-list">
+                {techsWithRules.length > 0 ? (
+                  techsWithRules.map(tech => (
+                    <div
+                      key={tech.id}
+                      className="recurring-tech-item"
+                      onClick={() => openEditRecurringForTech(tech.id)}
+                      style={{ cursor: 'pointer', padding: '12px', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                    >
+                      <span style={{ fontWeight: '600' }}>{tech.name}</span>
+                      <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+                        {tech.recurringRules.length} active rule(s) <i className="fas fa-chevron-right"></i>
+                      </span>
+                    </div>
+                  ))
+                ) : (
+                  <p className="no-entries">No custom recurring schedules found.</p>
+                )}
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-secondary" onClick={closeRecurringModal}>
+                Close
+              </button>
+              <button
+                className="btn btn-primary"
+                onClick={() => {
+                  // Show tech selector - for now show a simple prompt
+                  const techName = prompt('Enter technician name to add recurring schedule:');
+                  if (techName) {
+                    const tech = unifiedTechnicianData.find(t =>
+                      t.name.toLowerCase().includes(techName.toLowerCase())
+                    );
+                    if (tech) {
+                      openEditRecurringForTech(tech.id);
+                    } else {
+                      alert('Technician not found');
+                    }
+                  }
+                }}
+              >
+                <i className="fas fa-plus"></i> Add New
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // Edit view for specific tech
+    if (recurringModalView === 'edit' && selectedTechForRecurring) {
+      const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+      return (
+        <div className="modal-overlay active" onClick={closeRecurringModal}>
+          <div className="modal modal-lg" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '800px' }}>
+            <div className="modal-header">
+              <h3>Recurring Schedule for {selectedTechForRecurring.name}</h3>
+              <button className="modal-close" onClick={closeRecurringModal}>
+                <i className="fas fa-times"></i>
+              </button>
+            </div>
+            <div className="modal-body" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
+              <div id="recurring-rules-container">
+                {recurringRules.map((rule, index) => (
+                  <div key={rule.id || index} className="rule-item" style={{
+                    border: '1px solid var(--border-color)',
+                    borderRadius: '8px',
+                    padding: '16px',
+                    marginBottom: '16px',
+                    backgroundColor: 'var(--card-bg)'
+                  }}>
+                    <div className="rule-header" style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', paddingBottom: '12px', borderBottom: '1px solid var(--border-color)' }}>
+                      <span style={{ fontWeight: '600' }}>Rule {index + 1}</span>
+                      <button
+                        className="btn btn-danger btn-small"
+                        onClick={() => deleteRule(rule.id)}
+                        style={{ padding: '4px 8px', fontSize: '0.85rem' }}
+                      >
+                        <i className="fas fa-trash"></i>
+                      </button>
+                    </div>
+                    <div className="rule-body">
+                      <div className="form-group" style={{ marginBottom: '12px' }}>
+                        <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600' }}>For these days:</label>
+                        <div className="day-selector" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                          {daysOfWeek.map((day, i) => (
+                            <label key={i} style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', padding: '6px 12px', border: '1px solid var(--border-color)', borderRadius: '4px', backgroundColor: rule.days?.includes(i) ? 'var(--primary-color)' : 'white', color: rule.days?.includes(i) ? 'white' : 'inherit' }}>
+                              <input
+                                type="checkbox"
+                                checked={rule.days?.includes(i) || false}
+                                onChange={() => toggleDay(rule.id, i)}
+                                style={{ margin: 0 }}
+                              />
+                              {day}
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+                        <div className="form-group">
+                          <label style={{ display: 'block', marginBottom: '6px', fontWeight: '600' }}>Set Status to:</label>
+                          <select
+                            className="form-control"
+                            value={rule.status}
+                            onChange={(e) => updateRule(rule.id, 'status', e.target.value)}
+                          >
+                            <option value="on">On</option>
+                            <option value="off">Off</option>
+                            <option value="sick">Sick</option>
+                            <option value="vacation">Vacation</option>
+                            <option value="no-call-no-show">No Call No Show</option>
+                          </select>
+                        </div>
+                        <div className="form-group">
+                          <label style={{ display: 'block', marginBottom: '6px', fontWeight: '600' }}>With Hours (optional):</label>
+                          <input
+                            type="text"
+                            className="form-control"
+                            placeholder="e.g., 9-5"
+                            value={rule.hours || ''}
+                            onChange={(e) => updateRule(rule.id, 'hours', e.target.value)}
+                          />
+                        </div>
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                        <div className="form-group">
+                          <label style={{ display: 'block', marginBottom: '6px', fontWeight: '600' }}>Frequency:</label>
+                          <select
+                            className="form-control"
+                            value={rule.frequency}
+                            onChange={(e) => updateRule(rule.id, 'frequency', e.target.value)}
+                          >
+                            <option value="every">Every Week</option>
+                            <option value="every-other">Every Other Week</option>
+                          </select>
+                        </div>
+                        {rule.frequency === 'every-other' && (
+                          <div className="form-group">
+                            <label style={{ display: 'block', marginBottom: '6px', fontWeight: '600' }}>Starting on:</label>
+                            <select
+                              className="form-control"
+                              value={rule.weekAnchor || 1}
+                              onChange={(e) => updateRule(rule.id, 'weekAnchor', parseInt(e.target.value))}
+                            >
+                              <option value="1">Week 1 (Odd)</option>
+                              <option value="2">Week 2 (Even)</option>
+                            </select>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                <button
+                  className="btn btn-outline"
+                  onClick={addNewRule}
+                  style={{ width: '100%' }}
+                >
+                  <i className="fas fa-plus"></i> Add New Rule
+                </button>
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-secondary" onClick={() => setRecurringModalView('list')}>
+                <i className="fas fa-arrow-left"></i> Back to List
+              </button>
+              <button className="btn btn-primary" onClick={saveRecurringRules}>
+                <i className="fas fa-save"></i> Save Changes
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    return null;
+  };
+
   if (dataLoading || loading) {
     return (
       <Layout>
@@ -577,6 +868,9 @@ const Calendar = () => {
 
         {/* Schedule Modal */}
         {renderScheduleModal()}
+
+        {/* Recurring Schedules Modal */}
+        {renderRecurringModal()}
 
         {/* Admin Login Modal */}
         {showAdminModal && (
