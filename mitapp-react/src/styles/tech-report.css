@@ -1,4 +1,4 @@
-/* Tech Report Styles */
+/* Modern Tech Report Styles */
 
 .tech-report-container {
   padding: 16px;
@@ -15,152 +15,199 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
-  padding: 12px 8px;
-  background: white;
-  border: 2px solid #e5e7eb;
-  border-radius: 12px;
-  color: #6b7280;
-  font-size: 0.875rem;
+  gap: 6px;
+  padding: 14px 10px;
+  background: var(--tech-surface);
+  border: 2px solid var(--tech-border);
+  border-radius: var(--tech-radius);
+  color: var(--tech-text-light);
+  font-size: 0.85rem;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: var(--tech-transition);
+  box-shadow: var(--tech-shadow);
 }
 
 .tech-report-tab i {
-  font-size: 1.5rem;
+  font-size: 1.6rem;
+  transition: var(--tech-transition);
 }
 
 .tech-report-tab.active {
-  background: #f87b4d;
-  border-color: #f87b4d;
+  background: linear-gradient(135deg, var(--tech-primary) 0%, var(--tech-primary-dark) 100%);
+  border-color: var(--tech-primary);
   color: white;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
+}
+
+.tech-report-tab.active i {
+  transform: scale(1.1);
 }
 
 .tech-report-tab:hover:not(.active) {
-  background: #f9fafb;
-  border-color: #d1d5db;
+  background: var(--tech-bg);
+  border-color: var(--tech-text-light);
+  transform: translateY(-1px);
+}
+
+.tech-report-tab:active {
+  transform: translateY(0);
 }
 
 .tech-report-content {
-  background: white;
-  border-radius: 12px;
+  background: var(--tech-surface);
+  border-radius: var(--tech-radius);
   padding: 20px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--tech-shadow);
+  border: 1px solid var(--tech-border);
+}
+
+.tech-report-form {
+  animation: fadeIn 0.3s ease-out;
 }
 
 .tech-report-form h3 {
-  font-size: 1.5rem;
+  font-size: 1.4rem;
   font-weight: 700;
-  color: #111827;
-  margin-bottom: 20px;
+  color: var(--tech-text);
+  margin: 0 0 24px;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid var(--tech-border);
+}
+
+.tech-report-form h3 i {
+  color: var(--tech-primary);
 }
 
 .tech-form-group {
-  margin-bottom: 16px;
+  margin-bottom: 18px;
 }
 
 .tech-form-group label {
   display: block;
-  font-size: 0.875rem;
+  font-size: 0.9rem;
   font-weight: 600;
-  color: #374151;
-  margin-bottom: 6px;
+  color: var(--tech-text);
+  margin-bottom: 8px;
 }
 
 .tech-form-group input,
 .tech-form-group select,
 .tech-form-group textarea {
   width: 100%;
-  padding: 12px;
-  border: 2px solid #e5e7eb;
-  border-radius: 8px;
+  padding: 14px;
+  border: 2px solid var(--tech-border);
+  border-radius: var(--tech-radius-sm);
   font-size: 1rem;
-  color: #111827;
-  background: white;
-  transition: all 0.2s ease;
+  color: var(--tech-text);
+  background: var(--tech-surface);
+  transition: var(--tech-transition);
 }
 
 .tech-form-group input:focus,
 .tech-form-group select:focus,
 .tech-form-group textarea:focus {
   outline: none;
-  border-color: #f87b4d;
-  box-shadow: 0 0 0 3px rgba(248, 123, 77, 0.1);
+  border-color: var(--tech-primary);
+  box-shadow: 0 0 0 4px rgba(255, 107, 53, 0.1);
+  background: white;
 }
 
 .tech-form-group textarea {
   resize: vertical;
   font-family: inherit;
+  min-height: 100px;
 }
 
 .tech-inspection-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
-  margin-bottom: 16px;
-  padding: 16px;
-  background: #f9fafb;
-  border-radius: 8px;
+  gap: 14px;
+  margin-bottom: 20px;
+  padding: 20px;
+  background: var(--tech-bg);
+  border-radius: var(--tech-radius);
+  border: 1px solid var(--tech-border);
 }
 
 .tech-inspection-item {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
 }
 
 .tech-inspection-item label {
   font-size: 0.875rem;
   font-weight: 600;
-  color: #374151;
+  color: var(--tech-text);
 }
 
 .tech-inspection-item select {
   padding: 10px;
-  border: 2px solid #e5e7eb;
-  border-radius: 6px;
+  border: 2px solid var(--tech-border);
+  border-radius: var(--tech-radius-sm);
   font-size: 0.875rem;
-  background: white;
+  background: var(--tech-surface);
+  color: var(--tech-text);
+  cursor: pointer;
+  transition: var(--tech-transition);
+}
+
+.tech-inspection-item select:focus {
+  outline: none;
+  border-color: var(--tech-primary);
+  box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.1);
 }
 
 .tech-submit-btn {
   width: 100%;
-  padding: 16px;
-  background: #10b981;
+  padding: 18px;
+  background: linear-gradient(135deg, var(--tech-success) 0%, #388E3C 100%);
   color: white;
   border: none;
-  border-radius: 12px;
-  font-size: 1rem;
+  border-radius: var(--tech-radius);
+  font-size: 1.05rem;
   font-weight: 700;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-  transition: all 0.2s ease;
-  margin-top: 20px;
+  gap: 12px;
+  transition: var(--tech-transition);
+  margin-top: 24px;
+  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
 }
 
 .tech-submit-btn:hover {
-  background: #059669;
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+  box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
 }
 
 .tech-submit-btn:active {
   transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
+}
+
+.tech-submit-btn i {
+  font-size: 1.2rem;
 }
 
 .tech-tool-request-item {
-  padding: 16px;
-  background: #f9fafb;
-  border-radius: 12px;
+  padding: 18px;
+  background: var(--tech-bg);
+  border-radius: var(--tech-radius);
   margin-bottom: 16px;
-  border: 2px solid #e5e7eb;
+  border: 2px solid var(--tech-border);
+  transition: var(--tech-transition);
+}
+
+.tech-tool-request-item:hover {
+  border-color: var(--tech-primary);
+  box-shadow: 0 2px 8px rgba(255, 107, 53, 0.15);
 }
 
 .tech-tool-request-header {
@@ -169,64 +216,115 @@
   align-items: center;
   margin-bottom: 16px;
   padding-bottom: 12px;
-  border-bottom: 2px solid #e5e7eb;
+  border-bottom: 2px solid var(--tech-border);
 }
 
 .tech-tool-request-header span {
   font-size: 1rem;
   font-weight: 700;
-  color: #111827;
+  color: var(--tech-text);
 }
 
 .tech-remove-btn {
-  background: #ef4444;
+  background: linear-gradient(135deg, var(--tech-danger) 0%, #D32F2F 100%);
   color: white;
   border: none;
-  padding: 6px 12px;
-  border-radius: 6px;
+  padding: 8px 14px;
+  border-radius: var(--tech-radius-sm);
   cursor: pointer;
   font-size: 0.875rem;
-  transition: all 0.2s ease;
+  font-weight: 600;
+  transition: var(--tech-transition);
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .tech-remove-btn:hover {
-  background: #dc2626;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(244, 67, 54, 0.3);
+}
+
+.tech-remove-btn:active {
+  transform: translateY(0);
 }
 
 .tech-add-btn {
   width: 100%;
-  padding: 12px;
-  background: #3b82f6;
+  padding: 14px;
+  background: linear-gradient(135deg, var(--tech-secondary) 0%, #1976D2 100%);
   color: white;
   border: none;
-  border-radius: 8px;
-  font-size: 0.875rem;
+  border-radius: var(--tech-radius);
+  font-size: 0.95rem;
   font-weight: 600;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  transition: all 0.2s ease;
+  gap: 10px;
+  transition: var(--tech-transition);
   margin-bottom: 16px;
+  box-shadow: 0 2px 8px rgba(74, 144, 226, 0.3);
 }
 
 .tech-add-btn:hover {
-  background: #2563eb;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(74, 144, 226, 0.4);
+}
+
+.tech-add-btn:active {
+  transform: translateY(0);
+}
+
+.tech-add-btn i {
+  font-size: 1.1rem;
 }
 
 /* Mobile adjustments */
 @media (max-width: 640px) {
   .tech-report-tabs {
     grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
+  }
+
+  .tech-report-tab {
+    padding: 10px 6px;
+    font-size: 0.75rem;
+  }
+
+  .tech-report-tab i {
+    font-size: 1.3rem;
   }
 
   .tech-inspection-grid {
     grid-template-columns: 1fr;
-    gap: 10px;
+    gap: 12px;
+    padding: 16px;
   }
 
   .tech-report-content {
     padding: 16px;
+  }
+
+  .tech-report-form h3 {
+    font-size: 1.2rem;
+  }
+
+  .tech-submit-btn {
+    padding: 16px;
+    font-size: 1rem;
+  }
+}
+
+/* Animation */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }

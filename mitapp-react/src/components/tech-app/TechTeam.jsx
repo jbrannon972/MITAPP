@@ -3,89 +3,67 @@ import { useData } from '../../contexts/DataContext';
 const TechTeam = () => {
   const { staffingData } = useData();
 
-  if (!staffingData) {
-    return <div className="tech-loading">Loading team information...</div>;
+  if (!staffingData || !staffingData.zones) {
+    return (
+      <div className="tech-team-container">
+        <div className="tech-no-members">
+          No team data available
+        </div>
+      </div>
+    );
   }
 
-  const { zones = [], management = [], warehouseStaff = [] } = staffingData;
+  const getInitials = (name) => {
+    if (!name) return '?';
+    const parts = name.split(' ');
+    if (parts.length >= 2) {
+      return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+    }
+    return name[0].toUpperCase();
+  };
 
   return (
     <div className="tech-team-container">
-      <h2>Team</h2>
-
-      {management && management.length > 0 && (
-        <div className="tech-team-section">
-          <h3><i className="fas fa-user-tie"></i> Management</h3>
-          <div className="tech-team-grid">
-            {management.map((member, idx) => (
-              <div key={idx} className="tech-team-card">
-                <div className="tech-team-member-icon">
-                  <i className="fas fa-user-circle"></i>
-                </div>
-                <div className="tech-team-member-info">
-                  <div className="tech-team-member-name">{member.name}</div>
-                  <div className="tech-team-member-role">{member.role}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {zones && zones.map((zone, zoneIdx) => (
-        <div key={zoneIdx} className="tech-team-section">
-          <h3><i className="fas fa-users"></i> {zone.name}</h3>
-
-          {zone.lead && (
-            <div className="tech-team-lead">
-              <div className="tech-team-card lead">
-                <div className="tech-team-member-icon">
+      <div className="tech-zones-container">
+        {staffingData.zones.map((zone, idx) => (
+          <div key={idx} className="tech-zone-card">
+            <div className="tech-zone-header">
+              <h3>
+                <i className="fas fa-map-marked-alt"></i>
+                {zone.name}
+              </h3>
+              {zone.lead && (
+                <div className="tech-zone-lead">
                   <i className="fas fa-star"></i>
+                  {zone.lead.name}
                 </div>
-                <div className="tech-team-member-info">
-                  <div className="tech-team-member-name">{zone.lead.name}</div>
-                  <div className="tech-team-member-role">{zone.lead.role} (Lead)</div>
-                </div>
-              </div>
+              )}
             </div>
-          )}
-
-          {zone.members && zone.members.length > 0 && (
-            <div className="tech-team-grid">
-              {zone.members.map((member, idx) => (
-                <div key={idx} className="tech-team-card">
-                  <div className="tech-team-member-icon">
-                    <i className="fas fa-user"></i>
+            <div className="tech-zone-members">
+              {zone.members && zone.members.length > 0 ? (
+                zone.members.map((member, memberIdx) => (
+                  <div key={memberIdx} className="tech-member-card">
+                    <div className="tech-member-avatar">
+                      {getInitials(member.name)}
+                    </div>
+                    <div className="tech-member-details">
+                      <div className="tech-member-name">{member.name}</div>
+                      <div className="tech-member-role">
+                        <i className="fas fa-user"></i>
+                        {member.role || 'Technician'}
+                      </div>
+                    </div>
                   </div>
-                  <div className="tech-team-member-info">
-                    <div className="tech-team-member-name">{member.name}</div>
-                    <div className="tech-team-member-role">{member.role}</div>
-                  </div>
+                ))
+              ) : (
+                <div className="tech-no-members">
+                  No members in this zone
                 </div>
-              ))}
+              )}
             </div>
-          )}
-        </div>
-      ))}
-
-      {warehouseStaff && warehouseStaff.length > 0 && (
-        <div className="tech-team-section">
-          <h3><i className="fas fa-warehouse"></i> Warehouse</h3>
-          <div className="tech-team-grid">
-            {warehouseStaff.map((member, idx) => (
-              <div key={idx} className="tech-team-card">
-                <div className="tech-team-member-icon">
-                  <i className="fas fa-user"></i>
-                </div>
-                <div className="tech-team-member-info">
-                  <div className="tech-team-member-name">{member.name}</div>
-                  <div className="tech-team-member-role">{member.role}</div>
-                </div>
-              </div>
-            ))}
           </div>
-        </div>
-      )}
+        ))}
+      </div>
     </div>
   );
 };
