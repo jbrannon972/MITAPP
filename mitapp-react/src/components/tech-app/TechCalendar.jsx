@@ -78,9 +78,14 @@ const TechCalendar = () => {
       const snapshot = await getDocs(scheduleQuery);
       const schedules = {};
       snapshot.forEach(doc => {
-        schedules[doc.id] = doc.data();
+        const data = doc.data();
+        // Use the date field as the key for easy lookup
+        if (data.date) {
+          schedules[data.date] = data;
+        }
       });
 
+      console.log('Loaded schedule data:', schedules);
       setScheduleData(schedules);
     } catch (error) {
       console.error('Error loading schedule:', error);
@@ -156,6 +161,8 @@ const TechCalendar = () => {
     const dateStr = formatDateForFirestore(dateObject);
     const specificDaySchedule = scheduleData[dateStr];
 
+    console.log('Getting schedule for date:', dateStr, 'Found:', specificDaySchedule);
+
     const calculatedSchedule = {
       notes: specificDaySchedule?.notes || '',
       staff: []
@@ -166,7 +173,12 @@ const TechCalendar = () => {
       const { status: defaultStatus, hours: defaultHours } = getDefaultStatusForPerson(staffMember, dateObject);
       let personSchedule = { ...staffMember, status: defaultStatus, hours: defaultHours };
 
-      const specificEntry = specificDaySchedule?.staffList?.find(s => s.technicianId === staffMember.id);
+      // Check both staffList and staff for compatibility
+      const staffArray = specificDaySchedule?.staffList || specificDaySchedule?.staff || [];
+      const specificEntry = staffArray.find(s =>
+        s.technicianId === staffMember.id || s.id === staffMember.id
+      );
+
       if (specificEntry) {
         personSchedule.status = specificEntry.status || defaultStatus;
         personSchedule.hours = specificEntry.hours || defaultHours;
@@ -268,9 +280,10 @@ const TechCalendar = () => {
     return 'fa-calendar-check';
   };
 
-  const renderDayView = () => {
-    const schedule = getCalculatedScheduleForDay(currentDate);
-    const isWeekend = [0, 6].includes(currentDate.getDay());
+  const renderDayView = (dateToRender = null) => {
+    const dateForView = dateToRender || currentDate;
+    const schedule = getCalculatedScheduleForDay(dateForView);
+    const isWeekend = [0, 6].includes(dateForView.getDay());
     const offStatuses = ['off', 'sick', 'vacation', 'no-call-no-show'];
 
     const primaryList = isWeekend
@@ -504,7 +517,7 @@ const TechCalendar = () => {
               <i className="fas fa-times"></i>
             </button>
             <h3>{viewModalData.date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</h3>
-            {renderDayView()}
+            {renderDayView(viewModalData.date)}
           </div>
         </div>
       )}
