@@ -36,6 +36,21 @@ const PendingRequestsView = () => {
     }
   };
 
+  const handleDeleteRequest = async (requestId, toolName) => {
+    if (!window.confirm(`Are you sure you want to delete this request for "${toolName}"?\n\nThis action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      await firebaseService.deleteToolRequest(requestId);
+      alert('Request deleted successfully!');
+      loadPendingRequests();
+    } catch (error) {
+      console.error('Error deleting request:', error);
+      alert('Error deleting request. Please try again.');
+    }
+  };
+
   const formatDate = (timestamp) => {
     if (!timestamp) return 'N/A';
     const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
@@ -100,8 +115,15 @@ const PendingRequestsView = () => {
                     <button
                       className="btn btn-primary btn-small"
                       onClick={() => handleCompleteRequest(request.id)}
+                      style={{ marginRight: '8px' }}
                     >
                       <i className="fas fa-check"></i> Complete
+                    </button>
+                    <button
+                      className="btn btn-danger btn-small"
+                      onClick={() => handleDeleteRequest(request.id, request.toolName)}
+                    >
+                      <i className="fas fa-trash"></i> Delete
                     </button>
                   </td>
                 </tr>

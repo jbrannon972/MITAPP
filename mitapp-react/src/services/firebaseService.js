@@ -438,6 +438,28 @@ class FirebaseService {
     }
   }
 
+  async getAllToolRequests() {
+    try {
+      const requestsRef = collection(db, 'hou_tool_requests');
+      const q = query(requestsRef, orderBy('createdAt', 'desc'));
+      const snapshot = await getDocs(q);
+      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    } catch (error) {
+      console.error('Error loading all tool requests:', error);
+      return [];
+    }
+  }
+
+  async deleteToolRequest(requestId) {
+    try {
+      const docRef = doc(db, 'hou_tool_requests', requestId);
+      await deleteDoc(docRef);
+    } catch (error) {
+      console.error('Error deleting tool request:', error);
+      throw error;
+    }
+  }
+
   // Generic get collection
   async getCollection(collectionName) {
     try {

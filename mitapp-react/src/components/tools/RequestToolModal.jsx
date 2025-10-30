@@ -36,6 +36,41 @@ const RequestToolModal = ({ isOpen, onClose, onSuccess, tools }) => {
     ));
   };
 
+  const checkForDuplicates = async (requests) => {
+    try {
+      // Check for recent requests (last 7 days) from same technician
+      const allRequests = await firebaseService.getAllToolRequests();
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+      const duplicates = [];
+
+      for (const newRequest of requests) {
+        const recentSimilar = allRequests.filter(req => {
+          const reqDate = req.createdAt?.toDate ? req.createdAt.toDate() : new Date(req.createdAt);
+          return (
+            req.technicianId === newRequest.technicianId &&
+            req.toolName === newRequest.toolName &&
+            reqDate >= sevenDaysAgo
+          );
+        });
+
+        if (recentSimilar.length > 0) {
+          duplicates.push({
+            tool: newRequest.toolName,
+            count: recentSimilar.length,
+            mostRecent: recentSimilar[0]
+          });
+        }
+      }
+
+      return duplicates;
+    } catch (error) {
+      console.error('Error checking for duplicates:', error);
+      return [];
+    }
+  };
+
   const handleSubmit = async () => {
     // Validation
     if (toolRows.length === 0) {
@@ -79,6 +114,25 @@ const RequestToolModal = ({ isOpen, onClose, onSuccess, tools }) => {
           status: 'Pending'
         };
       });
+
+      // Check for duplicates
+      const duplicates = await checkForDuplicates(requests);
+
+      if (duplicates.length > 0) {
+        const duplicateMessages = duplicates.map(dup => {
+          const date = dup.mostRecent.createdAt?.toDate ?
+            dup.mostRecent.createdAt.toDate().toLocaleDateString() :
+            'recently';
+          return `• ${dup.tool} (requested ${date}, status: ${dup.mostRecent.status})`;
+        }).join('\n');
+
+        const confirmMsg = `⚠️ POSSIBLE DUPLICATE REQUEST DETECTED:\n\n${duplicateMessages}\n\nYou recently requested ${duplicates.length === 1 ? 'this tool' : 'these tools'} within the last 7 days.\n\nAre you sure you want to submit this request again?`;
+
+        if (!window.confirm(confirmMsg)) {
+          setSubmitting(false);
+          return;
+        }
+      }
 
       await firebaseService.createBatchToolRequests(requests);
       alert('Tool request(s) submitted successfully!');

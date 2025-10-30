@@ -49,6 +49,21 @@ const CompletedRequestsView = () => {
     }
   };
 
+  const handleDeleteRequest = async (requestId, toolName) => {
+    if (!window.confirm(`Are you sure you want to delete this completed request for "${toolName}"?\n\nThis action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      await firebaseService.deleteToolRequest(requestId);
+      alert('Request deleted successfully!');
+      loadCompletedRequests();
+    } catch (error) {
+      console.error('Error deleting request:', error);
+      alert('Error deleting request. Please try again.');
+    }
+  };
+
   const formatDate = (timestamp) => {
     if (!timestamp) return 'N/A';
     const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
@@ -138,6 +153,7 @@ const CompletedRequestsView = () => {
                 <th>Technician</th>
                 <th>Tool</th>
                 <th>Cost</th>
+                <th style={{ textAlign: 'right' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -147,6 +163,14 @@ const CompletedRequestsView = () => {
                   <td data-label="Technician">{request.technicianName || 'N/A'}</td>
                   <td data-label="Tool">{request.toolName || 'N/A'}</td>
                   <td data-label="Cost">{formatCurrency(request.toolCost)}</td>
+                  <td data-label="Actions" style={{ textAlign: 'right' }}>
+                    <button
+                      className="btn btn-danger btn-small"
+                      onClick={() => handleDeleteRequest(request.id, request.toolName)}
+                    >
+                      <i className="fas fa-trash"></i> Delete
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
