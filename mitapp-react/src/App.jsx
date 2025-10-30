@@ -10,6 +10,9 @@ import LaborForecasting from './pages/LaborForecasting';
 import Team from './pages/Team';
 import Calendar from './pages/Calendar';
 import Warehouse from './pages/Warehouse';
+import Fleet from './pages/Fleet';
+import Equipment from './pages/Equipment';
+import Tools from './pages/Tools';
 import Analyzer from './pages/Analyzer';
 import Damages from './pages/Damages';
 import InstallDpt from './pages/InstallDpt';
@@ -75,10 +78,23 @@ function App() {
             </ProtectedRoute>
           } />
 
-          {/* Redirect old routes to warehouse */}
-          <Route path="/fleet" element={<Navigate to="/warehouse" replace />} />
-          <Route path="/equipment" element={<Navigate to="/warehouse" replace />} />
-          <Route path="/tools" element={<Navigate to="/warehouse" replace />} />
+          <Route path="/fleet" element={
+            <ProtectedRoute>
+              <Fleet />
+            </ProtectedRoute>
+          } />
+
+          <Route path="/equipment" element={
+            <ProtectedRoute>
+              <Equipment />
+            </ProtectedRoute>
+          } />
+
+          <Route path="/tools" element={
+            <ProtectedRoute>
+              <Tools />
+            </ProtectedRoute>
+          } />
 
           <Route path="/analyzer" element={
             <ProtectedRoute>

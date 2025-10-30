@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import '../../styles/navigation-dropdown.css';
 
 const Navigation = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -28,6 +29,13 @@ const Navigation = () => {
 
   const isActive = (path) => {
     return location.pathname === path || location.pathname.startsWith(path + '/');
+  };
+
+  const isWarehouseActive = () => {
+    return location.pathname === '/warehouse' ||
+           location.pathname === '/fleet' ||
+           location.pathname === '/equipment' ||
+           location.pathname === '/tools';
   };
 
   // Define navigation items based on role
@@ -83,21 +91,57 @@ const Navigation = () => {
 
   const navItems = getNavItems();
 
+  // Warehouse dropdown items
+  const warehouseDropdownItems = [
+    { path: '/warehouse', label: 'Dashboard', icon: 'fa-th-large' },
+    { path: '/fleet', label: 'Fleet', icon: 'fa-truck' },
+    { path: '/equipment', label: 'Equipment', icon: 'fa-toolbox' },
+    { path: '/tools', label: 'Tools', icon: 'fa-wrench' }
+  ];
+
   return (
     <div className="container">
       <div className="header-content">
         <div id="main-nav-container" className={mobileMenuOpen ? 'is-open' : ''}>
           <div className="nav-content">
-            {navItems.map((item) => (
-              <button
-                key={item.path}
-                className={`nav-btn ${isActive(item.path) ? 'active' : ''}`}
-                onClick={() => navigateTo(item.path)}
-              >
-                <i className={`fas ${item.icon}`}></i>
-                <span>{item.label}</span>
-              </button>
-            ))}
+            {navItems.map((item) => {
+              if (item.label === 'Warehouse') {
+                return (
+                  <div key={item.path} className="nav-dropdown">
+                    <button
+                      className={`nav-btn ${isWarehouseActive() ? 'active' : ''}`}
+                    >
+                      <i className={`fas ${item.icon}`}></i>
+                      <span>{item.label}</span>
+                      <i className="fas fa-caret-down dropdown-arrow"></i>
+                    </button>
+                    <div className="dropdown-menu">
+                      {warehouseDropdownItems.map((dropdownItem) => (
+                        <button
+                          key={dropdownItem.path}
+                          className={`dropdown-item ${isActive(dropdownItem.path) ? 'active' : ''}`}
+                          onClick={() => navigateTo(dropdownItem.path)}
+                        >
+                          <i className={`fas ${dropdownItem.icon}`}></i>
+                          <span>{dropdownItem.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                );
+              }
+
+              return (
+                <button
+                  key={item.path}
+                  className={`nav-btn ${isActive(item.path) ? 'active' : ''}`}
+                  onClick={() => navigateTo(item.path)}
+                >
+                  <i className={`fas ${item.icon}`}></i>
+                  <span>{item.label}</span>
+                </button>
+              );
+            })}
           </div>
           <div className="header-controls">
             {currentUser?.role === 'Manager' && (

@@ -5,6 +5,7 @@ import { exportToCSV, prepareToolsDataForExport } from '../utils/exportUtils';
 import PendingRequestsView from '../components/tools/PendingRequestsView';
 import CompletedRequestsView from '../components/tools/CompletedRequestsView';
 import RequestToolModal from '../components/tools/RequestToolModal';
+import TrendsView from '../components/tools/TrendsView';
 
 const Tools = () => {
   const [activeView, setActiveView] = useState('pending');
@@ -196,7 +197,7 @@ const Tools = () => {
 
   return (
     <Layout>
-      <div className="container" style={{ maxWidth: '100%', padding: '20px' }}>
+      <div style={{ maxWidth: '100%', padding: '20px' }}>
         {/* Header */}
         <div style={{
           display: 'flex',
@@ -239,6 +240,13 @@ const Tools = () => {
             <i className="fas fa-check-circle"></i> Completed
           </button>
           <button
+            className={`btn ${activeView === 'trends' ? 'btn-primary' : 'btn-secondary'}`}
+            onClick={() => setActiveView('trends')}
+            style={{ fontSize: '14px' }}
+          >
+            <i className="fas fa-chart-line"></i> Trends
+          </button>
+          <button
             className={`btn ${activeView === 'inventory' ? 'btn-primary' : 'btn-secondary'}`}
             onClick={() => setActiveView('inventory')}
             style={{ fontSize: '14px' }}
@@ -251,6 +259,8 @@ const Tools = () => {
         {activeView === 'pending' && <PendingRequestsView />}
 
         {activeView === 'completed' && <CompletedRequestsView />}
+
+        {activeView === 'trends' && <TrendsView />}
 
         {activeView === 'inventory' && (
           <>
