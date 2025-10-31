@@ -36,37 +36,34 @@ const ManualMode = ({
   const [showGoogleSetup, setShowGoogleSetup] = useState(false);
   const [showTwoTechModal, setShowTwoTechModal] = useState(false);
   const [pendingRouteDropData, setPendingRouteDropData] = useState(null);
-  const [officeCoordinates, setOfficeCoordinates] = useState({});
-  const geocodedOfficesRef = useRef(new Set()); // Track geocoded office addresses
+  const officeCoordinatesRef = useRef({}); // Use ref instead of state - no need to trigger re-renders
+  const geocodingInProgressRef = useRef(false); // Track if geocoding is in progress
 
-  // Geocode office addresses on mount
+  // Geocode office addresses on mount (using ref to avoid triggering marker re-renders)
   useEffect(() => {
     const geocodeOffices = async () => {
+      // Prevent multiple simultaneous geocoding attempts
+      if (geocodingInProgressRef.current) return;
+      geocodingInProgressRef.current = true;
+
       const mapbox = getMapboxService();
-      const coords = { ...officeCoordinates }; // Start with existing coordinates
-      let hasNewOffices = false;
 
       for (const [key, office] of Object.entries(offices)) {
-        if (office.address && !geocodedOfficesRef.current.has(office.address)) {
-          hasNewOffices = true;
+        // Skip if already geocoded
+        if (officeCoordinatesRef.current[key]) continue;
+
+        if (office.address) {
           try {
             const coordinates = await mapbox.geocodeAddress(office.address);
-            coords[key] = { ...coordinates, name: office.name };
-            geocodedOfficesRef.current.add(office.address);
+            officeCoordinatesRef.current[key] = { ...coordinates, name: office.name };
             console.log(`📍 Geocoded ${office.name}:`, coordinates);
           } catch (error) {
             console.error(`Error geocoding ${office.name}:`, error);
           }
-        } else if (office.address && geocodedOfficesRef.current.has(office.address) && !coords[key]) {
-          // Office already geocoded but not in state (shouldn't happen, but safety check)
-          console.log(`✓ Using cached coordinates for ${office.name}`);
         }
       }
 
-      // Only update state if we geocoded new offices
-      if (hasNewOffices) {
-        setOfficeCoordinates(coords);
-      }
+      geocodingInProgressRef.current = false;
     };
 
     if (offices && Object.keys(offices).length > 0) {
@@ -160,7 +157,7 @@ const ManualMode = ({
       if (map.getSource('route')) map.removeSource('route');
 
       // Add office markers using geocoded coordinates
-      Object.values(officeCoordinates).forEach(office => {
+      Object.values(officeCoordinatesRef.current).forEach(office => {
         if (!office.lng || !office.lat) return;
 
         const el = document.createElement('div');
@@ -268,7 +265,7 @@ const ManualMode = ({
       // Draw selected tech's route on the map
       if (selectedTech && routes[selectedTech]) {
         const techRoute = routes[selectedTech];
-        const officeCoords = officeCoordinates[techRoute.tech.office];
+        const officeCoords = officeCoordinatesRef.current[techRoute.tech.office];
 
         if (!officeCoords || !officeCoords.lng || !officeCoords.lat) {
           console.warn('Office coordinates not available for route drawing');
@@ -363,7 +360,8 @@ const ManualMode = ({
     };
 
     renderJobMarkers();
-  }, [jobs, showAllJobs, buildingRoute, selectedTech, routes, officeCoordinates]);
+  }, [jobs, showAllJobs, buildingRoute, selectedTech, routes]);
+  // Note: officeCoordinatesRef is intentionally NOT in deps - it's a ref that doesn't need to trigger re-renders
 
   const handleJobClick = (job) => {
     // Don't add assigned jobs to building route unless showing all
