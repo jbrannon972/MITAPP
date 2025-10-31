@@ -289,18 +289,20 @@ const KanbanCalendar = ({
       }
       setSelectedJobs(newSelected);
       setIsMultiSelectMode(newSelected.size > 0);
+    } else if (!job.assignedTech) {
+      // Single select unassigned job - show tech recommendations
+      const rect = event.currentTarget.getBoundingClientRect();
+      setTechRecommendation({
+        job,
+        position: {
+          x: rect.right + 10,
+          y: rect.top
+        }
+      });
     } else {
-      // Single select - show tech recommendations
-      if (!job.assignedTech) {
-        const rect = event.currentTarget.getBoundingClientRect();
-        setTechRecommendation({
-          job,
-          position: {
-            x: rect.right + 10,
-            y: rect.top
-          }
-        });
-      }
+      // Assigned job - open modal for editing
+      setSelectedJob({...job});
+      setShowJobModal(true);
     }
   }, [isMultiSelectMode, selectedJobs]);
 
@@ -874,11 +876,6 @@ const KanbanCalendar = ({
   const handleTechClick = (techId) => {
     setSelectedTechForMap(techId);
     setShowMapModal(true);
-  };
-
-  const handleJobClick = (job) => {
-    setSelectedJob({...job});
-    setShowJobModal(true);
   };
 
   // Move job up in the sequence (earlier in the day)
