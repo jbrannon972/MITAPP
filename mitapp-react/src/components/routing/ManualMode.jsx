@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, startTransition } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { getMapboxService } from '../../services/mapboxService';
@@ -37,21 +37,18 @@ const ManualMode = ({
   const [showTwoTechModal, setShowTwoTechModal] = useState(false);
   const [pendingRouteDropData, setPendingRouteDropData] = useState(null);
   const officeCoordinatesRef = useRef({}); // Use ref instead of state - no need to trigger re-renders
-  const geocodingInProgressRef = useRef(false); // Track if geocoding is in progress
+  const hasGeocodedRef = useRef(false); // Track if we've already geocoded offices
 
-  // Geocode office addresses on mount (using ref to avoid triggering marker re-renders)
+  // Geocode office addresses once on mount
   useEffect(() => {
     const geocodeOffices = async () => {
-      // Prevent multiple simultaneous geocoding attempts
-      if (geocodingInProgressRef.current) return;
-      geocodingInProgressRef.current = true;
+      // Only geocode once, ever
+      if (hasGeocodedRef.current) return;
+      hasGeocodedRef.current = true;
 
       const mapbox = getMapboxService();
 
       for (const [key, office] of Object.entries(offices)) {
-        // Skip if already geocoded
-        if (officeCoordinatesRef.current[key]) continue;
-
         if (office.address) {
           try {
             const coordinates = await mapbox.geocodeAddress(office.address);
@@ -62,11 +59,9 @@ const ManualMode = ({
           }
         }
       }
-
-      geocodingInProgressRef.current = false;
     };
 
-    if (offices && Object.keys(offices).length > 0) {
+    if (offices && Object.keys(offices).length > 0 && !hasGeocodedRef.current) {
       geocodeOffices();
     }
   }, [offices]);
@@ -92,6 +87,7 @@ const ManualMode = ({
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const markersRef = useRef([]);
+  const isRenderingMarkersRef = useRef(false); // Prevent concurrent marker rendering
 
   // Color mapping for different job types
   const getJobTypeColor = (jobType) => {
@@ -146,9 +142,18 @@ const ManualMode = ({
     if (!mapInstanceRef.current) return;
 
     const renderJobMarkers = async () => {
-      // Clear existing markers
-      markersRef.current.forEach(marker => marker.remove());
-      markersRef.current = [];
+      // Prevent concurrent marker rendering
+      if (isRenderingMarkersRef.current) {
+        console.log('⏸️ Skipping marker render - already in progress');
+        return;
+      }
+
+      isRenderingMarkersRef.current = true;
+
+      try {
+        // Clear existing markers
+        markersRef.current.forEach(marker => marker.remove());
+        markersRef.current = [];
 
       const map = mapInstanceRef.current;
 
@@ -356,6 +361,9 @@ const ManualMode = ({
           );
           map.fitBounds(bounds, { padding: 50 });
         }
+      }
+      } finally {
+        isRenderingMarkersRef.current = false;
       }
     };
 
@@ -735,14 +743,15 @@ const ManualMode = ({
         updatedJobs = [...updatedJobs, ...geocodedHelperJobs];
       }
 
-      // Clear building route if it was dragged
-      if (!fromTechId) {
-        setBuildingRoute([]);
-      }
-
-      // Update state
-      setRoutes(updatedRoutes);
-      setJobs(updatedJobs);
+      // Update state (batched to reduce marker recreation)
+      startTransition(() => {
+        // Clear building route if it was dragged
+        if (!fromTechId) {
+          setBuildingRoute([]);
+        }
+        setRoutes(updatedRoutes);
+        setJobs(updatedJobs);
+      });
 
       // Save to Firebase
       await onUpdateRoutes(updatedRoutes);
