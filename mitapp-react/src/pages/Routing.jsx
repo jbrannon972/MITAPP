@@ -1,10 +1,7 @@
-import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Layout from '../components/common/Layout';
-import ErrorBoundary from '../components/common/ErrorBoundary';
 import ManualMode from '../components/routing/ManualMode';
 import KanbanCalendar from '../components/routing/KanbanCalendar';
-import CSVImportModal from '../components/routing/CSVImportModal';
-import AutoOptimizeModal from '../components/routing/AutoOptimizeModal';
 import { useData } from '../contexts/DataContext';
 import { useAuth } from '../contexts/AuthContext';
 import firebaseService from '../services/firebaseService';
@@ -17,14 +14,6 @@ import {
   getRoutingEligibleTechs,
   calculateRouteSummary
 } from '../utils/routeOptimizer';
-import {
-  safeAsync,
-  safeGetLocalStorage,
-  safeSetLocalStorage,
-  validateCSVFile,
-  debounce
-} from '../utils/routingHelpers';
-import { ERROR_MESSAGES, SUCCESS_MESSAGES } from '../utils/routingConstants';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 
@@ -39,9 +28,7 @@ const Routing = () => {
   const [showImportModal, setShowImportModal] = useState(false);
   const [showOptimizeModal, setShowOptimizeModal] = useState(false);
   const [optimizing, setOptimizing] = useState(false);
-  // Default token provided as fallback - users can override in settings
-  const DEFAULT_MAPBOX_TOKEN = 'pk.eyJ1IjoiamJyYW5ub245NzIiLCJhIjoiY204NXN2Z2w2Mms4ODJrb2tvemV2ZnlicyJ9.84JYhRSUAF5_-vvdebw-TA';
-  const [mapboxToken, setMapboxToken] = useState(safeGetLocalStorage('mapboxToken', DEFAULT_MAPBOX_TOKEN));
+  const [mapboxToken, setMapboxToken] = useState(localStorage.getItem('mapboxToken') || 'pk.eyJ1IjoiamJyYW5ub245NzIiLCJhIjoiY204NXN2Z2w2Mms4ODJrb2tvemV2ZnlicyJ9.84JYhRSUAF5_-vvdebw-TA');
   const [selectedTech, setSelectedTech] = useState(null);
   const [activeUsers, setActiveUsers] = useState([]);
   const [scheduleForDay, setScheduleForDay] = useState(null);
@@ -141,8 +128,18 @@ const Routing = () => {
     fetchSchedule();
   }, [selectedDate, unifiedTechnicianData]);
 
-  // Enrich route tech objects with email from staffing data - memoized
-  const enrichRoutesWithEmails = useCallback((routes) => {
+  // Re-enrich routes when staffing data changes (to add emails to existing routes)
+  useEffect(() => {
+    if (staffingData && Object.keys(routes).length > 0) {
+      const enrichedRoutes = enrichRoutesWithEmails(routes);
+      setRoutes(enrichedRoutes);
+    }
+  }, [staffingData]);
+
+  // Removed loadJobs and loadRoutes - using real-time subscriptions instead
+
+  // Enrich route tech objects with email from staffing data
+  const enrichRoutesWithEmails = (routes) => {
     if (!staffingData?.zones) return routes;
 
     const enrichedRoutes = { ...routes };
@@ -185,53 +182,23 @@ const Routing = () => {
     });
 
     return enrichedRoutes;
-  }, [staffingData]);
+  };
 
-  // Re-enrich routes when staffing data changes (to add emails to existing routes) - debounced
-  useEffect(() => {
-    if (staffingData && Object.keys(routes).length > 0) {
-      const enrichedRoutes = enrichRoutesWithEmails(routes);
-      setRoutes(enrichedRoutes);
-    }
-  }, [staffingData, routes, enrichRoutesWithEmails]);
-
-  const handleCSVImport = useCallback((e) => {
+  const handleCSVImport = (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
-    // Validate file before processing
-    const validation = validateCSVFile(file);
-    if (!validation.valid) {
-      alert(`Invalid file: ${validation.error}`);
-      return;
-    }
-
     const reader = new FileReader();
     reader.onload = (event) => {
-      try {
-        const text = event.target.result;
-        const parsedJobs = parseCSV(text);
-
-        if (!parsedJobs || parsedJobs.length === 0) {
-          throw new Error('No valid jobs found in CSV file');
-        }
-
-        setJobs(parsedJobs);
-        saveJobs(parsedJobs);
-        setShowImportModal(false);
-        alert(SUCCESS_MESSAGES.JOBS_IMPORTED + `\n${parsedJobs.length} jobs imported.`);
-      } catch (error) {
-        console.error('CSV Import Error:', error);
-        alert(`Error importing CSV: ${error.message}\n\nPlease check the file format and try again.`);
-      }
+      const text = event.target.result;
+      const parsedJobs = parseCSV(text);
+      setJobs(parsedJobs);
+      saveJobs(parsedJobs);
+      setShowImportModal(false);
+      alert(`Successfully imported ${parsedJobs.length} jobs!`);
     };
-
-    reader.onerror = () => {
-      alert('Error reading file. Please try again.');
-    };
-
     reader.readAsText(file);
-  }, []);
+  };
 
   // Proper CSV parser that handles commas inside quoted fields
   const parseCSVLine = (line) => {
@@ -362,43 +329,43 @@ const Routing = () => {
     return jobs;
   };
 
-  const saveJobs = useCallback(async (jobsData) => {
-    return safeAsync(
-      async () => {
-        const stack = new Error().stack;
-        console.log('📤 Saving jobs to Firebase...', jobsData.length, 'jobs');
-        console.log('📍 Called from:', stack.split('\n')[2]);
+  const saveJobs = async (jobsData) => {
+    try {
+      // Don't do optimistic update - let Firebase subscription handle it
+      // This prevents race conditions with child component's local state
+      const stack = new Error().stack;
+      console.log('📤 Saving jobs to Firebase...', jobsData.length, 'jobs');
+      console.log('📍 Called from:', stack.split('\n')[2]);
 
-        // Save to Firebase with metadata for conflict tracking
-        if (currentUser) {
-          await firebaseService.saveWithMetadata(
-            'hou_routing',
-            `jobs_${selectedDate}`,
-            {
-              jobs: jobsData,
-              date: selectedDate
-            },
-            {
-              name: currentUser.displayName || currentUser.email,
-              id: currentUser.uid
-            }
-          );
-        } else {
-          await firebaseService.saveDocument('hou_routing', `jobs_${selectedDate}`, {
+      // Save to Firebase with metadata for conflict tracking
+      if (currentUser) {
+        await firebaseService.saveWithMetadata(
+          'hou_routing',
+          `jobs_${selectedDate}`,
+          {
             jobs: jobsData,
-            date: selectedDate,
-            lastUpdated: new Date().toISOString()
-          });
-        }
-        console.log('✅ Jobs saved to Firebase');
-        return true;
-      },
-      ERROR_MESSAGES.SAVE_FAILED
-    );
-  }, [currentUser, selectedDate]);
+            date: selectedDate
+          },
+          {
+            name: currentUser.displayName || currentUser.email,
+            id: currentUser.uid
+          }
+        );
+      } else {
+        await firebaseService.saveDocument('hou_routing', `jobs_${selectedDate}`, {
+          jobs: jobsData,
+          date: selectedDate,
+          lastUpdated: new Date().toISOString()
+        });
+      }
+      console.log('✅ Jobs saved to Firebase');
+    } catch (error) {
+      console.error('Error saving jobs:', error);
+      alert('Error saving jobs. Please try again.');
+    }
+  };
 
-  // Memoize tech list calculation
-  const techList = useMemo(() => {
+  const getTechList = () => {
     if (!staffingData?.zones) return [];
 
     const allTechs = [];
@@ -410,7 +377,7 @@ const Routing = () => {
           id: zone.lead.id,
           name: zone.lead.name,
           role: zone.lead.role,
-          email: zone.lead.email,
+          email: zone.lead.email, // Include email for calendar integration
           zone: zone.name,
           office: zone.lead.office || 'office_1',
           isDemoTech: false
@@ -422,7 +389,7 @@ const Routing = () => {
           id: member.id,
           name: member.name,
           role: member.role,
-          email: member.email,
+          email: member.email, // Include email for calendar integration
           zone: zone.name,
           office: member.office || 'office_1',
           isDemoTech: member.role === 'Demo Tech'
@@ -431,20 +398,16 @@ const Routing = () => {
     });
 
     return allTechs;
-  }, [staffingData]);
+  };
 
-  const demoTechs = useMemo(() => {
-    return techList.filter(t => t.isDemoTech);
-  }, [techList]);
+  const getDemoTechs = () => {
+    return getTechList().filter(t => t.isDemoTech);
+  };
 
-  const leadTechs = useMemo(() => {
-    return getRoutingEligibleTechs(techList);
-  }, [techList]);
-
-  // Keep the old function names for backwards compatibility
-  const getTechList = useCallback(() => techList, [techList]);
-  const getDemoTechs = useCallback(() => demoTechs, [demoTechs]);
-  const getLeadTechs = useCallback(() => leadTechs, [leadTechs]);
+  const getLeadTechs = () => {
+    const allTechs = getTechList();
+    return getRoutingEligibleTechs(allTechs);
+  };
 
   const assignJobToTech = async (jobId, techId) => {
     const updatedJobs = jobs.map(job => {
@@ -474,40 +437,40 @@ const Routing = () => {
     await saveRoutes(updatedRoutes);
   };
 
-  const saveRoutes = useCallback(async (routesData) => {
-    return safeAsync(
-      async () => {
-        const stack = new Error().stack;
-        console.log('📤 Saving routes to Firebase...', Object.keys(routesData).length, 'routes');
-        console.log('📍 Called from:', stack.split('\n')[2]);
+  const saveRoutes = async (routesData) => {
+    try {
+      // Don't do optimistic update - let Firebase subscription handle it
+      // This prevents race conditions with child component's local state
+      const stack = new Error().stack;
+      console.log('📤 Saving routes to Firebase...', Object.keys(routesData).length, 'routes');
+      console.log('📍 Called from:', stack.split('\n')[2]);
 
-        // Save to Firebase with metadata for conflict tracking
-        if (currentUser) {
-          await firebaseService.saveWithMetadata(
-            'hou_routing',
-            `routes_${selectedDate}`,
-            {
-              routes: routesData,
-              date: selectedDate
-            },
-            {
-              name: currentUser.displayName || currentUser.email,
-              id: currentUser.uid
-            }
-          );
-        } else {
-          await firebaseService.saveDocument('hou_routing', `routes_${selectedDate}`, {
+      // Save to Firebase with metadata for conflict tracking
+      if (currentUser) {
+        await firebaseService.saveWithMetadata(
+          'hou_routing',
+          `routes_${selectedDate}`,
+          {
             routes: routesData,
-            date: selectedDate,
-            lastUpdated: new Date().toISOString()
-          });
-        }
-        console.log('✅ Routes saved to Firebase');
-        return true;
-      },
-      ERROR_MESSAGES.SAVE_FAILED
-    );
-  }, [currentUser, selectedDate]);
+            date: selectedDate
+          },
+          {
+            name: currentUser.displayName || currentUser.email,
+            id: currentUser.uid
+          }
+        );
+      } else {
+        await firebaseService.saveDocument('hou_routing', `routes_${selectedDate}`, {
+          routes: routesData,
+          date: selectedDate,
+          lastUpdated: new Date().toISOString()
+        });
+      }
+      console.log('✅ Routes saved to Firebase');
+    } catch (error) {
+      console.error('Error saving routes:', error);
+    }
+  };
 
   const unassignJob = async (jobId) => {
     const updatedJobs = jobs.map(job => {
@@ -530,9 +493,9 @@ const Routing = () => {
     await saveRoutes(updatedRoutes);
   };
 
-  const handleAutoOptimize = useCallback(async () => {
+  const handleAutoOptimize = async () => {
     if (!mapboxToken) {
-      alert(ERROR_MESSAGES.MAPBOX_TOKEN_MISSING);
+      alert('Please enter a Mapbox API token in the optimization settings.');
       return;
     }
 
@@ -540,12 +503,12 @@ const Routing = () => {
     setShowOptimizeModal(false);
 
     try {
-      const allLeadTechs = getLeadTechs();
-      const allDemoTechs = getDemoTechs();
+      const leadTechs = getLeadTechs();
+      const demoTechs = getDemoTechs();
       const unassignedJobs = jobs.filter(j => !j.assignedTech);
 
       if (unassignedJobs.length === 0) {
-        alert(ERROR_MESSAGES.NO_JOBS_TO_OPTIMIZE);
+        alert('No unassigned jobs to optimize.');
         setOptimizing(false);
         return;
       }
@@ -560,7 +523,7 @@ const Routing = () => {
       );
 
       // Step 3: Balance workload across techs with geocoded jobs
-      const balancedAssignments = balanceWorkload(geocodedJobs, allLeadTechs);
+      const balancedAssignments = balanceWorkload(geocodedJobs, leadTechs);
 
       // Step 4: Optimize each tech's route with Mapbox
       const optimizedRoutes = {};
@@ -610,7 +573,7 @@ const Routing = () => {
       }
 
       // Step 5: Auto-assign demo techs (keep them with same tech all day)
-      const { routes: finalRoutes } = assignDemoTechs(optimizedRoutes, allDemoTechs);
+      const { routes: finalRoutes } = assignDemoTechs(optimizedRoutes, demoTechs);
 
       // Update state
       setRoutes(finalRoutes);
@@ -629,25 +592,23 @@ const Routing = () => {
       setJobs(updatedJobs);
       await saveJobs(updatedJobs);
 
-      alert(SUCCESS_MESSAGES.ROUTES_OPTIMIZED + `\n${Object.keys(finalRoutes).length} technicians assigned.`);
+      alert(`Successfully optimized routes for ${Object.keys(finalRoutes).length} technicians!`);
     } catch (error) {
       console.error('Optimization error:', error);
-      alert(ERROR_MESSAGES.OPTIMIZATION_FAILED + `\n\nDetails: ${error.message}`);
+      alert('Error during optimization. Please try again.');
     } finally {
       setOptimizing(false);
     }
-  }, [mapboxToken, jobs, getLeadTechs, getDemoTechs, offices, saveRoutes, saveJobs]);
+  };
 
-  const handleSaveMapboxToken = useCallback(() => {
+  const handleSaveMapboxToken = () => {
     if (mapboxToken) {
-      const saved = safeSetLocalStorage('mapboxToken', mapboxToken);
-      if (saved) {
-        // Reinitialize Mapbox service with new token
-        initMapboxService(mapboxToken);
-        alert(SUCCESS_MESSAGES.TOKEN_SAVED);
-      }
+      localStorage.setItem('mapboxToken', mapboxToken);
+      // Reinitialize Mapbox service with new token
+      initMapboxService(mapboxToken);
+      alert('Mapbox token saved!');
     }
-  }, [mapboxToken]);
+  };
 
   const handleClearAllJobs = async () => {
     const confirmed = window.confirm(
@@ -1037,22 +998,129 @@ const Routing = () => {
           </>
         )}
 
-        {/* Shared Modals */}
-        <CSVImportModal
-          isOpen={showImportModal}
-          onClose={() => setShowImportModal(false)}
-          onImport={handleCSVImport}
-        />
+        {/* CSV Import Modal */}
+        {showImportModal && (
+          <div className="modal-overlay active" onClick={() => setShowImportModal(false)}>
+            <div className="modal" onClick={(e) => e.stopPropagation()}>
+              <div className="modal-header">
+                <h3><i className="fas fa-upload"></i> Import Daily Jobs</h3>
+                <button className="modal-close" onClick={() => setShowImportModal(false)}>
+                  <i className="fas fa-times"></i>
+                </button>
+              </div>
+              <div className="modal-body">
+                <p style={{ marginBottom: '16px', color: 'var(--text-secondary)' }}>
+                  Select your daily export CSV file. The file should include customer info, addresses, timeframes, durations, and zone assignments.
+                </p>
+                <div style={{ marginBottom: '20px' }}>
+                  <label htmlFor="csvFile" className="btn btn-secondary" style={{ cursor: 'pointer', display: 'inline-block' }}>
+                    <i className="fas fa-file-csv"></i> Choose CSV File
+                  </label>
+                  <input
+                    type="file"
+                    id="csvFile"
+                    accept=".csv"
+                    onChange={handleCSVImport}
+                    style={{ display: 'none' }}
+                  />
+                </div>
+                <div style={{ padding: '12px', backgroundColor: 'var(--active-bg)', borderRadius: '6px', fontSize: '14px' }}>
+                  <strong>Houston Branch CSV Format:</strong>
+                  <ul style={{ marginTop: '8px', marginBottom: 0, paddingLeft: '20px' }}>
+                    <li>text (Job ID)</li>
+                    <li>route_title (Customer Name | Job Type)</li>
+                    <li>customer_address (Houston area)</li>
+                    <li>Zone</li>
+                    <li>duration (hours)</li>
+                    <li>workers (assigned workers array)</li>
+                    <li>route_description (includes TF(HH:MM-HH:MM))</li>
+                  </ul>
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button className="btn btn-secondary" onClick={() => setShowImportModal(false)}>
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
-        <AutoOptimizeModal
-          isOpen={showOptimizeModal}
-          onClose={() => setShowOptimizeModal(false)}
-          onOptimize={handleAutoOptimize}
-          mapboxToken={mapboxToken}
-          onMapboxTokenChange={setMapboxToken}
-          onSaveToken={handleSaveMapboxToken}
-          unassignedJobsCount={jobs.filter(j => !j.assignedTech).length}
-        />
+        {/* Auto-Optimize Modal */}
+        {showOptimizeModal && (
+          <div className="modal-overlay active" onClick={() => setShowOptimizeModal(false)}>
+            <div className="modal modal-lg" onClick={(e) => e.stopPropagation()}>
+              <div className="modal-header">
+                <h3><i className="fas fa-magic"></i> Automatic Route Optimization</h3>
+                <button className="modal-close" onClick={() => setShowOptimizeModal(false)}>
+                  <i className="fas fa-times"></i>
+                </button>
+              </div>
+              <div className="modal-body">
+                <p style={{ marginBottom: '20px', color: 'var(--text-secondary)' }}>
+                  The optimizer will automatically assign all unassigned jobs to technicians and optimize their routes.
+                </p>
+
+                <div style={{ marginBottom: '20px', padding: '16px', backgroundColor: 'var(--surface-secondary)', borderRadius: '8px' }}>
+                  <h4 style={{ margin: 0, marginBottom: '12px' }}>What the optimizer does:</h4>
+                  <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '14px' }}>
+                    <li>Balances workload across available technicians</li>
+                    <li>Optimizes route order to minimize drive time</li>
+                    <li>Respects job timeframe windows</li>
+                    <li>Keeps techs in their zones when possible</li>
+                    <li>Auto-assigns demo techs to 2-person jobs</li>
+                    <li>Excludes Management and MIT Leads (except 2nd shift)</li>
+                  </ul>
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="mapboxToken">
+                    Mapbox API Token
+                    <span style={{ marginLeft: '8px', fontSize: '12px', color: 'var(--text-secondary)' }}>
+                      (Required for drive time calculations)
+                    </span>
+                  </label>
+                  <input
+                    type="text"
+                    id="mapboxToken"
+                    className="form-control"
+                    value={mapboxToken}
+                    onChange={(e) => setMapboxToken(e.target.value)}
+                    placeholder="pk.your-mapbox-token-here"
+                  />
+                  <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                    Get a free token at{' '}
+                    <a href="https://www.mapbox.com" target="_blank" rel="noopener noreferrer">
+                      mapbox.com
+                    </a>
+                  </p>
+                </div>
+
+                {mapboxToken && (
+                  <button
+                    className="btn btn-secondary"
+                    onClick={handleSaveMapboxToken}
+                    style={{ marginBottom: '16px' }}
+                  >
+                    <i className="fas fa-save"></i> Save Token
+                  </button>
+                )}
+              </div>
+              <div className="modal-footer">
+                <button className="btn btn-secondary" onClick={() => setShowOptimizeModal(false)}>
+                  Cancel
+                </button>
+                <button
+                  className="btn btn-success"
+                  onClick={handleAutoOptimize}
+                  disabled={!mapboxToken}
+                >
+                  <i className="fas fa-magic"></i> Optimize Routes
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
     );
@@ -1139,35 +1207,120 @@ const Routing = () => {
           </>
         )}
 
-        {/* Shared Modals - rendered outside Layout to avoid duplication */}
-        <CSVImportModal
-          isOpen={showImportModal}
-          onClose={() => setShowImportModal(false)}
-          onImport={handleCSVImport}
-        />
+        {/* CSV Import Modal */}
+        {showImportModal && (
+          <div className="modal-overlay active" onClick={() => setShowImportModal(false)}>
+            <div className="modal" onClick={(e) => e.stopPropagation()}>
+              <div className="modal-header">
+                <h3><i className="fas fa-upload"></i> Import Daily Jobs</h3>
+                <button className="modal-close" onClick={() => setShowImportModal(false)}>
+                  <i className="fas fa-times"></i>
+                </button>
+              </div>
+              <div className="modal-body">
+                <p style={{ marginBottom: '16px', color: 'var(--text-secondary)' }}>
+                  Select your daily export CSV file. The file should include customer info, addresses, timeframes, durations, and zone assignments.
+                </p>
+                <div style={{ marginBottom: '20px' }}>
+                  <label htmlFor="csvFile" className="btn btn-secondary" style={{ cursor: 'pointer', display: 'inline-block' }}>
+                    <i className="fas fa-file-csv"></i> Choose CSV File
+                  </label>
+                  <input
+                    type="file"
+                    id="csvFile"
+                    accept=".csv"
+                    onChange={handleCSVImport}
+                    style={{ display: 'none' }}
+                  />
+                </div>
+                <div style={{ padding: '12px', backgroundColor: 'var(--active-bg)', borderRadius: '6px', fontSize: '14px' }}>
+                  <strong>Houston Branch CSV Format:</strong>
+                  <ul style={{ marginTop: '8px', marginBottom: 0, paddingLeft: '20px' }}>
+                    <li>text (Job ID)</li>
+                    <li>route_title (Customer Name | Job Type)</li>
+                    <li>customer_address (Houston area)</li>
+                    <li>Zone</li>
+                    <li>duration (hours)</li>
+                    <li>workers (assigned workers array)</li>
+                    <li>route_description (includes TF(HH:MM-HH:MM))</li>
+                  </ul>
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button className="btn btn-secondary" onClick={() => setShowImportModal(false)}>
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
-        <AutoOptimizeModal
-          isOpen={showOptimizeModal}
-          onClose={() => setShowOptimizeModal(false)}
-          onOptimize={handleAutoOptimize}
-          mapboxToken={mapboxToken}
-          onMapboxTokenChange={setMapboxToken}
-          onSaveToken={handleSaveMapboxToken}
-          unassignedJobsCount={jobs.filter(j => !j.assignedTech).length}
-        />
+        {/* Auto-Optimize Modal */}
+        {showOptimizeModal && (
+          <div className="modal-overlay active" onClick={() => setShowOptimizeModal(false)}>
+            <div className="modal" onClick={(e) => e.stopPropagation()}>
+              <div className="modal-header">
+                <h3><i className="fas fa-magic"></i> Auto-Optimize Routes</h3>
+                <button className="modal-close" onClick={() => setShowOptimizeModal(false)}>
+                  <i className="fas fa-times"></i>
+                </button>
+              </div>
+              <div className="modal-body">
+                <p style={{ marginBottom: '16px', color: 'var(--text-secondary)' }}>
+                  This will automatically optimize all routes using geographic proximity and drive times.
+                </p>
+
+                <div className="form-group" style={{ marginBottom: '16px' }}>
+                  <label htmlFor="mapboxToken">
+                    Mapbox API Token
+                    <span style={{ marginLeft: '8px', fontSize: '12px', color: 'var(--text-secondary)' }}>
+                      (Required for drive time calculations)
+                    </span>
+                  </label>
+                  <input
+                    type="text"
+                    id="mapboxToken"
+                    className="form-control"
+                    value={mapboxToken}
+                    onChange={(e) => setMapboxToken(e.target.value)}
+                    placeholder="pk.your-mapbox-token-here"
+                  />
+                  <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                    Get a free token at{' '}
+                    <a href="https://www.mapbox.com" target="_blank" rel="noopener noreferrer">
+                      mapbox.com
+                    </a>
+                  </p>
+                </div>
+
+                {mapboxToken && (
+                  <button
+                    className="btn btn-secondary"
+                    onClick={handleSaveMapboxToken}
+                    style={{ marginBottom: '16px' }}
+                  >
+                    <i className="fas fa-save"></i> Save Token
+                  </button>
+                )}
+              </div>
+              <div className="modal-footer">
+                <button className="btn btn-secondary" onClick={() => setShowOptimizeModal(false)}>
+                  Cancel
+                </button>
+                <button
+                  className="btn btn-success"
+                  onClick={handleAutoOptimize}
+                  disabled={!mapboxToken}
+                >
+                  <i className="fas fa-magic"></i> Optimize Routes
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </Layout>
   );
 };
 
-// Wrap with ErrorBoundary for better error handling
-const RoutingWithErrorBoundary = () => (
-  <ErrorBoundary
-    title="Routing Error"
-    message="An error occurred while loading the routing page. Please refresh and try again."
-  >
-    <Routing />
-  </ErrorBoundary>
-);
-
-export default RoutingWithErrorBoundary;
+export default Routing;

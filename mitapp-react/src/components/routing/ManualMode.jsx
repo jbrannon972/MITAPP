@@ -217,10 +217,8 @@ const ManualMode = ({
             border: 3px solid var(--surface-color);
             box-shadow: 0 2px 8px rgba(0,0,0,0.3);
             transition: transform 0.2s;
-            cursor: pointer;
-            pointer-events: auto;
           ">
-            ${job.requiresTwoTechs ? '<i class="fas fa-users" style="font-size: 12px; pointer-events: none;"></i>' : '<i class="fas fa-map-pin" style="font-size: 12px; pointer-events: none;"></i>'}
+            ${job.requiresTwoTechs ? '<i class="fas fa-users" style="font-size: 12px;"></i>' : '<i class="fas fa-map-pin" style="font-size: 12px;"></i>'}
           </div>
         `;
 
