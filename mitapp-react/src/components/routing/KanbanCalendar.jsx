@@ -1,7 +1,9 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { getMapboxService } from '../../services/mapboxService';
+import { debounce, safeAsync } from '../../utils/routingHelpers';
+import { DEFAULT_TRAVEL_TIME, OFF_STATUSES } from '../../utils/routingConstants';
 
 const KanbanCalendar = ({
   jobs: initialJobs,
@@ -38,24 +40,7 @@ const KanbanCalendar = ({
   const allTechs = [...techs];
   const demoTechs = techs.filter(t => t.isDemoTech || t.role?.toLowerCase().includes('demo'));
 
-  // Deep comparison helper
-  const deepEqual = (obj1, obj2) => {
-    if (obj1 === obj2) return true;
-    if (obj1 == null || obj2 == null) return false;
-    if (typeof obj1 !== 'object' || typeof obj2 !== 'object') return obj1 === obj2;
-
-    const keys1 = Object.keys(obj1);
-    const keys2 = Object.keys(obj2);
-
-    if (keys1.length !== keys2.length) return false;
-
-    for (const key of keys1) {
-      if (!keys2.includes(key)) return false;
-      if (!deepEqual(obj1[key], obj2[key])) return false;
-    }
-
-    return true;
-  };
+  // Removed deepEqual - not currently used in the component
 
   // Initialize from props ONLY on first mount or when date changes
   // Child component is the authoritative source of truth during a session
@@ -78,7 +63,7 @@ const KanbanCalendar = ({
     hasInitialized.current = true;
   }, [selectedDate]);
 
-  // Calculate return to office times whenever routes change
+  // Calculate return to office times - debounced to avoid excessive API calls
   useEffect(() => {
     const calculateReturnTimes = async () => {
       const newReturnTimes = {};
@@ -107,44 +92,47 @@ const KanbanCalendar = ({
         const officeAddress = offices[officeKey]?.address;
 
         if (!officeAddress || !lastJob.address) {
-          // Fallback: add 30 min to last job end time
+          // Fallback: use default travel time
           const endMinutes = timeToMinutes(lastJobEndTime);
           newReturnTimes[tech.id] = {
-            time: minutesToTime(endMinutes + 30),
-            driveTime: 30,
+            time: minutesToTime(endMinutes + DEFAULT_TRAVEL_TIME),
+            driveTime: DEFAULT_TRAVEL_TIME,
             isEstimate: true
           };
           continue;
         }
 
-        try {
-          const mapboxService = getMapboxService();
-          const result = await mapboxService.getDrivingDistance(lastJob.address, officeAddress);
-          const driveMinutes = result.durationMinutes || 30;
+        // Use safeAsync for error handling
+        const result = await safeAsync(
+          async () => {
+            const mapboxService = getMapboxService();
+            return await mapboxService.getDrivingDistance(lastJob.address, officeAddress);
+          },
+          'Error calculating return time',
+          () => null // Return null on error
+        );
 
-          const endMinutes = timeToMinutes(lastJobEndTime);
-          const returnTime = minutesToTime(endMinutes + driveMinutes);
+        const driveMinutes = result?.durationMinutes || DEFAULT_TRAVEL_TIME;
+        const endMinutes = timeToMinutes(lastJobEndTime);
+        const returnTime = minutesToTime(endMinutes + driveMinutes);
 
-          newReturnTimes[tech.id] = {
-            time: returnTime,
-            driveTime: driveMinutes,
-            isEstimate: false
-          };
-        } catch (error) {
-          console.error('Error calculating return time:', error);
-          const endMinutes = timeToMinutes(lastJobEndTime);
-          newReturnTimes[tech.id] = {
-            time: minutesToTime(endMinutes + 30),
-            driveTime: 30,
-            isEstimate: true
-          };
-        }
+        newReturnTimes[tech.id] = {
+          time: returnTime,
+          driveTime: driveMinutes,
+          isEstimate: !result
+        };
       }
 
       setReturnToOfficeTimes(newReturnTimes);
     };
 
-    calculateReturnTimes();
+    // Debounce the calculation to avoid hammering the API
+    const debouncedCalculate = debounce(calculateReturnTimes, 500);
+    debouncedCalculate();
+
+    return () => {
+      // Cleanup function if needed
+    };
   }, [localRoutes, techs, offices]);
 
   // Initialize map when modal opens
@@ -352,17 +340,16 @@ const KanbanCalendar = ({
     }
   };
 
-  // Check if a tech is marked as off for the day
-  const isTechOff = (techId) => {
+  // Check if a tech is marked as off for the day - memoized
+  const isTechOff = useCallback((techId) => {
     if (!scheduleForDay || !scheduleForDay.staff) return false;
 
     const staffEntry = scheduleForDay.staff.find(s => s.id === techId);
     if (!staffEntry) return false;
 
-    // Consider tech "off" if status is off, vacation, sick, or no-call-no-show
-    const offStatuses = ['off', 'vacation', 'sick', 'no-call-no-show'];
-    return offStatuses.includes(staffEntry.status?.toLowerCase());
-  };
+    // Use constant for off statuses
+    return OFF_STATUSES.includes(staffEntry.status?.toLowerCase());
+  }, [scheduleForDay]);
 
   // Calculate optimal start time based on drive time (ignoring drag position)
   const calculateOptimalStartTime = async (job, targetTechId) => {
