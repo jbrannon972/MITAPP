@@ -36,33 +36,37 @@ const ManualMode = ({
   const [showGoogleSetup, setShowGoogleSetup] = useState(false);
   const [showTwoTechModal, setShowTwoTechModal] = useState(false);
   const [pendingRouteDropData, setPendingRouteDropData] = useState(null);
-  const [officeCoordinates, setOfficeCoordinates] = useState({});
 
-  // Geocode office addresses on mount
+  // Use ref for office coordinates - they don't need to trigger re-renders
+  const officeCoordinatesRef = useRef({});
+  const hasGeocodedOfficesRef = useRef(false);
+
+  // Geocode office addresses ONCE on mount
   useEffect(() => {
+    // Only geocode once per component lifetime
+    if (hasGeocodedOfficesRef.current) return;
+    hasGeocodedOfficesRef.current = true;
+
     const geocodeOffices = async () => {
       const mapbox = getMapboxService();
-      const coords = {};
 
       for (const [key, office] of Object.entries(offices)) {
         if (office.address) {
           try {
             const coordinates = await mapbox.geocodeAddress(office.address);
-            coords[key] = { ...coordinates, name: office.name };
+            officeCoordinatesRef.current[key] = { ...coordinates, name: office.name };
             console.log(`📍 Geocoded ${office.name}:`, coordinates);
           } catch (error) {
             console.error(`Error geocoding ${office.name}:`, error);
           }
         }
       }
-
-      setOfficeCoordinates(coords);
     };
 
     if (offices && Object.keys(offices).length > 0) {
       geocodeOffices();
     }
-  }, [offices]);
+  }, []); // Empty deps - run once on mount only
 
   // Update local state when props change
   useEffect(() => {
@@ -150,7 +154,7 @@ const ManualMode = ({
       if (map.getSource('route')) map.removeSource('route');
 
       // Add office markers using geocoded coordinates
-      Object.values(officeCoordinates).forEach(office => {
+      Object.values(officeCoordinatesRef.current).forEach(office => {
         if (!office.lng || !office.lat) return;
 
         const el = document.createElement('div');
@@ -258,7 +262,7 @@ const ManualMode = ({
       // Draw selected tech's route on the map
       if (selectedTech && routes[selectedTech]) {
         const techRoute = routes[selectedTech];
-        const officeCoords = officeCoordinates[techRoute.tech.office];
+        const officeCoords = officeCoordinatesRef.current[techRoute.tech.office];
 
         if (!officeCoords || !officeCoords.lng || !officeCoords.lat) {
           console.warn('Office coordinates not available for route drawing');
@@ -353,7 +357,8 @@ const ManualMode = ({
     };
 
     renderJobMarkers();
-  }, [jobs, showAllJobs, buildingRoute, selectedTech, routes, officeCoordinates]);
+  }, [jobs, showAllJobs, buildingRoute, selectedTech, routes]);
+  // Note: officeCoordinatesRef is a ref, not in deps - won't trigger re-renders
 
   const handleJobClick = (job) => {
     // Don't add assigned jobs to building route unless showing all
