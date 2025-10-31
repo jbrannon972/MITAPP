@@ -37,26 +37,36 @@ const ManualMode = ({
   const [showTwoTechModal, setShowTwoTechModal] = useState(false);
   const [pendingRouteDropData, setPendingRouteDropData] = useState(null);
   const [officeCoordinates, setOfficeCoordinates] = useState({});
+  const geocodedOfficesRef = useRef(new Set()); // Track geocoded office addresses
 
   // Geocode office addresses on mount
   useEffect(() => {
     const geocodeOffices = async () => {
       const mapbox = getMapboxService();
-      const coords = {};
+      const coords = { ...officeCoordinates }; // Start with existing coordinates
+      let hasNewOffices = false;
 
       for (const [key, office] of Object.entries(offices)) {
-        if (office.address) {
+        if (office.address && !geocodedOfficesRef.current.has(office.address)) {
+          hasNewOffices = true;
           try {
             const coordinates = await mapbox.geocodeAddress(office.address);
             coords[key] = { ...coordinates, name: office.name };
+            geocodedOfficesRef.current.add(office.address);
             console.log(`📍 Geocoded ${office.name}:`, coordinates);
           } catch (error) {
             console.error(`Error geocoding ${office.name}:`, error);
           }
+        } else if (office.address && geocodedOfficesRef.current.has(office.address) && !coords[key]) {
+          // Office already geocoded but not in state (shouldn't happen, but safety check)
+          console.log(`✓ Using cached coordinates for ${office.name}`);
         }
       }
 
-      setOfficeCoordinates(coords);
+      // Only update state if we geocoded new offices
+      if (hasNewOffices) {
+        setOfficeCoordinates(coords);
+      }
     };
 
     if (offices && Object.keys(offices).length > 0) {

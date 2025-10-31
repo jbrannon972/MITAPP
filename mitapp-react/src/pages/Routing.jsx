@@ -50,8 +50,8 @@ const Routing = () => {
   const mapInstanceRef = useRef(null);
   const markersRef = useRef([]);
 
-  // Houston office locations
-  const offices = {
+  // Houston office locations (memoized to prevent infinite geocoding loop)
+  const offices = useMemo(() => ({
     office_1: {
       name: 'Conroe Office',
       address: '10491 Fussel Rd, Conroe, TX 77303',
@@ -62,7 +62,7 @@ const Routing = () => {
       address: '5115 E 5th St, Katy, TX 77493',
       shortName: 'Katy'
     }
-  };
+  }), []); // Empty deps - offices are static
 
   // Real-time subscriptions for jobs and routes
   useEffect(() => {
