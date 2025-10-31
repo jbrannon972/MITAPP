@@ -527,7 +527,7 @@ body {
 }
 
 .chart-container {
-    height: 280px;
+    height: 360px;
     width: 100%;
     padding: 14px;
     background: var(--background-color);
