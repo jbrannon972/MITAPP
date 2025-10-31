@@ -6,6 +6,12 @@ import { optimizeRoute } from '../../utils/routeOptimizer';
 import googleCalendarService from '../../services/googleCalendarService';
 import TwoTechAssignmentModal from './TwoTechAssignmentModal';
 
+// MODULE-LEVEL cache for geocoded office coordinates
+// This survives component remounts and ensures geocoding happens ONCE per page load
+const GEOCODED_OFFICES = {};
+let isGeocodingInProgress = false;
+let geocodingPromise = null;
+
 const ManualMode = ({
   jobs: initialJobs,
   routes: initialRoutes,
@@ -38,33 +44,55 @@ const ManualMode = ({
   const [pendingRouteDropData, setPendingRouteDropData] = useState(null);
 
   // Use ref for office coordinates - they don't need to trigger re-renders
-  const officeCoordinatesRef = useRef({});
-  const hasGeocodedOfficesRef = useRef(false);
+  const officeCoordinatesRef = useRef(GEOCODED_OFFICES);
 
-  // Geocode office addresses ONCE on mount
+  // Geocode office addresses ONCE per page load (module-level caching)
   useEffect(() => {
-    // Only geocode once per component lifetime
-    if (hasGeocodedOfficesRef.current) return;
-    hasGeocodedOfficesRef.current = true;
+    const initOfficeCoordinates = async () => {
+      // If already fully geocoded, use cached data
+      const allOfficesGeocoded = Object.keys(offices).every(key => GEOCODED_OFFICES[key]);
+      if (allOfficesGeocoded) {
+        officeCoordinatesRef.current = GEOCODED_OFFICES;
+        return;
+      }
 
-    const geocodeOffices = async () => {
-      const mapbox = getMapboxService();
+      // If geocoding is already in progress, wait for it
+      if (isGeocodingInProgress && geocodingPromise) {
+        await geocodingPromise;
+        officeCoordinatesRef.current = GEOCODED_OFFICES;
+        return;
+      }
 
-      for (const [key, office] of Object.entries(offices)) {
-        if (office.address) {
-          try {
-            const coordinates = await mapbox.geocodeAddress(office.address);
-            officeCoordinatesRef.current[key] = { ...coordinates, name: office.name };
-            console.log(`📍 Geocoded ${office.name}:`, coordinates);
-          } catch (error) {
-            console.error(`Error geocoding ${office.name}:`, error);
+      // Start geocoding (only happens ONCE per page load)
+      isGeocodingInProgress = true;
+
+      geocodingPromise = (async () => {
+        const mapbox = getMapboxService();
+
+        for (const [key, office] of Object.entries(offices)) {
+          // Skip if already geocoded
+          if (GEOCODED_OFFICES[key]) continue;
+
+          if (office.address) {
+            try {
+              const coordinates = await mapbox.geocodeAddress(office.address);
+              GEOCODED_OFFICES[key] = { ...coordinates, name: office.name };
+              console.log(`📍 Geocoded ${office.name}:`, coordinates);
+            } catch (error) {
+              console.error(`Error geocoding ${office.name}:`, error);
+            }
           }
         }
-      }
+
+        isGeocodingInProgress = false;
+      })();
+
+      await geocodingPromise;
+      officeCoordinatesRef.current = GEOCODED_OFFICES;
     };
 
     if (offices && Object.keys(offices).length > 0) {
-      geocodeOffices();
+      initOfficeCoordinates();
     }
   }, []); // Empty deps - run once on mount only
 
