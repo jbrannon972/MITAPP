@@ -117,6 +117,7 @@ const ManualMode = ({
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const markersRef = useRef([]);
+  const markerRenderTimeoutRef = useRef(null);
 
   // Color mapping for different job types
   const getJobTypeColor = (jobType) => {
@@ -167,13 +168,34 @@ const ManualMode = ({
   }, [mapboxToken]);
 
   // Update markers and routes when jobs, filter, or selected tech changes
+  // DEBOUNCED to prevent Firebase real-time updates from destroying markers constantly
   useEffect(() => {
     if (!mapInstanceRef.current) return;
 
-    const renderJobMarkers = async () => {
-      // Clear existing markers
-      markersRef.current.forEach(marker => marker.remove());
-      markersRef.current = [];
+    // Clear any pending render
+    if (markerRenderTimeoutRef.current) {
+      clearTimeout(markerRenderTimeoutRef.current);
+    }
+
+    // Debounce marker rendering by 100ms
+    markerRenderTimeoutRef.current = setTimeout(() => {
+      renderJobMarkers();
+    }, 100);
+
+    return () => {
+      if (markerRenderTimeoutRef.current) {
+        clearTimeout(markerRenderTimeoutRef.current);
+      }
+    };
+  }, [jobs, showAllJobs, buildingRoute, selectedTech, routes]);
+  // Note: officeCoordinatesRef is a ref, not in deps - won't trigger re-renders
+
+  const renderJobMarkers = async () => {
+    if (!mapInstanceRef.current) return;
+
+    // Clear existing markers
+    markersRef.current.forEach(marker => marker.remove());
+    markersRef.current = [];
 
       const map = mapInstanceRef.current;
 
@@ -382,11 +404,7 @@ const ManualMode = ({
           map.fitBounds(bounds, { padding: 50 });
         }
       }
-    };
-
-    renderJobMarkers();
-  }, [jobs, showAllJobs, buildingRoute, selectedTech, routes]);
-  // Note: officeCoordinatesRef is a ref, not in deps - won't trigger re-renders
+  };
 
   const handleJobClick = (job) => {
     // Don't add assigned jobs to building route unless showing all
