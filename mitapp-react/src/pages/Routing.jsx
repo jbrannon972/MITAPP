@@ -39,7 +39,9 @@ const Routing = () => {
   const [showImportModal, setShowImportModal] = useState(false);
   const [showOptimizeModal, setShowOptimizeModal] = useState(false);
   const [optimizing, setOptimizing] = useState(false);
-  const [mapboxToken, setMapboxToken] = useState(safeGetLocalStorage('mapboxToken', ''));
+  // Default token provided as fallback - users can override in settings
+  const DEFAULT_MAPBOX_TOKEN = 'pk.eyJ1IjoiamJyYW5ub245NzIiLCJhIjoiY204NXN2Z2w2Mms4ODJrb2tvemV2ZnlicyJ9.84JYhRSUAF5_-vvdebw-TA';
+  const [mapboxToken, setMapboxToken] = useState(safeGetLocalStorage('mapboxToken', DEFAULT_MAPBOX_TOKEN));
   const [selectedTech, setSelectedTech] = useState(null);
   const [activeUsers, setActiveUsers] = useState([]);
   const [scheduleForDay, setScheduleForDay] = useState(null);
