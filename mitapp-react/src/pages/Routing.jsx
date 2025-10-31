@@ -28,6 +28,20 @@ import { ERROR_MESSAGES, SUCCESS_MESSAGES } from '../utils/routingConstants';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 
+// Define OFFICES as module-level constant (never changes, prevents re-render loops)
+const OFFICES = {
+  office_1: {
+    name: 'Conroe Office',
+    address: '10491 Fussel Rd, Conroe, TX 77303',
+    shortName: 'Conroe'
+  },
+  office_2: {
+    name: 'Katy Office',
+    address: '5115 E 5th St, Katy, TX 77493',
+    shortName: 'Katy'
+  }
+};
+
 const Routing = () => {
   const { staffingData, unifiedTechnicianData } = useData();
   const { currentUser } = useAuth();
@@ -49,20 +63,6 @@ const Routing = () => {
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const markersRef = useRef([]);
-
-  // Houston office locations (memoized to prevent infinite geocoding loop)
-  const offices = useMemo(() => ({
-    office_1: {
-      name: 'Conroe Office',
-      address: '10491 Fussel Rd, Conroe, TX 77303',
-      shortName: 'Conroe'
-    },
-    office_2: {
-      name: 'Katy Office',
-      address: '5115 E 5th St, Katy, TX 77493',
-      shortName: 'Katy'
-    }
-  }), []); // Empty deps - offices are static
 
   // Real-time subscriptions for jobs and routes
   useEffect(() => {
@@ -569,7 +569,7 @@ const Routing = () => {
         if (assignment.jobs.length === 0) continue;
 
         // Get start location for this tech
-        const startLocation = offices[assignment.tech.office].address;
+        const startLocation = OFFICES[assignment.tech.office].address;
 
         // Build distance matrix (if we have Mapbox token)
         let distanceMatrix = null;
@@ -636,7 +636,7 @@ const Routing = () => {
     } finally {
       setOptimizing(false);
     }
-  }, [mapboxToken, jobs, getLeadTechs, getDemoTechs, offices, saveRoutes, saveJobs]);
+  }, [mapboxToken, jobs, getLeadTechs, getDemoTechs, OFFICES, saveRoutes, saveJobs]);
 
   const handleSaveMapboxToken = useCallback(() => {
     if (mapboxToken) {
@@ -824,7 +824,7 @@ const Routing = () => {
                           <option value="">Assign to...</option>
                           {getLeadTechs().map(tech => (
                             <option key={tech.id} value={tech.id}>
-                              {tech.name} ({tech.zone}) - {offices[tech.office]?.shortName}
+                              {tech.name} ({tech.zone}) - {OFFICES[tech.office]?.shortName}
                             </option>
                           ))}
                         </select>
@@ -909,7 +909,7 @@ const Routing = () => {
         jobs={jobs}
         routes={routes}
         techs={allTechs}
-        offices={offices}
+        OFFICES={OFFICES}
         mapboxToken={mapboxToken}
         onUpdateRoutes={saveRoutes}
         onUpdateJobs={saveJobs}
@@ -933,7 +933,7 @@ const Routing = () => {
         jobs={jobs}
         routes={routes}
         techs={allTechs}
-        offices={offices}
+        OFFICES={OFFICES}
         onUpdateRoutes={saveRoutes}
         onUpdateJobs={saveJobs}
         selectedDate={selectedDate}

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, startTransition } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { getMapboxService } from '../../services/mapboxService';
@@ -36,32 +36,30 @@ const ManualMode = ({
   const [showGoogleSetup, setShowGoogleSetup] = useState(false);
   const [showTwoTechModal, setShowTwoTechModal] = useState(false);
   const [pendingRouteDropData, setPendingRouteDropData] = useState(null);
-  const officeCoordinatesRef = useRef({}); // Use ref instead of state - no need to trigger re-renders
-  const hasGeocodedRef = useRef(false); // Track if we've already geocoded offices
+  const [officeCoordinates, setOfficeCoordinates] = useState({});
 
-  // Geocode office addresses once on mount
+  // Geocode office addresses on mount
   useEffect(() => {
     const geocodeOffices = async () => {
-      // Only geocode once, ever
-      if (hasGeocodedRef.current) return;
-      hasGeocodedRef.current = true;
-
       const mapbox = getMapboxService();
+      const coords = {};
 
       for (const [key, office] of Object.entries(offices)) {
         if (office.address) {
           try {
             const coordinates = await mapbox.geocodeAddress(office.address);
-            officeCoordinatesRef.current[key] = { ...coordinates, name: office.name };
+            coords[key] = { ...coordinates, name: office.name };
             console.log(`📍 Geocoded ${office.name}:`, coordinates);
           } catch (error) {
             console.error(`Error geocoding ${office.name}:`, error);
           }
         }
       }
+
+      setOfficeCoordinates(coords);
     };
 
-    if (offices && Object.keys(offices).length > 0 && !hasGeocodedRef.current) {
+    if (offices && Object.keys(offices).length > 0) {
       geocodeOffices();
     }
   }, [offices]);
@@ -87,7 +85,6 @@ const ManualMode = ({
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const markersRef = useRef([]);
-  const isRenderingMarkersRef = useRef(false); // Prevent concurrent marker rendering
 
   // Color mapping for different job types
   const getJobTypeColor = (jobType) => {
@@ -142,18 +139,9 @@ const ManualMode = ({
     if (!mapInstanceRef.current) return;
 
     const renderJobMarkers = async () => {
-      // Prevent concurrent marker rendering
-      if (isRenderingMarkersRef.current) {
-        console.log('⏸️ Skipping marker render - already in progress');
-        return;
-      }
-
-      isRenderingMarkersRef.current = true;
-
-      try {
-        // Clear existing markers
-        markersRef.current.forEach(marker => marker.remove());
-        markersRef.current = [];
+      // Clear existing markers
+      markersRef.current.forEach(marker => marker.remove());
+      markersRef.current = [];
 
       const map = mapInstanceRef.current;
 
@@ -162,7 +150,7 @@ const ManualMode = ({
       if (map.getSource('route')) map.removeSource('route');
 
       // Add office markers using geocoded coordinates
-      Object.values(officeCoordinatesRef.current).forEach(office => {
+      Object.values(officeCoordinates).forEach(office => {
         if (!office.lng || !office.lat) return;
 
         const el = document.createElement('div');
@@ -270,7 +258,7 @@ const ManualMode = ({
       // Draw selected tech's route on the map
       if (selectedTech && routes[selectedTech]) {
         const techRoute = routes[selectedTech];
-        const officeCoords = officeCoordinatesRef.current[techRoute.tech.office];
+        const officeCoords = officeCoordinates[techRoute.tech.office];
 
         if (!officeCoords || !officeCoords.lng || !officeCoords.lat) {
           console.warn('Office coordinates not available for route drawing');
@@ -362,14 +350,10 @@ const ManualMode = ({
           map.fitBounds(bounds, { padding: 50 });
         }
       }
-      } finally {
-        isRenderingMarkersRef.current = false;
-      }
     };
 
     renderJobMarkers();
-  }, [jobs, showAllJobs, buildingRoute, selectedTech, routes]);
-  // Note: officeCoordinatesRef is intentionally NOT in deps - it's a ref that doesn't need to trigger re-renders
+  }, [jobs, showAllJobs, buildingRoute, selectedTech, routes, officeCoordinates]);
 
   const handleJobClick = (job) => {
     // Don't add assigned jobs to building route unless showing all
@@ -743,15 +727,14 @@ const ManualMode = ({
         updatedJobs = [...updatedJobs, ...geocodedHelperJobs];
       }
 
-      // Update state (batched to reduce marker recreation)
-      startTransition(() => {
-        // Clear building route if it was dragged
-        if (!fromTechId) {
-          setBuildingRoute([]);
-        }
-        setRoutes(updatedRoutes);
-        setJobs(updatedJobs);
-      });
+      // Clear building route if it was dragged
+      if (!fromTechId) {
+        setBuildingRoute([]);
+      }
+
+      // Update state
+      setRoutes(updatedRoutes);
+      setJobs(updatedJobs);
 
       // Save to Firebase
       await onUpdateRoutes(updatedRoutes);
