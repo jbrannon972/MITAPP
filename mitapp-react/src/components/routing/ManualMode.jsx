@@ -169,6 +169,7 @@ const ManualMode = ({
 
   // Update markers and routes when jobs, filter, or selected tech changes
   // DEBOUNCED to prevent Firebase real-time updates from destroying markers constantly
+  // BUT: buildingRoute changes render immediately for instant visual feedback
   useEffect(() => {
     if (!mapInstanceRef.current) return;
 
@@ -177,10 +178,11 @@ const ManualMode = ({
       clearTimeout(markerRenderTimeoutRef.current);
     }
 
-    // Debounce marker rendering by 100ms
+    // Very short debounce (16ms = 1 frame at 60fps) to batch rapid updates
+    // while still feeling instant. Prevents Firebase update thrashing.
     markerRenderTimeoutRef.current = setTimeout(() => {
       renderJobMarkers();
-    }, 100);
+    }, 16);
 
     return () => {
       if (markerRenderTimeoutRef.current) {
@@ -778,14 +780,14 @@ const ManualMode = ({
         updatedJobs = [...updatedJobs, ...geocodedHelperJobs];
       }
 
-      // Clear building route if it was dragged
+      // Update state FIRST
+      setRoutes(updatedRoutes);
+      setJobs(updatedJobs);
+
+      // Clear building route AFTER updating jobs (prevents re-adding assigned jobs)
       if (!fromTechId) {
         setBuildingRoute([]);
       }
-
-      // Update state
-      setRoutes(updatedRoutes);
-      setJobs(updatedJobs);
 
       // Save to Firebase
       await onUpdateRoutes(updatedRoutes);
