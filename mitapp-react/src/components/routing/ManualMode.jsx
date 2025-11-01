@@ -969,6 +969,22 @@ const ManualMode = ({
       // User cancelled or error occurred during sign-in
       if (error.message && error.message.includes('popup_closed_by_user')) {
         showAlert('Google sign-in was cancelled. Please try again when ready.', 'Sign-in Cancelled', 'info');
+      } else if (error.message && (error.message.includes('redirect_uri') || error.message.includes('invalid'))) {
+        // Specific error for redirect_uri_mismatch
+        const currentUrl = window.location.origin;
+        showAlert(
+          `Google OAuth Configuration Error!\n\n` +
+          `The app URL needs to be added to Google Cloud Console.\n\n` +
+          `Current URL: ${currentUrl}\n\n` +
+          `TO FIX:\n` +
+          `1. Go to: console.cloud.google.com/apis/credentials\n` +
+          `2. Edit the OAuth Client ID\n` +
+          `3. Add "${currentUrl}" to Authorized JavaScript Origins\n` +
+          `4. Save and wait 5 minutes\n\n` +
+          `See GOOGLE_CALENDAR_SETUP.md for detailed instructions.`,
+          'OAuth Configuration Required',
+          'error'
+        );
       } else {
         showAlert(`Error signing in to Google: ${error.message}\n\nPlease check your Google Client ID configuration.`, 'Sign-in Error', 'error');
       }
