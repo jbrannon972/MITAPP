@@ -585,6 +585,31 @@ const ManualMode = ({
         unassignableJobs: optimized.unassignableJobs?.length || 0
       });
 
+      // If distance matrix failed, calculate real drive times now
+      if (!distanceMatrix && optimized.optimizedJobs.length > 0) {
+        console.log('⚠️ Distance matrix unavailable, calculating real drive times...');
+        try {
+          let prevAddress = startLocation;
+          for (let i = 0; i < optimized.optimizedJobs.length; i++) {
+            const job = optimized.optimizedJobs[i];
+            if (job.address && prevAddress) {
+              try {
+                const result = await mapbox.getDrivingDistance(prevAddress, job.address);
+                job.travelTime = Math.ceil(result.durationMinutes || 20);
+                console.log(`  ✓ ${job.customerName}: ${job.travelTime}m drive`);
+              } catch (err) {
+                console.warn(`  ⚠️ ${job.customerName}: Using default 20m (API error)`);
+                job.travelTime = 20;
+              }
+              prevAddress = job.address;
+            }
+          }
+          console.log('✅ Real drive times calculated');
+        } catch (error) {
+          console.error('Error calculating drive times:', error);
+        }
+      }
+
       // Function to finalize route assignment (called after user confirms or if no unassignable jobs)
       const finalizeRouteAssignment = async () => {
         // Check for timeframe violations (exclude manually added jobs since user approved them)
