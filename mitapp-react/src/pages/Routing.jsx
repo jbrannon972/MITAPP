@@ -312,40 +312,42 @@ const Routing = () => {
       // Parse timeframe from route_description
       // Supports multiple formats:
       // - TF(09:00-13:00)
-      // - 9a-1p, 9am-1pm
-      // - 09:00-13:00
+      // - TF: 9a-1p, TF: 9am-1pm
+      // - TF: 9-1 (assumes AM to PM)
       let timeframeStart = '08:00';
       let timeframeEnd = '17:00';
 
       const description = job.route_description || '';
 
-      // Try TF() format first
+      // Try TF(HH:MM-HH:MM) format first
       const tfMatch = description.match(/TF\((\d+:\d+)-(\d+:\d+)\)/);
       if (tfMatch) {
         timeframeStart = tfMatch[1];
         timeframeEnd = tfMatch[2];
       } else {
-        // Try flexible formats: 9a-1p, 9am-1pm, 9:00-13:00, etc.
-        const flexMatch = description.match(/(\d{1,2})(?::(\d{2}))?(?:am?|a)?-(\d{1,2})(?::(\d{2}))?(?:pm?|p)?/i);
-        if (flexMatch) {
-          let startHour = parseInt(flexMatch[1]);
-          const startMin = flexMatch[2] || '00';
-          let endHour = parseInt(flexMatch[3]);
-          const endMin = flexMatch[4] || '00';
+        // Try TF: followed by flexible time formats
+        // Match "TF:" or "TF :" followed by timeframe
+        const tfFlexMatch = description.match(/TF\s*:\s*(\d{1,2})(?::(\d{2}))?(?:am?|a)?-(\d{1,2})(?::(\d{2}))?(?:pm?|p)?/i);
+        if (tfFlexMatch) {
+          let startHour = parseInt(tfFlexMatch[1]);
+          const startMin = tfFlexMatch[2] || '00';
+          let endHour = parseInt(tfFlexMatch[3]);
+          const endMin = tfFlexMatch[4] || '00';
 
-          // Check if it's am/pm format by looking at the original match
-          const hasAMPM = /(?:am?|pm?)/i.test(description);
-          if (hasAMPM) {
-            // If end hour is <= 12 and looks like PM (e.g., "9a-1p"), adjust to 24hr
-            const startMarker = description.toLowerCase().match(/(\d{1,2})(?:am?|a)/);
-            const endMarker = description.toLowerCase().match(/-(\d{1,2})(?:pm?|p)/);
+          // Check for explicit AM/PM markers
+          const matchedText = tfFlexMatch[0].toLowerCase();
+          const hasStartAM = matchedText.includes(`${startHour}a`) || matchedText.includes(`${startHour}am`);
+          const hasEndPM = matchedText.includes(`-${endHour}p`) || matchedText.includes(`-${endHour}pm`);
+          const hasEndAM = matchedText.includes(`-${endHour}a`) || matchedText.includes(`-${endHour}am`);
 
-            // If start has 'a' marker and hour is 12, it's midnight (00:00)
-            if (startMarker && startHour === 12) startHour = 0;
-
-            // If end has 'p' marker and hour < 12, add 12 for PM
-            if (endMarker && endHour < 12) endHour += 12;
-            // If end is 12p, keep it as 12
+          // If no explicit AM/PM markers, assume single digit hours are: start=AM, end=PM
+          if (!hasStartAM && !hasEndPM && !hasEndAM && startHour < 12 && endHour < 12) {
+            // "TF: 9-1" -> assume 9 AM to 1 PM
+            if (endHour < 12) endHour += 12;
+          } else {
+            // Handle explicit markers
+            if (hasStartAM && startHour === 12) startHour = 0;
+            if (hasEndPM && endHour < 12) endHour += 12;
           }
 
           timeframeStart = `${String(startHour).padStart(2, '0')}:${startMin}`;
@@ -939,6 +941,8 @@ const Routing = () => {
         staffingData={staffingData}
         showAlert={showAlert}
         showConfirm={showConfirm}
+        techStartTimes={techStartTimes}
+        setTechStartTimes={setTechStartTimes}
       />
     );
   };
@@ -961,6 +965,8 @@ const Routing = () => {
         scheduleForDay={scheduleForDay}
         showAlert={showAlert}
         showConfirm={showConfirm}
+        techStartTimes={techStartTimes}
+        setTechStartTimes={setTechStartTimes}
       />
     );
   };

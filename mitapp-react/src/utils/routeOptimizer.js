@@ -68,8 +68,9 @@ const calculateJobScore = (currentTime, job, travelTime) => {
  * @param {string} startLocation - Starting location address
  * @param {Array} distanceMatrix - Matrix of travel times
  * @param {string} shift - 'first' or 'second' shift
+ * @param {string} customStartTime - Optional custom start time in HH:MM format (e.g., "09:30")
  */
-export const optimizeRoute = async (jobs, startLocation, distanceMatrix, shift = 'first') => {
+export const optimizeRoute = async (jobs, startLocation, distanceMatrix, shift = 'first', customStartTime = null) => {
   if (!jobs || jobs.length === 0) {
     return {
       optimizedJobs: [],
@@ -79,10 +80,16 @@ export const optimizeRoute = async (jobs, startLocation, distanceMatrix, shift =
     };
   }
 
-  // Shift start times
+  // Determine start time
+  // Custom start time takes precedence, otherwise use shift defaults
   // First shift: 8:15 AM (495 minutes), goal return 4-6 PM
   // Second shift: 1:15 PM (795 minutes), goal return 9-11 PM
-  const shiftStartTime = shift === 'second' ? 13 * 60 + 15 : 8 * 60 + 15; // 1:15 PM or 8:15 AM
+  let shiftStartTime;
+  if (customStartTime) {
+    shiftStartTime = timeToMinutes(customStartTime);
+  } else {
+    shiftStartTime = shift === 'second' ? 13 * 60 + 15 : 8 * 60 + 15; // 1:15 PM or 8:15 AM
+  }
 
   const unassigned = [...jobs];
   const route = [];

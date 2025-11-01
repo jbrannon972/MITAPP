@@ -20,7 +20,9 @@ const ManualMode = ({
   scheduleForDay,
   staffingData,
   showAlert,
-  showConfirm
+  showConfirm,
+  techStartTimes,
+  setTechStartTimes
 }) => {
   const [jobs, setJobs] = useState(initialJobs);
   const [routes, setRoutes] = useState(initialRoutes);
@@ -549,11 +551,13 @@ const ManualMode = ({
       }
 
       // Optimize the route
+      const customStartTime = techStartTimes[targetTechId] || null;
       const optimized = await optimizeRoute(
         allJobsForTech,
         startLocation,
         distanceMatrix,
-        shift
+        shift,
+        customStartTime
       );
 
       console.log('🔍 Route optimization results:', {
@@ -1482,6 +1486,33 @@ const ManualMode = ({
                           </span>
                         )}
                         <span>{tech.name}</span>
+                        {!isOff && (
+                          <span
+                            title={techStartTimes[tech.id] ? `Custom start: ${techStartTimes[tech.id]}` : "Set start time"}
+                            style={{
+                              cursor: 'pointer',
+                              marginLeft: '4px',
+                              fontSize: '10px',
+                              color: techStartTimes[tech.id] ? 'var(--success-color)' : 'var(--text-muted)',
+                              flexShrink: 0
+                            }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const currentTime = techStartTimes[tech.id] || (tech.shift === 'second' ? '13:15' : '08:15');
+                              const newTime = prompt(`Set start time for ${tech.name}:`, currentTime);
+                              if (newTime && /^\d{1,2}:\d{2}$/.test(newTime)) {
+                                setTechStartTimes({ ...techStartTimes, [tech.id]: newTime });
+                              } else if (newTime === '' || newTime === null) {
+                                // Clear custom time
+                                const updated = { ...techStartTimes };
+                                delete updated[tech.id];
+                                setTechStartTimes(updated);
+                              }
+                            }}
+                          >
+                            <i className="fas fa-clock"></i>
+                          </span>
+                        )}
                         {isOff && (
                           <span style={{
                             backgroundColor: 'var(--danger-color)',

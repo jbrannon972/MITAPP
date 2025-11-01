@@ -19,7 +19,9 @@ const KanbanCalendar = ({
   selectedDate,
   scheduleForDay,
   showAlert,
-  showConfirm
+  showConfirm,
+  techStartTimes,
+  setTechStartTimes
 }) => {
   // Local state for instant UI updates
   // Initialize once and NEVER sync from props again - child is authoritative
@@ -249,7 +251,8 @@ const KanbanCalendar = ({
       // Optimize job order
       const optimized = await optimizeJobSelection(result.selectedJobs, tech, localRoutes, {
         offices,
-        shift: tech.name?.toLowerCase().includes('second') ? 'second' : 'first'
+        shift: tech.name?.toLowerCase().includes('second') ? 'second' : 'first',
+        customStartTime: techStartTimes[tech.id]
       });
 
       // Assign jobs
@@ -323,7 +326,8 @@ const KanbanCalendar = ({
     // Optimize job order
     const optimized = await optimizeJobSelection(jobsToAssign, tech, localRoutes, {
       offices,
-      shift: tech.name?.toLowerCase().includes('second') ? 'second' : 'first'
+      shift: tech.name?.toLowerCase().includes('second') ? 'second' : 'first',
+      customStartTime: techStartTimes[tech.id]
     });
 
     // Update routes
@@ -1419,8 +1423,34 @@ const KanbanCalendar = ({
                         {zonePrefix}
                       </span>
                     )}
-                    <h4 style={{ margin: 0, fontSize: '11px', fontWeight: '600', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {tech.name}
+                    <h4 style={{ margin: 0, fontSize: '11px', fontWeight: '600', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <span>{tech.name}</span>
+                      {!isOff && (
+                        <span
+                          title={techStartTimes[tech.id] ? `Custom start: ${techStartTimes[tech.id]}` : "Set start time"}
+                          style={{
+                            cursor: 'pointer',
+                            fontSize: '10px',
+                            color: techStartTimes[tech.id] ? 'var(--success-color)' : 'var(--text-muted)',
+                            flexShrink: 0
+                          }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const currentTime = techStartTimes[tech.id] || (tech.shift === 'second' ? '13:15' : '08:15');
+                            const newTime = prompt(`Set start time for ${tech.name}:`, currentTime);
+                            if (newTime && /^\d{1,2}:\d{2}$/.test(newTime)) {
+                              setTechStartTimes({ ...techStartTimes, [tech.id]: newTime });
+                            } else if (newTime === '' || newTime === null) {
+                              // Clear custom time
+                              const updated = { ...techStartTimes };
+                              delete updated[tech.id];
+                              setTechStartTimes(updated);
+                            }
+                          }}
+                        >
+                          <i className="fas fa-clock"></i>
+                        </span>
+                      )}
                     </h4>
                     {isOff && (
                       <span style={{

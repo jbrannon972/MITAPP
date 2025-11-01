@@ -107,11 +107,11 @@ export const smartFillTechDay = async (
  * @param {Array} jobs - Jobs to optimize
  * @param {Object} tech - Target technician
  * @param {Object} routes - Current routes
- * @param {Object} options - { offices, mapboxService, shift }
+ * @param {Object} options - { offices, mapboxService, shift, customStartTime }
  * @returns {Promise<Object>} - { optimizedJobs, preview }
  */
 export const optimizeJobSelection = async (jobs, tech, routes, options = {}) => {
-  const { offices, shift } = options;
+  const { offices, shift, customStartTime } = options;
 
   // Get office start location
   const officeKey = tech.office || 'office_1';
@@ -140,7 +140,8 @@ export const optimizeJobSelection = async (jobs, tech, routes, options = {}) => 
       allJobs,
       startLocation,
       null, // distance matrix will be calculated
-      shift || 'first'
+      shift || 'first',
+      customStartTime
     );
 
     // Extract only the newly added jobs in their optimized order
