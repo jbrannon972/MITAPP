@@ -359,11 +359,8 @@ class GoogleCalendarService {
       const startDateTime = `${date}T${returnTime}:00`;
       const endDateTime = `${date}T${eventEndTime}:00`;
 
-      // Include job's zone in the title for easy identification (use last job's zone)
-      const zonePrefix = lastJob.zone ? `[${lastJob.zone}] ` : '';
-
       const event = {
-        summary: `${zonePrefix}Return to ${officeInfo.name}`,
+        summary: `Return to ${officeInfo.name}`,
         location: officeInfo.address,
         description: `<strong>Drive back to office from last job</strong><br><br>` +
                      `<strong>Last Job:</strong> ${lastJob.customerName}<br>` +
@@ -391,8 +388,7 @@ class GoogleCalendarService {
           private: {
             eventType: 'return_to_office',
             travelTime: travelInfo.durationMinutes.toString(),
-            distance: travelInfo.distanceMiles,
-            zone: lastJob.zone || ''
+            distance: travelInfo.distanceMiles
           }
         }
       };
