@@ -1,7 +1,10 @@
 /**
  * Route Optimization Utility
- * Implements greedy nearest-neighbor algorithm with time windows
+ * Implements Mapbox Optimization API with geographic clustering for optimal routing
+ * Falls back to greedy nearest-neighbor for API failures or complex constraints
  */
+
+import { getMapboxService } from '../services/mapboxService';
 
 /**
  * Convert time string (HH:MM) to minutes from midnight
@@ -171,6 +174,197 @@ const greedyOptimize = (jobs, shiftStartTime, distanceMatrix, jobToIndex, strate
 };
 
 /**
+ * Geographic clustering using K-means algorithm
+ * Groups jobs into clusters based on location proximity
+ * @param {Array} jobs - Jobs with address property
+ * @param {number} k - Number of clusters
+ * @returns {Array} Array of job clusters
+ */
+const clusterJobsGeographically = async (jobs, k) => {
+  if (jobs.length <= k) {
+    // If we have fewer jobs than clusters, each job is its own cluster
+    return jobs.map(job => [job]);
+  }
+
+  try {
+    const mapboxService = getMapboxService();
+
+    // Geocode all job addresses
+    console.log(`🌍 Geocoding ${jobs.length} job addresses for clustering...`);
+    const jobsWithCoords = await Promise.all(
+      jobs.map(async (job) => {
+        const coords = await mapboxService.geocodeAddress(job.address);
+        return {
+          ...job,
+          coords: coords || { lat: 0, lng: 0 } // Fallback if geocoding fails
+        };
+      })
+    );
+
+    // Simple K-means clustering
+    // Initialize centroids randomly
+    let centroids = [];
+    const shuffled = [...jobsWithCoords].sort(() => Math.random() - 0.5);
+    for (let i = 0; i < k; i++) {
+      if (shuffled[i] && shuffled[i].coords) {
+        centroids.push({ ...shuffled[i].coords });
+      }
+    }
+
+    let iterations = 0;
+    const maxIterations = 10;
+    let clusters = [];
+
+    while (iterations < maxIterations) {
+      // Assign each job to nearest centroid
+      clusters = Array(k).fill(null).map(() => []);
+
+      for (const job of jobsWithCoords) {
+        let nearestCluster = 0;
+        let minDistance = Infinity;
+
+        for (let i = 0; i < centroids.length; i++) {
+          const distance = Math.sqrt(
+            Math.pow(job.coords.lat - centroids[i].lat, 2) +
+            Math.pow(job.coords.lng - centroids[i].lng, 2)
+          );
+
+          if (distance < minDistance) {
+            minDistance = distance;
+            nearestCluster = i;
+          }
+        }
+
+        clusters[nearestCluster].push(job);
+      }
+
+      // Recalculate centroids
+      const newCentroids = clusters.map(cluster => {
+        if (cluster.length === 0) {
+          return centroids[0]; // Keep old centroid if cluster is empty
+        }
+
+        const avgLat = cluster.reduce((sum, job) => sum + job.coords.lat, 0) / cluster.length;
+        const avgLng = cluster.reduce((sum, job) => sum + job.coords.lng, 0) / cluster.length;
+        return { lat: avgLat, lng: avgLng };
+      });
+
+      // Check for convergence
+      const converged = centroids.every((centroid, i) => {
+        const latDiff = Math.abs(centroid.lat - newCentroids[i].lat);
+        const lngDiff = Math.abs(centroid.lng - newCentroids[i].lng);
+        return latDiff < 0.001 && lngDiff < 0.001;
+      });
+
+      centroids = newCentroids;
+      iterations++;
+
+      if (converged) {
+        console.log(`✅ Clustering converged after ${iterations} iterations`);
+        break;
+      }
+    }
+
+    // Filter out empty clusters and return
+    const nonEmptyClusters = clusters.filter(c => c.length > 0);
+    console.log(`📦 Created ${nonEmptyClusters.length} clusters:`, nonEmptyClusters.map(c => c.length));
+
+    return nonEmptyClusters;
+  } catch (error) {
+    console.error('❌ Clustering error:', error);
+    // Fallback: return all jobs as single cluster
+    return [jobs];
+  }
+};
+
+/**
+ * Optimize route using Mapbox Optimization API
+ * Works best for ≤12 jobs (Mapbox limit)
+ * @param {Array} jobs - Jobs to optimize (max 12)
+ * @param {string} startLocation - Starting location address
+ * @param {number} shiftStartTime - Start time in minutes
+ * @returns {Object} Optimized route result
+ */
+const optimizeWithMapbox = async (jobs, startLocation, shiftStartTime) => {
+  try {
+    console.log(`🗺️  Using Mapbox Optimization API for ${jobs.length} jobs`);
+
+    const mapboxService = getMapboxService();
+
+    // Get job addresses
+    const jobAddresses = jobs.map(j => j.address);
+
+    // Call Mapbox Optimization API
+    const result = await mapboxService.getOptimizedRoute(jobAddresses, startLocation);
+
+    if (!result || !result.order) {
+      throw new Error('Invalid result from Mapbox API');
+    }
+
+    // Reorder jobs according to optimal order
+    const optimizedJobOrder = result.order.map(idx => jobs[idx]);
+
+    // Calculate arrival and end times for each job
+    const optimizedJobs = [];
+    let currentTime = shiftStartTime;
+
+    for (let i = 0; i < optimizedJobOrder.length; i++) {
+      const job = optimizedJobOrder[i];
+      const prevAddress = i === 0 ? startLocation : optimizedJobOrder[i - 1].address;
+
+      // Get actual travel time
+      const driveData = await mapboxService.getDrivingDistance(prevAddress, job.address);
+      const travelTime = driveData.durationMinutes;
+
+      const arrivalTime = currentTime + travelTime;
+      const windowStart = timeToMinutes(job.timeframeStart);
+      const actualStartTime = arrivalTime;
+      const endTime = actualStartTime + (job.duration * 60);
+
+      optimizedJobs.push({
+        ...job,
+        arrivalTime: minutesToTime(arrivalTime),
+        startTime: minutesToTime(actualStartTime),
+        endTime: minutesToTime(endTime),
+        travelTime: travelTime,
+        waitTime: 0
+      });
+
+      currentTime = endTime;
+    }
+
+    // Calculate totals
+    const totalDuration = optimizedJobs.reduce((sum, job) => sum + job.travelTime + (job.duration * 60), 0);
+    const totalDistance = optimizedJobs.reduce((sum, job) => sum + job.travelTime * 0.5, 0);
+
+    // Check for timeframe violations
+    const unassignableJobs = optimizedJobs.filter(job => {
+      const arrivalTime = timeToMinutes(job.arrivalTime);
+      const windowEnd = timeToMinutes(job.timeframeEnd);
+      return arrivalTime > windowEnd;
+    });
+
+    const assignableJobs = optimizedJobs.filter(job => {
+      const arrivalTime = timeToMinutes(job.arrivalTime);
+      const windowEnd = timeToMinutes(job.timeframeEnd);
+      return arrivalTime <= windowEnd;
+    });
+
+    console.log(`✅ Mapbox optimization complete: ${assignableJobs.length} jobs, ${Math.round(totalDuration)} min total, ${unassignableJobs.length} unassignable`);
+
+    return {
+      optimizedJobs: assignableJobs,
+      totalDuration: Math.round(totalDuration),
+      totalDistance: Math.round(totalDistance),
+      unassignableJobs: unassignableJobs
+    };
+  } catch (error) {
+    console.error('❌ Mapbox optimization error:', error);
+    return null; // Signal to use fallback
+  }
+};
+
+/**
  * Route optimization with multiple retry strategies
  * Tries different approaches to minimize unassignable jobs
  * @param {Array} jobs - Jobs to optimize
@@ -197,13 +391,91 @@ export const optimizeRoute = async (jobs, startLocation, distanceMatrix, shift =
     shiftStartTime = shift === 'second' ? 13 * 60 + 15 : 8 * 60 + 15; // 1:15 PM or 8:15 AM
   }
 
+  console.log(`🚀 Optimizing route with ${jobs.length} jobs starting at ${minutesToTime(shiftStartTime)}`);
+
+  // Strategy 1: Use Mapbox Optimization API for ≤12 jobs
+  if (jobs.length <= 12) {
+    console.log('📍 Route has ≤12 jobs, using Mapbox Optimization API');
+    const mapboxResult = await optimizeWithMapbox(jobs, startLocation, shiftStartTime);
+
+    if (mapboxResult) {
+      // Success with Mapbox API
+      console.log(`✅ Mapbox optimization successful: ${mapboxResult.optimizedJobs.length} jobs assigned`);
+      return mapboxResult;
+    } else {
+      console.log('⚠️ Mapbox optimization failed, falling back to greedy algorithm');
+      // Fall through to greedy algorithm
+    }
+  }
+
+  // Strategy 2: Cluster and optimize for >12 jobs
+  if (jobs.length > 12) {
+    console.log('📦 Route has >12 jobs, using geographic clustering + Mapbox optimization');
+
+    try {
+      // Determine number of clusters (aim for ~10 jobs per cluster)
+      const numClusters = Math.ceil(jobs.length / 10);
+      const clusters = await clusterJobsGeographically(jobs, numClusters);
+
+      console.log(`📦 Split ${jobs.length} jobs into ${clusters.length} clusters`);
+
+      // Optimize each cluster separately
+      const clusterResults = [];
+      for (let i = 0; i < clusters.length; i++) {
+        const cluster = clusters[i];
+        console.log(`🔧 Optimizing cluster ${i + 1}/${clusters.length} (${cluster.length} jobs)`);
+
+        if (cluster.length <= 12) {
+          // Use Mapbox for small clusters
+          const clusterResult = await optimizeWithMapbox(cluster, startLocation, shiftStartTime);
+          if (clusterResult) {
+            clusterResults.push(clusterResult);
+          } else {
+            // Fallback to greedy for this cluster
+            const jobToIndex = new Map();
+            cluster.forEach((job, idx) => jobToIndex.set(job.id, idx + 1));
+            const greedyResult = greedyOptimize(cluster, shiftStartTime, distanceMatrix, jobToIndex, 'greedy');
+            clusterResults.push(greedyResult);
+          }
+        } else {
+          // Use greedy for larger clusters
+          const jobToIndex = new Map();
+          cluster.forEach((job, idx) => jobToIndex.set(job.id, idx + 1));
+          const greedyResult = greedyOptimize(cluster, shiftStartTime, distanceMatrix, jobToIndex, 'greedy');
+          clusterResults.push(greedyResult);
+        }
+      }
+
+      // Combine all cluster results
+      const allOptimizedJobs = clusterResults.flatMap(r => r.optimizedJobs);
+      const allUnassignableJobs = clusterResults.flatMap(r => r.unassignableJobs);
+      const totalDuration = clusterResults.reduce((sum, r) => sum + r.totalDuration, 0);
+      const totalDistance = clusterResults.reduce((sum, r) => sum + r.totalDistance, 0);
+
+      console.log(`✅ Clustering optimization complete: ${allOptimizedJobs.length} jobs assigned, ${allUnassignableJobs.length} unassignable`);
+
+      return {
+        optimizedJobs: allOptimizedJobs,
+        totalDuration,
+        totalDistance,
+        unassignableJobs: allUnassignableJobs
+      };
+    } catch (error) {
+      console.error('❌ Clustering optimization failed:', error);
+      // Fall through to greedy algorithm
+    }
+  }
+
+  // Fallback: Greedy algorithm with multiple strategies
+  console.log('🔄 Using fallback greedy optimization');
+
   // Map jobs to their indices for distance lookup
   const jobToIndex = new Map();
   jobs.forEach((job, idx) => {
     jobToIndex.set(job.id, idx + 1); // +1 because index 0 is start location
   });
 
-  // Strategy 1: Try standard greedy with urgency weighting
+  // Try greedy with urgency weighting
   console.log('🔄 Optimization attempt 1: Greedy with urgency weighting');
   let result = greedyOptimize(jobs, shiftStartTime, distanceMatrix, jobToIndex, 'greedy');
 
