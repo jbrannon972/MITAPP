@@ -1310,7 +1310,18 @@ const KanbanCalendar = ({
           </div>
 
           {/* Tech Columns */}
-          {techs.map(tech => {
+          {/* Sort techs by zone */}
+          {[...techs].sort((a, b) => {
+            // Extract zone number for sorting (Z1, Z2, 2nd, etc)
+            const getZoneOrder = (zone) => {
+              if (!zone) return 999;
+              const zoneStr = String(zone).toLowerCase();
+              if (zoneStr.includes('2nd') || zoneStr.includes('second')) return 100;
+              const match = zoneStr.match(/\d+/);
+              return match ? parseInt(match[0]) : 999;
+            };
+            return getZoneOrder(a.zone) - getZoneOrder(b.zone);
+          }).map(tech => {
             const techRoute = localRoutes[tech.id];
 
             // Get all jobs assigned to this tech (both primary jobs and second tech assignments)
@@ -1321,6 +1332,19 @@ const KanbanCalendar = ({
             const isDragOver = dragOverTech === tech.id;
             const isDragging = draggedTech === tech.id;
             const isOff = isTechOff(tech.id);
+
+            // Format zone prefix (Z1, Z2, or 2nd)
+            const getZonePrefix = (zone) => {
+              if (!zone) return '';
+              const zoneStr = String(zone).toLowerCase();
+              if (zoneStr.includes('2nd') || zoneStr.includes('second')) return '2nd';
+              if (zoneStr.includes('zone')) {
+                const match = zoneStr.match(/\d+/);
+                return match ? `Z${match[0]}` : '';
+              }
+              return zone;
+            };
+            const zonePrefix = getZonePrefix(tech.zone);
 
             return (
               <div
@@ -1376,6 +1400,19 @@ const KanbanCalendar = ({
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '2px' }}>
                     <i className="fas fa-grip-vertical" style={{ color: 'var(--text-muted)', fontSize: '9px' }}></i>
+                    {zonePrefix && (
+                      <span style={{
+                        backgroundColor: 'var(--info-color)',
+                        color: 'white',
+                        padding: '2px 4px',
+                        borderRadius: '3px',
+                        fontSize: '8px',
+                        fontWeight: '700',
+                        flexShrink: 0
+                      }}>
+                        {zonePrefix}
+                      </span>
+                    )}
                     <h4 style={{ margin: 0, fontSize: '11px', fontWeight: '600', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {tech.name}
                     </h4>
@@ -1650,6 +1687,11 @@ const KanbanCalendar = ({
                               {job.startTime && job.endTime && (
                                 <div style={{ color: isOutsideTimeframe(job) ? 'var(--danger-color)' : 'var(--success-color)', fontWeight: '600', marginBottom: '2px' }}>
                                   <i className="fas fa-clock"></i> {job.startTime} - {job.endTime}
+                                </div>
+                              )}
+                              {job.timeframeStart && job.timeframeEnd && (
+                                <div style={{ fontSize: '8px', color: 'var(--text-muted)', marginBottom: '2px', fontStyle: 'italic' }}>
+                                  <i className="fas fa-calendar-check"></i> Requested: {job.timeframeStart} - {job.timeframeEnd}
                                 </div>
                               )}
                               <div>{job.duration}h{job.travelTime > 0 && ` • ${job.travelTime}m`}</div>

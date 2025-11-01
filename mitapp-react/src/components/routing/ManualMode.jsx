@@ -1395,12 +1395,36 @@ const ManualMode = ({
           </h4>
 
           <div style={{ flex: 1, overflow: 'auto' }}>
-            {techs.map(tech => {
+            {/* Sort techs by zone */}
+            {[...techs].sort((a, b) => {
+              // Extract zone number for sorting (Z1, Z2, 2nd, etc)
+              const getZoneOrder = (zone) => {
+                if (!zone) return 999;
+                const zoneStr = String(zone).toLowerCase();
+                if (zoneStr.includes('2nd') || zoneStr.includes('second')) return 100;
+                const match = zoneStr.match(/\d+/);
+                return match ? parseInt(match[0]) : 999;
+              };
+              return getZoneOrder(a.zone) - getZoneOrder(b.zone);
+            }).map(tech => {
               const techRoute = routes[tech.id];
               const jobCount = techRoute?.jobs?.length || 0;
               const totalHours = techRoute?.jobs?.reduce((sum, j) => sum + j.duration, 0) || 0;
               const isSelected = selectedTech === tech.id;
               const isOff = isTechOff(tech.id);
+
+              // Format zone prefix (Z1, Z2, or 2nd)
+              const getZonePrefix = (zone) => {
+                if (!zone) return '';
+                const zoneStr = String(zone).toLowerCase();
+                if (zoneStr.includes('2nd') || zoneStr.includes('second')) return '2nd';
+                if (zoneStr.includes('zone')) {
+                  const match = zoneStr.match(/\d+/);
+                  return match ? `Z${match[0]}` : '';
+                }
+                return zone;
+              };
+              const zonePrefix = getZonePrefix(tech.zone);
 
               return (
                 <div
@@ -1440,6 +1464,19 @@ const ManualMode = ({
                         alignItems: 'center',
                         gap: '4px'
                       }}>
+                        {zonePrefix && (
+                          <span style={{
+                            backgroundColor: 'var(--info-color)',
+                            color: 'white',
+                            padding: '2px 4px',
+                            borderRadius: '3px',
+                            fontSize: '9px',
+                            fontWeight: '700',
+                            flexShrink: 0
+                          }}>
+                            {zonePrefix}
+                          </span>
+                        )}
                         <span>{tech.name}</span>
                         {isOff && (
                           <span style={{
