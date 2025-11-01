@@ -166,8 +166,11 @@ class GoogleCalendarService {
     const startDateTime = `${date}T${job.startTime || job.timeframeStart}:00`;
     const endDateTime = `${date}T${job.endTime || job.timeframeEnd}:00`;
 
+    // Include zone in the title for easy identification
+    const zonePrefix = techInfo.zone ? `[${techInfo.zone}] ` : '';
+
     const event = {
-      summary: `${job.jobType} - ${job.customerName}`,
+      summary: `${zonePrefix}${job.jobType} - ${job.customerName}`,
       location: job.address,
       description: this.buildEventDescription(job, techInfo),
       start: {
@@ -191,7 +194,8 @@ class GoogleCalendarService {
           jobId: job.id,
           jobType: job.jobType,
           duration: job.duration.toString(),
-          requiresTwoTechs: job.requiresTwoTechs ? 'true' : 'false'
+          requiresTwoTechs: job.requiresTwoTechs ? 'true' : 'false',
+          zone: techInfo.zone || ''
         }
       }
     };
@@ -211,43 +215,86 @@ class GoogleCalendarService {
   }
 
   /**
-   * Build detailed event description
+   * Robust phone number formatter - converts phone numbers to clickable HTML links
+   * Handles various formats including:
+   * - (123) 456-7890
+   * - 123-456-7890
+   * - 123.456.7890
+   * - 123 456 7890
+   * - 1234567890
+   * - +1 (123) 456-7890
+   * - 1-123-456-7890
+   * - And many more variations
+   */
+  formatPhoneNumbersToLinks(text) {
+    if (!text) return text;
+
+    // Comprehensive pattern to match various US phone number formats
+    // Matches optional country code, area code with or without parens, and number with various separators
+    const phonePattern = /(\+?1[-.\s]?)?(\(?\d{3}\)?[-.\s]?)(\d{3}[-.\s]?)(\d{4})\b/g;
+
+    return text.replace(phonePattern, (match) => {
+      // Extract only digits for the tel: link
+      const digitsOnly = match.replace(/\D/g, '');
+
+      // Ensure we have a valid phone number (10 or 11 digits)
+      if (digitsOnly.length === 10 || digitsOnly.length === 11) {
+        // Use the last 10 digits for the tel: link, add +1 country code
+        const phoneNumber = digitsOnly.slice(-10);
+        // Preserve original formatting in the display text
+        return `<a href="tel:+1${phoneNumber}" style="color: #1a73e8; text-decoration: underline;">${match}</a>`;
+      }
+
+      return match; // Return unchanged if not a valid phone number
+    });
+  }
+
+  /**
+   * Build detailed event description with HTML formatting
    */
   buildEventDescription(job, techInfo) {
-    let description = `Job Details:\n\n`;
-    description += `Customer: ${job.customerName}\n`;
-    description += `Address: ${job.address}\n`;
-    description += `Job Type: ${job.jobType}\n`;
-    description += `Duration: ${job.duration} hours\n`;
+    let description = `<strong>Job Details:</strong><br><br>`;
+    description += `<strong>Customer:</strong> ${job.customerName}<br>`;
+    description += `<strong>Address:</strong> ${job.address}<br>`;
+    description += `<strong>Job Type:</strong> ${job.jobType}<br>`;
+    description += `<strong>Duration:</strong> ${job.duration} hours<br>`;
 
     if (job.timeframeStart && job.timeframeEnd) {
-      description += `Timeframe Window: ${job.timeframeStart} - ${job.timeframeEnd}\n`;
+      description += `<strong>Timeframe Window:</strong> ${job.timeframeStart} - ${job.timeframeEnd}<br>`;
     }
 
     if (job.requiresTwoTechs) {
-      description += `⚠️ Requires 2 Technicians\n`;
+      description += `<br>⚠️ <strong>Requires 2 Technicians</strong><br>`;
     }
 
     if (job.demoTech) {
-      description += `Demo Tech: ${job.demoTech}\n`;
+      description += `<strong>Demo Tech:</strong> ${job.demoTech}<br>`;
     }
 
     if (job.travelTime) {
-      description += `\nDrive Time: ${job.travelTime} minutes\n`;
+      description += `<br><strong>Drive Time:</strong> ${job.travelTime} minutes<br>`;
     }
 
     if (job.phone) {
-      // Format phone number as clickable tel: link for mobile devices
+      // Create clickable phone link with robust formatting
       const phoneDigits = job.phone.replace(/\D/g, ''); // Extract only digits
-      description += `\nCustomer Phone: tel:${phoneDigits} (${job.phone})\n`;
+      if (phoneDigits.length >= 10) {
+        const formattedPhone = this.formatPhoneNumbersToLinks(job.phone);
+        description += `<br><strong>Customer Phone:</strong> ${formattedPhone}<br>`;
+      } else {
+        description += `<br><strong>Customer Phone:</strong> ${job.phone}<br>`;
+      }
     }
 
     if (job.description) {
-      description += `\nNotes: ${job.description}\n`;
+      // Also format any phone numbers in the description/notes field
+      const notesWithLinks = this.formatPhoneNumbersToLinks(job.description);
+      description += `<br><strong>Notes:</strong> ${notesWithLinks}<br>`;
     }
 
-    description += `\n---\nAssigned to: ${techInfo.name}\n`;
-    description += `Zone: ${techInfo.zone}\n`;
+    description += `<br><hr><br>`;
+    description += `<strong>Assigned to:</strong> ${techInfo.name}<br>`;
+    description += `<strong>Zone:</strong> ${techInfo.zone || 'N/A'}<br>`;
 
     return description;
   }
@@ -316,16 +363,19 @@ class GoogleCalendarService {
       const startDateTime = `${date}T${returnTime}:00`;
       const endDateTime = `${date}T${eventEndTime}:00`;
 
+      // Include zone in the title for easy identification
+      const zonePrefix = techInfo.zone ? `[${techInfo.zone}] ` : '';
+
       const event = {
-        summary: `Return to ${officeInfo.name}`,
+        summary: `${zonePrefix}Return to ${officeInfo.name}`,
         location: officeInfo.address,
-        description: `Drive back to office from last job\n\n` +
-                     `Last Job: ${lastJob.customerName}\n` +
-                     `From: ${lastJob.address}\n` +
-                     `To: ${officeInfo.address}\n\n` +
-                     `Estimated Drive Time: ${travelInfo.durationMinutes} minutes\n` +
-                     `Distance: ${travelInfo.distanceMiles} miles\n\n` +
-                     `Expected Arrival: ${returnTime}`,
+        description: `<strong>Drive back to office from last job</strong><br><br>` +
+                     `<strong>Last Job:</strong> ${lastJob.customerName}<br>` +
+                     `<strong>From:</strong> ${lastJob.address}<br>` +
+                     `<strong>To:</strong> ${officeInfo.address}<br><br>` +
+                     `<strong>Estimated Drive Time:</strong> ${travelInfo.durationMinutes} minutes<br>` +
+                     `<strong>Distance:</strong> ${travelInfo.distanceMiles} miles<br><br>` +
+                     `<strong>Expected Arrival:</strong> ${returnTime}`,
         start: {
           dateTime: startDateTime,
           timeZone: 'America/Chicago'
@@ -345,7 +395,8 @@ class GoogleCalendarService {
           private: {
             eventType: 'return_to_office',
             travelTime: travelInfo.durationMinutes.toString(),
-            distance: travelInfo.distanceMiles
+            distance: travelInfo.distanceMiles,
+            zone: techInfo.zone || ''
           }
         }
       };
