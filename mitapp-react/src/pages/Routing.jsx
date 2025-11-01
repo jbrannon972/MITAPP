@@ -294,7 +294,48 @@ const Routing = () => {
       const zone = titleParts[3] || 'Other'; // Extract zone from route_title (Z1, Z2, Z3, etc.)
 
       // Parse timeframe from route_description
-      const tfMatch = job.route_description?.match(/TF\((\d+:\d+)-(\d+:\d+)\)/);
+      // Supports multiple formats:
+      // - TF(09:00-13:00)
+      // - 9a-1p, 9am-1pm
+      // - 09:00-13:00
+      let timeframeStart = '08:00';
+      let timeframeEnd = '17:00';
+
+      const description = job.route_description || '';
+
+      // Try TF() format first
+      const tfMatch = description.match(/TF\((\d+:\d+)-(\d+:\d+)\)/);
+      if (tfMatch) {
+        timeframeStart = tfMatch[1];
+        timeframeEnd = tfMatch[2];
+      } else {
+        // Try flexible formats: 9a-1p, 9am-1pm, 9:00-13:00, etc.
+        const flexMatch = description.match(/(\d{1,2})(?::(\d{2}))?(?:am?|a)?-(\d{1,2})(?::(\d{2}))?(?:pm?|p)?/i);
+        if (flexMatch) {
+          let startHour = parseInt(flexMatch[1]);
+          const startMin = flexMatch[2] || '00';
+          let endHour = parseInt(flexMatch[3]);
+          const endMin = flexMatch[4] || '00';
+
+          // Check if it's am/pm format by looking at the original match
+          const hasAMPM = /(?:am?|pm?)/i.test(description);
+          if (hasAMPM) {
+            // If end hour is <= 12 and looks like PM (e.g., "9a-1p"), adjust to 24hr
+            const startMarker = description.toLowerCase().match(/(\d{1,2})(?:am?|a)/);
+            const endMarker = description.toLowerCase().match(/-(\d{1,2})(?:pm?|p)/);
+
+            // If start has 'a' marker and hour is 12, it's midnight (00:00)
+            if (startMarker && startHour === 12) startHour = 0;
+
+            // If end has 'p' marker and hour < 12, add 12 for PM
+            if (endMarker && endHour < 12) endHour += 12;
+            // If end is 12p, keep it as 12
+          }
+
+          timeframeStart = `${String(startHour).padStart(2, '0')}:${startMin}`;
+          timeframeEnd = `${String(endHour).padStart(2, '0')}:${endMin}`;
+        }
+      }
 
       // Clean phone number and make it a tel: link
       const cleanPhone = cleanPhoneNumber(job.customer_phone);
@@ -309,8 +350,8 @@ const Routing = () => {
         address: job.customer_address || '',
         zone: zone,
         duration: parseFloat(job.duration) || 1,
-        timeframeStart: tfMatch ? tfMatch[1] : '08:00',  // Allow jobs to start as early as 8:00 (techs leave office at 8:15)
-        timeframeEnd: tfMatch ? tfMatch[2] : '17:00',
+        timeframeStart: timeframeStart,
+        timeframeEnd: timeframeEnd,
         jobType: jobType,
         requiresTwoTechs: requiresTwoTechs,
         description: job.route_description || '',
