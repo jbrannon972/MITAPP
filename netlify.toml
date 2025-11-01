@@ -1,14 +1,14 @@
 # Netlify Configuration for MITAPP React App
 
 [build]
-  # Build command - install dependencies first, then build
-  command = "cd mitapp-react && npm install && npm run build"
+  # Build command - use npm ci for faster, more reliable builds
+  command = "npm ci && npm run build"
 
   # Directory to publish
-  publish = "mitapp-react/dist"
+  publish = "dist"
 
-  # Base directory
-  base = "/"
+  # Base directory - set to mitapp-react so we don't need cd
+  base = "mitapp-react"
 
 # Redirects for Single Page Application
 [[redirects]]
@@ -19,6 +19,8 @@
 # Build environment
 [build.environment]
   NODE_VERSION = "20"
+  NPM_FLAGS = "--prefer-offline --no-audit"
+  CI = "true"
 
 # Headers for security and performance
 [[headers]]
