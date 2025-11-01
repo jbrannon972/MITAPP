@@ -43,7 +43,7 @@ const ManualMode = ({
   const [officeCoordinates, setOfficeCoordinates] = useState({});
   const officesGeocodedRef = useRef(false);
 
-  // Geocode office addresses on mount
+  // Geocode office addresses once on mount
   useEffect(() => {
     const geocodeOffices = async () => {
       // Only geocode once per session
@@ -73,7 +73,8 @@ const ManualMode = ({
     if (offices && Object.keys(offices).length > 0 && !officesGeocodedRef.current) {
       geocodeOffices();
     }
-  }, [offices]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run once on mount
 
   // Update local state when props change
   useEffect(() => {

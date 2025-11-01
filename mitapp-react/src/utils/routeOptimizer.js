@@ -22,37 +22,37 @@ const minutesToTime = (minutes) => {
 
 /**
  * Check if arrival time is within job's time window
- * Allows arrival up to 60 minutes early (techs can wait/arrive early)
+ * Allows arrival up to 90 minutes early (techs can wait/arrive early for flexible jobs)
  */
 const isWithinTimeWindow = (arrivalTime, job) => {
   const startWindow = timeToMinutes(job.timeframeStart);
   const endWindow = timeToMinutes(job.timeframeEnd);
-  const earlyArrivalBuffer = 60; // Can arrive up to 60 minutes early
+  const earlyArrivalBuffer = 90; // Can arrive up to 90 minutes early
   return arrivalTime >= (startWindow - earlyArrivalBuffer) && arrivalTime <= endWindow;
 };
 
 /**
  * Calculate the score for assigning a job to a time slot
  * Lower score is better
- * Allows arrival up to 60 minutes before timeframe start
+ * Allows arrival up to 90 minutes before timeframe start for more flexibility
  */
 const calculateJobScore = (currentTime, job, travelTime) => {
   const arrivalTime = currentTime + travelTime;
   const windowStart = timeToMinutes(job.timeframeStart);
   const windowEnd = timeToMinutes(job.timeframeEnd);
-  const earlyArrivalBuffer = 60; // Can arrive up to 60 minutes early
+  const earlyArrivalBuffer = 90; // Can arrive up to 90 minutes early
 
   // Can't arrive after window ends
   if (arrivalTime > windowEnd) {
     return Infinity;
   }
 
-  // Can't arrive more than 60 minutes before window starts
+  // Can't arrive more than 90 minutes before window starts
   if (arrivalTime < (windowStart - earlyArrivalBuffer)) {
     return Infinity;
   }
 
-  // Wait time if we arrive early (up to 60 min early is ok)
+  // Wait time if we arrive early (up to 90 min early is ok)
   const waitTime = Math.max(0, windowStart - arrivalTime);
 
   // Preference for arriving closer to window start (but early is acceptable)
@@ -108,14 +108,31 @@ export const optimizeRoute = async (jobs, startLocation, distanceMatrix, shift =
     let bestScore = Infinity;
     let bestTravelTime = 0;
 
-    // Find best next job using greedy approach
+    // Find best next job using improved greedy approach with urgency weighting
     for (const job of unassigned) {
       const jobIndex = jobToIndex.get(job.id);
       const travelTime = distanceMatrix
         ? distanceMatrix[currentLocationIndex][jobIndex]
         : 20; // Default 20 min if no matrix
 
-      const score = calculateJobScore(currentTime, job, travelTime);
+      let score = calculateJobScore(currentTime, job, travelTime);
+
+      // Add urgency factor: jobs with earlier deadlines get priority
+      // This prevents the algorithm from "painting itself into a corner"
+      if (score !== Infinity) {
+        const arrivalTime = currentTime + travelTime;
+        const windowEnd = timeToMinutes(job.timeframeEnd);
+        const timeUntilDeadline = windowEnd - arrivalTime;
+
+        // If deadline is within 2 hours, heavily prioritize this job
+        if (timeUntilDeadline < 120) {
+          score = score * 0.5; // Make urgent jobs much more attractive
+        }
+        // If deadline is within 3 hours, moderately prioritize
+        else if (timeUntilDeadline < 180) {
+          score = score * 0.7;
+        }
+      }
 
       if (score < bestScore) {
         bestScore = score;
