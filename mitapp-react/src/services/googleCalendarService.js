@@ -166,8 +166,8 @@ class GoogleCalendarService {
     const startDateTime = `${date}T${job.startTime || job.timeframeStart}:00`;
     const endDateTime = `${date}T${job.endTime || job.timeframeEnd}:00`;
 
-    // Include zone in the title for easy identification
-    const zonePrefix = techInfo.zone ? `[${techInfo.zone}] ` : '';
+    // Include job's zone in the title for easy identification
+    const zonePrefix = job.zone ? `[${job.zone}] ` : '';
 
     const event = {
       summary: `${zonePrefix}${job.jobType} - ${job.customerName}`,
@@ -195,7 +195,7 @@ class GoogleCalendarService {
           jobType: job.jobType,
           duration: job.duration.toString(),
           requiresTwoTechs: job.requiresTwoTechs ? 'true' : 'false',
-          zone: techInfo.zone || ''
+          zone: job.zone || ''
         }
       }
     };
@@ -292,10 +292,6 @@ class GoogleCalendarService {
       description += `<br><strong>Notes:</strong> ${notesWithLinks}<br>`;
     }
 
-    description += `<br><hr><br>`;
-    description += `<strong>Assigned to:</strong> ${techInfo.name}<br>`;
-    description += `<strong>Zone:</strong> ${techInfo.zone || 'N/A'}<br>`;
-
     return description;
   }
 
@@ -363,8 +359,8 @@ class GoogleCalendarService {
       const startDateTime = `${date}T${returnTime}:00`;
       const endDateTime = `${date}T${eventEndTime}:00`;
 
-      // Include zone in the title for easy identification
-      const zonePrefix = techInfo.zone ? `[${techInfo.zone}] ` : '';
+      // Include job's zone in the title for easy identification (use last job's zone)
+      const zonePrefix = lastJob.zone ? `[${lastJob.zone}] ` : '';
 
       const event = {
         summary: `${zonePrefix}Return to ${officeInfo.name}`,
@@ -396,7 +392,7 @@ class GoogleCalendarService {
             eventType: 'return_to_office',
             travelTime: travelInfo.durationMinutes.toString(),
             distance: travelInfo.distanceMiles,
-            zone: techInfo.zone || ''
+            zone: lastJob.zone || ''
           }
         }
       };
