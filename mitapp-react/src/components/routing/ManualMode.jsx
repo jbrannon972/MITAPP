@@ -28,6 +28,10 @@ const ManualMode = ({
   const [routes, setRoutes] = useState(initialRoutes);
   const [buildingRoute, setBuildingRoute] = useState([]);
   const [showAllJobs, setShowAllJobs] = useState(false);
+  const [hideOffTechs, setHideOffTechs] = useState(() => {
+    const saved = localStorage.getItem('hideOffTechs');
+    return saved ? JSON.parse(saved) : false;
+  });
   const [hoveredJob, setHoveredJob] = useState(null);
   const [draggedRoute, setDraggedRoute] = useState(null);
   const [selectedJobOnMap, setSelectedJobOnMap] = useState(null);
@@ -84,6 +88,11 @@ const ManualMode = ({
   useEffect(() => {
     setRoutes(initialRoutes);
   }, [initialRoutes]);
+
+  // Save hideOffTechs preference to localStorage
+  useEffect(() => {
+    localStorage.setItem('hideOffTechs', JSON.stringify(hideOffTechs));
+  }, [hideOffTechs]);
 
   // Cleanup hover timeout on unmount
   useEffect(() => {
@@ -1052,6 +1061,26 @@ const ManualMode = ({
             />
             <span>Show All Jobs</span>
           </label>
+          <label style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            cursor: 'pointer',
+            padding: '6px 12px',
+            backgroundColor: 'var(--surface-color)',
+            borderRadius: '4px',
+            border: '2px solid #e5e7eb',
+            fontSize: '13px',
+            fontWeight: '500'
+          }}>
+            <input
+              type="checkbox"
+              checked={hideOffTechs}
+              onChange={(e) => setHideOffTechs(e.target.checked)}
+              style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+            />
+            <span>Hide Off</span>
+          </label>
         </div>
       </div>
 
@@ -1422,12 +1451,14 @@ const ManualMode = ({
         {/* Compact Tech List Section */}
         <div className="card" style={{ padding: '12px', height: '100%', overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
           <h4 style={{ margin: 0, marginBottom: '12px', fontSize: '14px' }}>
-            <i className="fas fa-users"></i> Techs ({techs.length})
+            <i className="fas fa-users"></i> Techs ({techs.filter(tech => !hideOffTechs || !isTechOff(tech.id)).length})
           </h4>
 
           <div style={{ flex: 1, overflow: 'auto' }}>
-            {/* Sort techs by zone */}
-            {[...techs].sort((a, b) => {
+            {/* Filter and sort techs by zone */}
+            {[...techs]
+              .filter(tech => !hideOffTechs || !isTechOff(tech.id))
+              .sort((a, b) => {
               // Extract zone number for sorting (Z1, Z2, 2nd, etc)
               const getZoneOrder = (zone) => {
                 if (!zone) return 999;

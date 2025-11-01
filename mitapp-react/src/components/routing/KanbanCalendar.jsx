@@ -54,6 +54,12 @@ const KanbanCalendar = ({
   // Tech recommendation tooltip state
   const [techRecommendation, setTechRecommendation] = useState(null);
 
+  // Hide Off techs toggle state
+  const [hideOffTechs, setHideOffTechs] = useState(() => {
+    const saved = localStorage.getItem('hideOffTechs');
+    return saved ? JSON.parse(saved) : false;
+  });
+
   // Get all techs including demo techs for second tech assignment
   const allTechs = [...techs];
   const demoTechs = techs.filter(t => t.isDemoTech || t.role?.toLowerCase().includes('demo'));
@@ -80,6 +86,11 @@ const KanbanCalendar = ({
     setLocalRoutes(initialRoutes);
     hasInitialized.current = true;
   }, [selectedDate]);
+
+  // Save hideOffTechs preference to localStorage
+  useEffect(() => {
+    localStorage.setItem('hideOffTechs', JSON.stringify(hideOffTechs));
+  }, [hideOffTechs]);
 
   // Calculate return to office times - debounced to avoid excessive API calls
   useEffect(() => {
@@ -1171,6 +1182,26 @@ const KanbanCalendar = ({
               <i className="fas fa-spinner fa-spin"></i> Calculating...
             </span>
           )}
+          <label style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            cursor: 'pointer',
+            padding: '4px 8px',
+            backgroundColor: 'var(--surface-color)',
+            borderRadius: '4px',
+            border: '1px solid #e5e7eb',
+            fontSize: '11px',
+            fontWeight: '500'
+          }}>
+            <input
+              type="checkbox"
+              checked={hideOffTechs}
+              onChange={(e) => setHideOffTechs(e.target.checked)}
+              style={{ width: '14px', height: '14px', cursor: 'pointer' }}
+            />
+            <span>Hide Off</span>
+          </label>
           <div style={{ fontSize: '12px', fontWeight: '500', color: 'var(--info-color)' }}>
             {localJobs.filter(j => j.assignedTech).length} / {localJobs.length} assigned
           </div>
@@ -1320,8 +1351,10 @@ const KanbanCalendar = ({
           </div>
 
           {/* Tech Columns */}
-          {/* Sort techs by zone */}
-          {[...techs].sort((a, b) => {
+          {/* Filter and sort techs by zone */}
+          {[...techs]
+            .filter(tech => !hideOffTechs || !isTechOff(tech.id))
+            .sort((a, b) => {
             // Extract zone number for sorting (Z1, Z2, 2nd, etc)
             const getZoneOrder = (zone) => {
               if (!zone) return 999;
