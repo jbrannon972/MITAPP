@@ -1546,7 +1546,7 @@ const KanbanCalendar = ({
                     )}
                     <i className="fas fa-map-marked-alt" style={{ color: 'var(--info-color)', fontSize: '10px' }}></i>
                   </div>
-                  <div style={{ marginTop: '4px', display: 'flex', gap: '6px', fontSize: '9px', fontWeight: '500' }}>
+                  <div style={{ marginTop: '4px', display: 'flex', gap: '6px', fontSize: '9px', fontWeight: '500', flexWrap: 'wrap' }}>
                     <span style={{ color: 'var(--info-color)' }}>{techJobs.length}j</span>
                     <span style={{ color: 'var(--success-color)' }}>{totalHours.toFixed(1)}h</span>
                     {totalDriveTime > 0 && (
@@ -1555,6 +1555,14 @@ const KanbanCalendar = ({
                         title={`Total drive time: ${Math.floor(totalDriveTime / 60)}h ${totalDriveTime % 60}m (includes office to first job, between jobs, and return to office)`}
                       >
                         <i className="fas fa-car"></i> {totalDriveTime}m
+                      </span>
+                    )}
+                    {returnToOfficeTimes[tech.id]?.time && (
+                      <span
+                        style={{ color: 'var(--text-secondary)' }}
+                        title={`Return to office time (${returnToOfficeTimes[tech.id].driveTime}m drive)`}
+                      >
+                        <i className="fas fa-home"></i> {returnToOfficeTimes[tech.id].time}
                       </span>
                     )}
                     {techRoute?.demoTech && (
