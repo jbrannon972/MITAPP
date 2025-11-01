@@ -41,10 +41,16 @@ const ManualMode = ({
   const [showTwoTechModal, setShowTwoTechModal] = useState(false);
   const [pendingRouteDropData, setPendingRouteDropData] = useState(null);
   const [officeCoordinates, setOfficeCoordinates] = useState({});
+  const officesGeocodedRef = useRef(false);
 
   // Geocode office addresses on mount
   useEffect(() => {
     const geocodeOffices = async () => {
+      // Only geocode once per session
+      if (officesGeocodedRef.current) {
+        return;
+      }
+
       const mapbox = getMapboxService();
       const coords = {};
 
@@ -61,9 +67,10 @@ const ManualMode = ({
       }
 
       setOfficeCoordinates(coords);
+      officesGeocodedRef.current = true;
     };
 
-    if (offices && Object.keys(offices).length > 0) {
+    if (offices && Object.keys(offices).length > 0 && !officesGeocodedRef.current) {
       geocodeOffices();
     }
   }, [offices]);
@@ -566,6 +573,118 @@ const ManualMode = ({
         unassignableJobs: optimized.unassignableJobs?.length || 0
       });
 
+      // Function to finalize route assignment (called after user confirms or if no unassignable jobs)
+      const finalizeRouteAssignment = async () => {
+        // Check for timeframe violations (exclude manually added jobs since user approved them)
+        const violations = optimized.optimizedJobs.filter(job => {
+          // Skip jobs that were manually added after being unassignable
+          if (job.wasUnassignable) return false;
+
+          const startMinutes = parseInt(job.timeframeStart.split(':')[0]) * 60 + parseInt(job.timeframeStart.split(':')[1]);
+          const endMinutes = parseInt(job.timeframeEnd.split(':')[0]) * 60 + parseInt(job.timeframeEnd.split(':')[1]);
+          const arrivalMinutes = parseInt(job.arrivalTime.split(':')[0]) * 60 + parseInt(job.arrivalTime.split(':')[1]);
+          return arrivalMinutes > endMinutes;
+        });
+
+        if (violations.length > 0) {
+          const violationMessages = violations.map(v =>
+            `${v.customerName}: Arrives ${v.arrivalTime} but window closes at ${v.timeframeEnd}`
+          ).join('\n');
+
+          showAlert(`TIMEFRAME VIOLATIONS DETECTED:\n\n${violationMessages}\n\nThese jobs cannot be completed within their timeframe windows. Please adjust the route or reassign jobs.`, 'Timeframe Conflict', 'warning');
+          return;
+        }
+
+        // Update routes
+        const updatedRoutes = { ...routes };
+
+        // Remove from source tech if applicable
+        if (fromTechId) {
+          updatedRoutes[fromTechId] = {
+            ...updatedRoutes[fromTechId],
+            jobs: updatedRoutes[fromTechId].jobs.filter(
+              j => !routeJobs.some(rj => rj.id === j.id)
+            )
+          };
+        }
+
+        // Add optimized jobs to target tech
+        if (!updatedRoutes[targetTechId]) {
+          updatedRoutes[targetTechId] = {
+            tech: targetTech,
+            jobs: []
+          };
+        }
+
+        // Determine route-level demo tech based on job assignments
+        // If all jobs with assigned demo techs have the same DT, set it at route level
+        const jobsWithDT = optimized.optimizedJobs.filter(j => j.assignedDemoTech);
+        let routeLevelDemoTech = null;
+
+        if (jobsWithDT.length > 0) {
+          const uniqueDTs = [...new Set(jobsWithDT.map(j => j.assignedDemoTech.name))];
+          if (uniqueDTs.length === 1) {
+            // All jobs have same DT - set at route level
+            routeLevelDemoTech = uniqueDTs[0];
+            console.log(`✅ Setting route-level DT: ${routeLevelDemoTech} (${jobsWithDT.length} jobs)`);
+          } else {
+            // Multiple DTs - use most common one or leave null
+            console.log(`⚠️ Multiple DTs on route: ${uniqueDTs.join(', ')}`);
+          }
+        }
+
+        updatedRoutes[targetTechId] = {
+          ...updatedRoutes[targetTechId],
+          jobs: optimized.optimizedJobs,
+          demoTech: routeLevelDemoTech, // Set route-level DT for Kanban display
+          summary: {
+            totalDuration: optimized.totalDuration,
+            totalDistance: optimized.totalDistance
+          }
+        };
+
+        // Update jobs with new assignments
+        let updatedJobs = jobs.map(job => {
+          const optimizedJob = optimized.optimizedJobs.find(oj => oj.id === job.id);
+          if (optimizedJob) {
+            return {
+              ...job,
+              ...optimizedJob,
+              assignedTech: targetTechId,
+              status: 'assigned'
+            };
+          }
+          // Update existing jobs
+          const existingJob = existingJobs.find(ej => ej.id === job.id);
+          if (existingJob) {
+            const reoptimizedJob = optimized.optimizedJobs.find(oj => oj.id === job.id);
+            if (reoptimizedJob) {
+              return { ...job, ...reoptimizedJob };
+            }
+          }
+          return job;
+        });
+
+        // Add helper jobs to jobs list (use geocoded version)
+        if (geocodedHelperJobs && geocodedHelperJobs.length > 0) {
+          console.log('➕ Adding helper jobs to job list:', geocodedHelperJobs.map(j => j.customerName));
+          updatedJobs = [...updatedJobs, ...geocodedHelperJobs];
+        }
+
+        // Clear building route if it was dragged
+        if (!fromTechId) {
+          setBuildingRoute([]);
+        }
+
+        // Update state
+        setRoutes(updatedRoutes);
+        setJobs(updatedJobs);
+
+        // Save to Firebase
+        await onUpdateRoutes(updatedRoutes);
+        await onUpdateJobs(updatedJobs);
+      };
+
       // Check if any jobs were lost during optimization
       if (optimized.optimizedJobs.length < allJobsForTech.length) {
         const lostJobs = allJobsForTech.filter(j =>
@@ -583,166 +702,64 @@ const ManualMode = ({
             `Click OK to add them at the end (you can manually adjust timing later)\n` +
             `Click Cancel to skip these jobs`,
             'Timeframe Conflict',
-            () => {
-            // User confirmed - add jobs anyway
-            console.log('📌 User chose to add unassignable jobs manually');
+            async () => {
+              // User confirmed - add jobs anyway
+              console.log('📌 User chose to add unassignable jobs manually');
 
-            // Add unassignable jobs to the end of the route with estimated times
-            let currentTime = shift === 'second' ? 14 * 60 : 8 * 60; // Start time in minutes (2pm or 8am)
+              // Add unassignable jobs to the end of the route with estimated times
+              let currentTime = shift === 'second' ? 14 * 60 : 8 * 60; // Start time in minutes (2pm or 8am)
 
-            // If there are optimized jobs, start from the end of the last job
-            if (optimized.optimizedJobs.length > 0) {
-              const lastJob = optimized.optimizedJobs[optimized.optimizedJobs.length - 1];
-              const endTimeParts = lastJob.endTime.split(':');
-              currentTime = parseInt(endTimeParts[0]) * 60 + parseInt(endTimeParts[1]);
-              // Add 30 minutes for travel time as a buffer
-              currentTime += 30;
-            }
+              // If there are optimized jobs, start from the end of the last job
+              if (optimized.optimizedJobs.length > 0) {
+                const lastJob = optimized.optimizedJobs[optimized.optimizedJobs.length - 1];
+                const endTimeParts = lastJob.endTime.split(':');
+                currentTime = parseInt(endTimeParts[0]) * 60 + parseInt(endTimeParts[1]);
+                // Add 30 minutes for travel time as a buffer
+                currentTime += 30;
+              }
 
-            // Format time helper
-            const formatTime = (minutes) => {
-              const hours = Math.floor(minutes / 60);
-              const mins = minutes % 60;
-              return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
-            };
+              // Format time helper
+              const formatTime = (minutes) => {
+                const hours = Math.floor(minutes / 60);
+                const mins = minutes % 60;
+                return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
+              };
 
-            // Add each unassignable job with estimated times
-            optimized.unassignableJobs.forEach(job => {
-              const arrivalTime = currentTime;
-              const startTime = arrivalTime;
-              const endTime = startTime + (job.duration * 60);
+              // Add each unassignable job with estimated times
+              optimized.unassignableJobs.forEach(job => {
+                const arrivalTime = currentTime;
+                const startTime = arrivalTime;
+                const endTime = startTime + (job.duration * 60);
 
-              // Add job to optimized list
-              optimized.optimizedJobs.push({
-                ...job,
-                arrivalTime: formatTime(arrivalTime),
-                startTime: formatTime(startTime),
-                endTime: formatTime(endTime),
-                travelTime: 30, // Estimated travel time
-                wasUnassignable: true // Flag to indicate this was manually added
+                // Add job to optimized list
+                optimized.optimizedJobs.push({
+                  ...job,
+                  arrivalTime: formatTime(arrivalTime),
+                  startTime: formatTime(startTime),
+                  endTime: formatTime(endTime),
+                  travelTime: 30, // Estimated travel time
+                  wasUnassignable: true // Flag to indicate this was manually added
+                });
+
+                console.log(`  ✅ Added ${job.customerName} at ${formatTime(startTime)}-${formatTime(endTime)}`);
+
+                // Update current time for next job (add buffer between jobs)
+                currentTime = endTime + 30;
               });
 
-              console.log(`  ✅ Added ${job.customerName} at ${formatTime(startTime)}-${formatTime(endTime)}`);
+              console.log(`📋 Final route has ${optimized.optimizedJobs.length} jobs (${optimized.unassignableJobs.length} manually added)`);
 
-              // Update current time for next job (add buffer between jobs)
-              currentTime = endTime + 30;
-            });
-
-            console.log(`📋 Final route has ${optimized.optimizedJobs.length} jobs (${optimized.unassignableJobs.length} manually added)`);
+              // Now finalize the route assignment
+              await finalizeRouteAssignment();
             },
             'warning'
           );
+          return; // Wait for user confirmation, don't proceed
         }
       }
 
-      // Check for timeframe violations (exclude manually added jobs since user approved them)
-      const violations = optimized.optimizedJobs.filter(job => {
-        // Skip jobs that were manually added after being unassignable
-        if (job.wasUnassignable) return false;
-
-        const startMinutes = parseInt(job.timeframeStart.split(':')[0]) * 60 + parseInt(job.timeframeStart.split(':')[1]);
-        const endMinutes = parseInt(job.timeframeEnd.split(':')[0]) * 60 + parseInt(job.timeframeEnd.split(':')[1]);
-        const arrivalMinutes = parseInt(job.arrivalTime.split(':')[0]) * 60 + parseInt(job.arrivalTime.split(':')[1]);
-        return arrivalMinutes > endMinutes;
-      });
-
-      if (violations.length > 0) {
-        const violationMessages = violations.map(v =>
-          `${v.customerName}: Arrives ${v.arrivalTime} but window closes at ${v.timeframeEnd}`
-        ).join('\n');
-
-        showAlert(`TIMEFRAME VIOLATIONS DETECTED:\n\n${violationMessages}\n\nThese jobs cannot be completed within their timeframe windows. Please adjust the route or reassign jobs.`, 'Timeframe Conflict', 'warning');
-        return;
-      }
-
-      // Update routes
-      const updatedRoutes = { ...routes };
-
-      // Remove from source tech if applicable
-      if (fromTechId) {
-        updatedRoutes[fromTechId] = {
-          ...updatedRoutes[fromTechId],
-          jobs: updatedRoutes[fromTechId].jobs.filter(
-            j => !routeJobs.some(rj => rj.id === j.id)
-          )
-        };
-      }
-
-      // Add optimized jobs to target tech
-      if (!updatedRoutes[targetTechId]) {
-        updatedRoutes[targetTechId] = {
-          tech: targetTech,
-          jobs: []
-        };
-      }
-
-      // Determine route-level demo tech based on job assignments
-      // If all jobs with assigned demo techs have the same DT, set it at route level
-      const jobsWithDT = optimized.optimizedJobs.filter(j => j.assignedDemoTech);
-      let routeLevelDemoTech = null;
-
-      if (jobsWithDT.length > 0) {
-        const uniqueDTs = [...new Set(jobsWithDT.map(j => j.assignedDemoTech.name))];
-        if (uniqueDTs.length === 1) {
-          // All jobs have same DT - set at route level
-          routeLevelDemoTech = uniqueDTs[0];
-          console.log(`✅ Setting route-level DT: ${routeLevelDemoTech} (${jobsWithDT.length} jobs)`);
-        } else {
-          // Multiple DTs - use most common one or leave null
-          console.log(`⚠️ Multiple DTs on route: ${uniqueDTs.join(', ')}`);
-        }
-      }
-
-      updatedRoutes[targetTechId] = {
-        ...updatedRoutes[targetTechId],
-        jobs: optimized.optimizedJobs,
-        demoTech: routeLevelDemoTech, // Set route-level DT for Kanban display
-        summary: {
-          totalDuration: optimized.totalDuration,
-          totalDistance: optimized.totalDistance
-        }
-      };
-
-      // Update jobs with new assignments
-      let updatedJobs = jobs.map(job => {
-        const optimizedJob = optimized.optimizedJobs.find(oj => oj.id === job.id);
-        if (optimizedJob) {
-          return {
-            ...job,
-            ...optimizedJob,
-            assignedTech: targetTechId,
-            status: 'assigned'
-          };
-        }
-        // Update existing jobs
-        const existingJob = existingJobs.find(ej => ej.id === job.id);
-        if (existingJob) {
-          const reoptimizedJob = optimized.optimizedJobs.find(oj => oj.id === job.id);
-          if (reoptimizedJob) {
-            return { ...job, ...reoptimizedJob };
-          }
-        }
-        return job;
-      });
-
-      // Add helper jobs to jobs list (use geocoded version)
-      if (geocodedHelperJobs && geocodedHelperJobs.length > 0) {
-        console.log('➕ Adding helper jobs to job list:', geocodedHelperJobs.map(j => j.customerName));
-        updatedJobs = [...updatedJobs, ...geocodedHelperJobs];
-      }
-
-      // Clear building route if it was dragged
-      if (!fromTechId) {
-        setBuildingRoute([]);
-      }
-
-      // Update state
-      setRoutes(updatedRoutes);
-      setJobs(updatedJobs);
-
-      // Save to Firebase
-      await onUpdateRoutes(updatedRoutes);
-      await onUpdateJobs(updatedJobs);
+      // No unassignable jobs, proceed directly
+      await finalizeRouteAssignment();
 
     } catch (error) {
       console.error('Error in route assignment:', error);
