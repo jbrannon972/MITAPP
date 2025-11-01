@@ -1,9 +1,8 @@
-/* Tech Route Mobile View - Optimized for one-handed use */
+/* Tech Route Mobile View - Seamless with Tech App Design */
 
 .tech-route-container {
   padding: 0;
-  padding-bottom: 80px; /* Space for bottom nav */
-  background: var(--bg-color, #f5f5f5);
+  background: var(--tech-bg);
   min-height: 100vh;
 }
 
@@ -14,31 +13,43 @@
   align-items: center;
   justify-content: center;
   min-height: 50vh;
-  color: var(--text-secondary, #666);
+  color: var(--tech-text-light);
   gap: 15px;
 }
 
 .tech-route-loading i {
-  font-size: 2.5rem;
-  color: var(--primary-color, #007bff);
+  font-size: 3rem;
+  color: var(--tech-primary);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.tech-route-loading p {
+  font-size: 1rem;
+  font-weight: 500;
 }
 
 /* Update Notification Banner */
 .tech-route-notification {
   position: fixed;
-  top: 60px;
+  top: 70px;
   left: 50%;
   transform: translateX(-50%);
-  z-index: 1000;
-  background: #4CAF50;
+  z-index: 1001;
+  background: var(--tech-success);
   color: white;
   padding: 12px 24px;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  border-radius: var(--tech-radius);
+  box-shadow: var(--tech-shadow-lg);
   display: flex;
   align-items: center;
   gap: 10px;
   font-size: 15px;
+  font-weight: 600;
   animation: slideDown 0.3s ease-out;
   max-width: 90%;
 }
@@ -57,32 +68,43 @@
 /* Syncing Indicator */
 .tech-route-syncing {
   position: fixed;
-  top: 60px;
+  top: 70px;
   right: 15px;
-  z-index: 999;
-  background: var(--bg-color, white);
-  border: 2px solid var(--primary-color, #007bff);
+  z-index: 1000;
+  background: var(--tech-surface);
+  border: 2px solid var(--tech-primary);
   padding: 8px 16px;
   border-radius: 20px;
   display: flex;
   align-items: center;
   gap: 8px;
   font-size: 13px;
-  color: var(--primary-color, #007bff);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  font-weight: 600;
+  color: var(--tech-primary);
+  box-shadow: var(--tech-shadow);
+}
+
+.tech-route-syncing i {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 /* Header */
 .tech-route-header {
-  background: var(--bg-color, white);
-  padding: 15px;
-  border-bottom: 1px solid var(--border-color, #e0e0e0);
+  background: var(--tech-surface);
+  padding: 16px;
+  border-bottom: 1px solid var(--tech-border);
   display: flex;
   flex-direction: column;
   gap: 12px;
   position: sticky;
   top: 0;
   z-index: 100;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
 }
 
 .tech-route-date-picker,
@@ -95,91 +117,105 @@
 .tech-date-input,
 .tech-select-input {
   width: 100%;
-  padding: 12px 15px;
-  border: 2px solid var(--border-color, #e0e0e0);
-  border-radius: 8px;
+  padding: 14px 16px;
+  border: 2px solid var(--tech-border);
+  border-radius: var(--tech-radius-sm);
   font-size: 16px;
-  background: var(--bg-color, white);
-  color: var(--text-color, #333);
-  font-family: inherit;
+  font-weight: 500;
+  background: var(--tech-surface);
+  color: var(--tech-text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  transition: var(--tech-transition);
   -webkit-appearance: none;
   appearance: none;
 }
 
 .tech-select-input {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23333' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23FF6B35' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
-  background-position: right 15px center;
+  background-position: right 16px center;
   padding-right: 40px;
+  cursor: pointer;
 }
 
 .tech-date-input:focus,
 .tech-select-input:focus {
   outline: none;
-  border-color: var(--primary-color, #007bff);
+  border-color: var(--tech-primary);
+  box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.1);
 }
 
 /* Stats Summary */
 .tech-route-stats {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
-  padding: 15px;
-  background: var(--bg-color, white);
-  border-bottom: 1px solid var(--border-color, #e0e0e0);
+  gap: 12px;
+  padding: 16px;
+  background: var(--tech-surface);
+  margin: 0 16px 16px;
+  border-radius: var(--tech-radius);
+  box-shadow: var(--tech-shadow);
 }
 
 .tech-stat-card {
   text-align: center;
-  padding: 15px 10px;
-  background: var(--bg-secondary, #f8f9fa);
-  border-radius: 12px;
-  border: 2px solid var(--border-color, #e0e0e0);
+  padding: 16px 12px;
+  background: linear-gradient(135deg, #FFF5F2 0%, #FFE8E1 100%);
+  border-radius: var(--tech-radius-sm);
+  border: 2px solid rgba(255, 107, 53, 0.1);
 }
 
 .tech-stat-value {
-  font-size: 24px;
-  font-weight: 700;
-  color: var(--primary-color, #007bff);
-  margin-bottom: 5px;
+  font-size: 26px;
+  font-weight: 800;
+  background: linear-gradient(135deg, var(--tech-primary) 0%, var(--tech-primary-dark) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 6px;
+  line-height: 1;
 }
 
 .tech-stat-label {
-  font-size: 12px;
-  color: var(--text-secondary, #666);
-  font-weight: 500;
+  font-size: 11px;
+  color: var(--tech-text-light);
+  font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.8px;
 }
 
 /* Calendar Sync Action */
 .tech-route-actions {
-  padding: 15px;
-  background: var(--bg-color, white);
-  border-bottom: 1px solid var(--border-color, #e0e0e0);
+  padding: 0 16px 16px;
 }
 
 .tech-sync-calendar-btn {
   width: 100%;
-  padding: 14px;
-  background: var(--bg-secondary, #f8f9fa);
-  border: 2px solid var(--border-color, #e0e0e0);
-  border-radius: 10px;
+  padding: 16px;
+  background: var(--tech-surface);
+  border: 2px solid var(--tech-border);
+  border-radius: var(--tech-radius);
   font-size: 15px;
-  font-weight: 600;
-  color: var(--text-color, #333);
+  font-weight: 700;
+  color: var(--tech-text);
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 10px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: var(--tech-transition);
+  box-shadow: var(--tech-shadow);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
-.tech-sync-calendar-btn:hover:not(:disabled) {
-  background: var(--primary-color, #007bff);
+.tech-sync-calendar-btn:hover:not(:disabled),
+.tech-sync-calendar-btn:active:not(:disabled) {
+  background: linear-gradient(135deg, var(--tech-primary) 0%, var(--tech-primary-dark) 100%);
   color: white;
-  border-color: var(--primary-color, #007bff);
+  border-color: var(--tech-primary);
+  transform: translateY(-1px);
+  box-shadow: var(--tech-shadow-lg);
 }
 
 .tech-sync-calendar-btn:disabled {
@@ -189,58 +225,62 @@
 
 /* Job List */
 .tech-route-jobs {
-  padding: 15px;
+  padding: 0 16px 16px;
   display: flex;
   flex-direction: column;
-  gap: 15px;
+  gap: 12px;
 }
 
 /* Empty State */
 .tech-route-empty {
   text-align: center;
   padding: 60px 20px;
-  color: var(--text-secondary, #666);
+  color: var(--tech-text-light);
 }
 
 .tech-route-empty i {
-  font-size: 4rem;
-  margin-bottom: 20px;
-  opacity: 0.3;
+  font-size: 5rem;
+  margin-bottom: 24px;
+  opacity: 0.2;
+  color: var(--tech-primary);
 }
 
 .tech-route-empty p {
-  font-size: 18px;
-  font-weight: 600;
+  font-size: 20px;
+  font-weight: 700;
   margin-bottom: 8px;
-  color: var(--text-color, #333);
+  color: var(--tech-text);
 }
 
 .tech-route-empty small {
-  font-size: 14px;
-  color: var(--text-secondary, #666);
+  font-size: 15px;
+  color: var(--tech-text-light);
+  font-weight: 500;
 }
 
 /* Job Card */
 .tech-job-card {
-  background: var(--bg-color, white);
-  border-radius: 16px;
+  background: var(--tech-surface);
+  border-radius: var(--tech-radius);
   overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  box-shadow: var(--tech-shadow);
   border: 2px solid transparent;
-  transition: all 0.3s;
+  transition: var(--tech-transition);
 }
 
 .tech-job-card.current {
-  border-color: #2196F3;
-  box-shadow: 0 4px 16px rgba(33, 150, 243, 0.2);
+  border-color: var(--tech-secondary);
+  box-shadow: 0 4px 16px rgba(74, 144, 226, 0.25);
+  background: linear-gradient(to right, rgba(74, 144, 226, 0.03) 0%, var(--tech-surface) 100%);
 }
 
 .tech-job-card.next {
-  border-color: #FFC107;
+  border-color: var(--tech-warning);
+  background: linear-gradient(to right, rgba(255, 193, 7, 0.03) 0%, var(--tech-surface) 100%);
 }
 
 .tech-job-card.expanded {
-  box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+  box-shadow: var(--tech-shadow-lg);
 }
 
 /* Job Header */
@@ -248,35 +288,38 @@
   padding: 16px;
   display: flex;
   align-items: flex-start;
-  gap: 12px;
+  gap: 14px;
   cursor: pointer;
   user-select: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .tech-job-status-icon {
   flex-shrink: 0;
-  width: 40px;
-  height: 40px;
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 20px;
+  font-size: 22px;
+  transition: var(--tech-transition);
 }
 
 .tech-job-card.not-started .tech-job-status-icon {
-  background: #f0f0f0;
-  color: #999;
+  background: linear-gradient(135deg, #E8EAF6 0%, #C5CAE9 100%);
+  color: #5C6BC0;
 }
 
 .tech-job-card.in-progress .tech-job-status-icon {
-  background: #E3F2FD;
-  color: #2196F3;
+  background: linear-gradient(135deg, #E3F2FD 0%, #BBDEFB 100%);
+  color: var(--tech-secondary);
+  animation: pulse 2s ease-in-out infinite;
 }
 
 .tech-job-card.complete .tech-job-status-icon {
-  background: #E8F5E9;
-  color: #4CAF50;
+  background: linear-gradient(135deg, #E8F5E9 0%, #C8E6C9 100%);
+  color: var(--tech-success);
 }
 
 .tech-job-main-info {
@@ -285,28 +328,29 @@
 }
 
 .tech-job-number {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-secondary, #666);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--tech-primary);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-bottom: 4px;
+  letter-spacing: 1px;
+  margin-bottom: 6px;
 }
 
 .tech-job-customer {
   font-size: 18px;
   font-weight: 700;
-  color: var(--text-color, #333);
-  margin-bottom: 4px;
+  color: var(--tech-text);
+  margin-bottom: 6px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  line-height: 1.2;
 }
 
 .tech-job-type {
   font-size: 14px;
-  color: var(--text-secondary, #666);
-  font-weight: 500;
+  color: var(--tech-text-light);
+  font-weight: 600;
 }
 
 /* Job Indicators */
@@ -320,29 +364,32 @@
 .tech-current-badge,
 .tech-next-badge,
 .tech-drive-badge {
-  padding: 4px 10px;
-  border-radius: 12px;
+  padding: 6px 12px;
+  border-radius: 16px;
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.6px;
   white-space: nowrap;
 }
 
 .tech-current-badge {
-  background: #2196F3;
+  background: linear-gradient(135deg, var(--tech-secondary) 0%, #1976D2 100%);
   color: white;
+  box-shadow: 0 2px 8px rgba(74, 144, 226, 0.3);
 }
 
 .tech-next-badge {
-  background: #FFC107;
-  color: #333;
+  background: linear-gradient(135deg, var(--tech-warning) 0%, #FFB300 100%);
+  color: #5D4037;
+  box-shadow: 0 2px 8px rgba(255, 193, 7, 0.3);
 }
 
 .tech-drive-badge {
-  background: var(--bg-secondary, #f8f9fa);
-  color: var(--text-secondary, #666);
-  border: 1px solid var(--border-color, #e0e0e0);
+  background: var(--tech-bg);
+  color: var(--tech-text-light);
+  border: 2px solid var(--tech-border);
+  font-weight: 700;
 }
 
 /* Job Quick Info */
@@ -350,113 +397,129 @@
   padding: 0 16px 16px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
   cursor: pointer;
 }
 
 .tech-job-time,
 .tech-job-address-short {
   font-size: 14px;
-  color: var(--text-secondary, #666);
+  color: var(--tech-text);
+  font-weight: 500;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
 }
 
 .tech-job-time i,
 .tech-job-address-short i {
-  width: 16px;
-  color: var(--primary-color, #007bff);
+  width: 18px;
+  color: var(--tech-primary);
+  flex-shrink: 0;
 }
 
 /* Job Details (Expanded) */
 .tech-job-details {
   padding: 16px;
   padding-top: 0;
-  border-top: 1px solid var(--border-color, #e0e0e0);
-  margin-top: 8px;
+  border-top: 1px solid var(--tech-border);
+  margin: 0 16px 16px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 14px;
+  background: var(--tech-bg);
+  border-radius: var(--tech-radius-sm);
+  margin-top: 8px;
 }
 
 .tech-job-detail-section {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
 }
 
 .tech-job-detail-label {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-secondary, #666);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--tech-primary);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 1px;
 }
 
 .tech-job-detail-value {
   font-size: 15px;
-  color: var(--text-color, #333);
+  color: var(--tech-text);
+  font-weight: 500;
   line-height: 1.5;
 }
 
 /* Job Actions */
 .tech-job-actions {
   padding: 16px;
-  border-top: 1px solid var(--border-color, #e0e0e0);
+  border-top: 1px solid var(--tech-border);
   display: flex;
   flex-direction: column;
   gap: 12px;
+  background: var(--tech-bg);
 }
 
 .tech-job-action-btn {
-  padding: 14px 20px;
-  border-radius: 12px;
+  padding: 16px 20px;
+  border-radius: var(--tech-radius-sm);
   font-size: 16px;
-  font-weight: 600;
+  font-weight: 700;
   border: none;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 10px;
-  transition: all 0.2s;
-  min-height: 50px; /* Thumb-friendly size */
+  transition: var(--tech-transition);
+  min-height: 54px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .tech-job-action-btn.primary {
   width: 100%;
   color: white;
+  box-shadow: var(--tech-shadow);
 }
 
 .tech-job-action-btn.primary.in-progress {
-  background: #2196F3;
+  background: linear-gradient(135deg, var(--tech-secondary) 0%, #1976D2 100%);
 }
 
-.tech-job-action-btn.primary.in-progress:hover {
-  background: #1976D2;
+.tech-job-action-btn.primary.in-progress:active {
+  transform: scale(0.98);
+  box-shadow: 0 2px 8px rgba(74, 144, 226, 0.3);
 }
 
 .tech-job-action-btn.primary.complete {
-  background: #4CAF50;
+  background: linear-gradient(135deg, var(--tech-success) 0%, #388E3C 100%);
 }
 
-.tech-job-action-btn.primary.complete:hover {
-  background: #388E3C;
+.tech-job-action-btn.primary.complete:active {
+  transform: scale(0.98);
+  box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
 }
 
 .tech-job-complete-indicator {
   width: 100%;
-  padding: 14px 20px;
-  background: #E8F5E9;
-  color: #4CAF50;
-  border-radius: 12px;
+  padding: 16px 20px;
+  background: linear-gradient(135deg, #E8F5E9 0%, #C8E6C9 100%);
+  color: var(--tech-success);
+  border-radius: var(--tech-radius-sm);
   font-size: 16px;
-  font-weight: 600;
+  font-weight: 700;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  box-shadow: var(--tech-shadow);
 }
 
 .tech-job-secondary-actions {
@@ -466,31 +529,34 @@
 }
 
 .tech-job-action-btn.secondary {
-  background: var(--bg-secondary, #f8f9fa);
-  color: var(--text-color, #333);
-  border: 2px solid var(--border-color, #e0e0e0);
+  background: var(--tech-surface);
+  color: var(--tech-text);
+  border: 2px solid var(--tech-border);
+  box-shadow: var(--tech-shadow);
 }
 
-.tech-job-action-btn.secondary:hover {
-  background: var(--primary-color, #007bff);
+.tech-job-action-btn.secondary:active {
+  background: var(--tech-primary);
   color: white;
-  border-color: var(--primary-color, #007bff);
+  border-color: var(--tech-primary);
+  transform: scale(0.98);
 }
 
 /* Return to Office */
 .tech-route-return {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, var(--tech-primary) 0%, var(--tech-primary-dark) 100%);
   color: white;
   padding: 20px;
-  border-radius: 16px;
+  border-radius: var(--tech-radius);
   display: flex;
   align-items: center;
-  gap: 15px;
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+  gap: 16px;
+  box-shadow: 0 6px 20px rgba(255, 107, 53, 0.3);
+  margin-top: 8px;
 }
 
 .tech-route-return i {
-  font-size: 32px;
+  font-size: 36px;
   opacity: 0.9;
 }
 
@@ -499,15 +565,18 @@
 }
 
 .tech-return-label {
-  font-size: 14px;
-  font-weight: 600;
+  font-size: 13px;
+  font-weight: 700;
   opacity: 0.9;
-  margin-bottom: 4px;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
 }
 
 .tech-return-time {
-  font-size: 22px;
-  font-weight: 700;
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
 }
 
 /* Responsive Adjustments */
@@ -517,34 +586,38 @@
   }
 
   .tech-job-action-btn {
-    font-size: 15px;
-    padding: 12px 16px;
+    font-size: 14px;
+    padding: 14px 16px;
+    min-height: 50px;
   }
 
   .tech-stat-value {
-    font-size: 20px;
-  }
-}
-
-/* Dark Mode Support */
-@media (prefers-color-scheme: dark) {
-  .tech-route-container {
-    background: #121212;
+    font-size: 22px;
   }
 
-  .tech-job-card {
-    background: #1e1e1e;
-  }
-
-  .tech-sync-calendar-btn,
-  .tech-job-action-btn.secondary {
-    background: #2a2a2a;
-    border-color: #444;
-    color: #fff;
+  .tech-route-stats {
+    gap: 10px;
   }
 
   .tech-stat-card {
-    background: #2a2a2a;
-    border-color: #444;
+    padding: 14px 10px;
+  }
+}
+
+/* Smooth Animations */
+@media (prefers-reduced-motion: no-preference) {
+  .tech-job-card:active {
+    transform: scale(0.99);
+  }
+
+  .tech-job-action-btn:active {
+    transform: scale(0.97);
+  }
+}
+
+/* Touch Feedback */
+@media (hover: none) {
+  .tech-job-action-btn:active {
+    opacity: 0.8;
   }
 }
