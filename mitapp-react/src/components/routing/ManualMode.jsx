@@ -6,6 +6,7 @@ import { optimizeRoute } from '../../utils/routeOptimizer';
 import googleCalendarService from '../../services/googleCalendarService';
 import TwoTechAssignmentModal from './TwoTechAssignmentModal';
 import { GOOGLE_CLIENT_ID } from '../../config/firebase';
+import { formatTimeAMPM } from '../../utils/routingHelpers';
 
 const ManualMode = ({
   jobs: initialJobs,
@@ -1204,7 +1205,7 @@ const ManualMode = ({
                         {job.jobType} • {job.duration}h
                       </div>
                       <div style={{ fontSize: '10px', color: 'var(--success-color)', fontWeight: '600' }}>
-                        <i className="fas fa-clock"></i> {job.timeframeStart}-{job.timeframeEnd}
+                        <i className="fas fa-clock"></i> {formatTimeAMPM(job.timeframeStart)}-{formatTimeAMPM(job.timeframeEnd)}
                       </div>
                       {job.requiresTwoTechs && (
                         <div style={{ fontSize: '9px', color: 'var(--warning-color)', marginTop: '2px', fontWeight: '600' }}>
@@ -1437,10 +1438,10 @@ const ManualMode = ({
                       <div style={{ color: 'var(--text-secondary)', fontSize: '10px' }}>
                         {job.startTime && (
                           <div style={{ marginBottom: '2px', color: 'var(--success-color)', fontWeight: '600' }}>
-                            <i className="fas fa-clock"></i> {job.startTime} - {job.endTime}
+                            <i className="fas fa-clock"></i> {formatTimeAMPM(job.startTime)} - {formatTimeAMPM(job.endTime)}
                             {job.arrivalTime && job.arrivalTime !== job.startTime && (
                               <span style={{ fontSize: '8px', color: 'var(--info-color)', marginLeft: '4px' }}>
-                                (arrive {job.arrivalTime})
+                                (arrive {formatTimeAMPM(job.arrivalTime)})
                               </span>
                             )}
                           </div>

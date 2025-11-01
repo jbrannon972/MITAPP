@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { getMapboxService } from '../../services/mapboxService';
-import { debounce, safeAsync } from '../../utils/routingHelpers';
+import { debounce, safeAsync, formatTimeAMPM } from '../../utils/routingHelpers';
 import { DEFAULT_TRAVEL_TIME, OFF_STATUSES } from '../../utils/routingConstants';
 import { detectConflicts, autoFixConflicts } from '../../utils/conflictDetection';
 import { smartFillTechDay, optimizeJobSelection } from '../../utils/smartAssignment';
@@ -414,7 +414,7 @@ const KanbanCalendar = ({
         new mapboxgl.Marker(el)
           .setLngLat([job.coordinates.lng, job.coordinates.lat])
           .setPopup(new mapboxgl.Popup({ offset: 25 })
-            .setHTML(`<div style="padding: 8px;"><strong>${idx + 1}. ${job.customerName}</strong><br/>${job.address}<br/>${job.startTime || job.timeframeStart} - ${job.endTime || job.timeframeEnd}<br/>${job.duration}h</div>`))
+            .setHTML(`<div style="padding: 8px;"><strong>${idx + 1}. ${job.customerName}</strong><br/>${job.address}<br/>${formatTimeAMPM(job.startTime || job.timeframeStart)} - ${formatTimeAMPM(job.endTime || job.timeframeEnd)}<br/>${job.duration}h</div>`))
           .addTo(map);
       }
     });
@@ -1562,7 +1562,7 @@ const KanbanCalendar = ({
                         style={{ color: 'var(--text-secondary)' }}
                         title={`Return to office time (${returnToOfficeTimes[tech.id].driveTime}m drive)`}
                       >
-                        <i className="fas fa-home"></i> {returnToOfficeTimes[tech.id].time}
+                        <i className="fas fa-home"></i> {formatTimeAMPM(returnToOfficeTimes[tech.id].time)}
                       </span>
                     )}
                     {techRoute?.demoTech && (
@@ -1729,7 +1729,7 @@ const KanbanCalendar = ({
                               {job.address}
                             </div>
                             <div style={{ fontSize: '9px', color: 'var(--success-color)', fontWeight: '600' }}>
-                              <i className="fas fa-clock"></i> {job.startTime} - {job.endTime} ({job.duration}h)
+                              <i className="fas fa-clock"></i> {formatTimeAMPM(job.startTime)} - {formatTimeAMPM(job.endTime)} ({job.duration}h)
                             </div>
                             {job.isPartial && (
                               <div style={{ fontSize: '8px', color: 'var(--warning-color)', marginTop: '2px', fontStyle: 'italic' }}>
@@ -1808,7 +1808,7 @@ const KanbanCalendar = ({
                                       fontWeight: '700',
                                       flexShrink: 0
                                     }}
-                                    title={`Timeframe Conflict!\nRequested: ${job.timeframeStart} - ${job.timeframeEnd}\nScheduled Arrival: ${job.startTime}`}
+                                    title={`Timeframe Conflict!\nRequested: ${formatTimeAMPM(job.timeframeStart)} - ${formatTimeAMPM(job.timeframeEnd)}\nScheduled Arrival: ${formatTimeAMPM(job.startTime)}`}
                                   >
                                     ⚠
                                   </span>
@@ -1818,12 +1818,12 @@ const KanbanCalendar = ({
                             <div style={{ fontSize: '9px', color: 'var(--text-secondary)' }}>
                               {job.startTime && job.endTime && (
                                 <div style={{ color: isOutsideTimeframe(job) ? 'var(--danger-color)' : 'var(--success-color)', fontWeight: '600', marginBottom: '2px' }}>
-                                  <i className="fas fa-clock"></i> {job.startTime} - {job.endTime}
+                                  <i className="fas fa-clock"></i> {formatTimeAMPM(job.startTime)} - {formatTimeAMPM(job.endTime)}
                                 </div>
                               )}
                               {job.timeframeStart && job.timeframeEnd && (
                                 <div style={{ fontSize: '8px', color: 'var(--text-muted)', marginBottom: '2px', fontStyle: 'italic' }}>
-                                  <i className="fas fa-calendar-check"></i> Requested: {job.timeframeStart} - {job.timeframeEnd}
+                                  <i className="fas fa-calendar-check"></i> Requested: {formatTimeAMPM(job.timeframeStart)} - {formatTimeAMPM(job.timeframeEnd)}
                                 </div>
                               )}
                               <div>{job.duration}h{job.travelTime > 0 && ` • ${job.travelTime}m`}</div>
@@ -1871,7 +1871,7 @@ const KanbanCalendar = ({
                       </div>
                       <div style={{ fontSize: '9px', color: 'var(--success-color)' }}>
                         <div style={{ fontWeight: '600', marginBottom: '2px' }}>
-                          <i className="fas fa-clock"></i> {returnToOfficeTimes[tech.id].time}
+                          <i className="fas fa-clock"></i> {formatTimeAMPM(returnToOfficeTimes[tech.id].time)}
                         </div>
                         <div>
                           <i className="fas fa-car"></i> {returnToOfficeTimes[tech.id].driveTime}m

@@ -215,6 +215,35 @@ export const timeToMinutes = (timeStr) => {
 };
 
 /**
+ * Convert 24-hour time to 12-hour AM/PM format
+ * @param {string} timeStr - Time string in HH:MM format (24-hour)
+ * @returns {string} - Formatted time in 12-hour format (e.g., "5:30 PM")
+ */
+export const formatTimeAMPM = (timeStr) => {
+  if (!timeStr || typeof timeStr !== 'string') return '';
+
+  const [hours24, minutes] = timeStr.split(':').map(Number);
+
+  if (isNaN(hours24) || isNaN(minutes)) return timeStr;
+
+  const period = hours24 >= 12 ? 'PM' : 'AM';
+  const hours12 = hours24 % 12 || 12; // Convert 0 to 12 for midnight
+  const mins = String(minutes).padStart(2, '0');
+
+  return `${hours12}:${mins} ${period}`;
+};
+
+/**
+ * Format time from minutes since midnight to 12-hour AM/PM format
+ * @param {number} minutes - Minutes since midnight
+ * @returns {string} - Formatted time in 12-hour format (e.g., "5:30 PM")
+ */
+export const minutesToTimeAMPM = (minutes) => {
+  const time24 = minutesToTime(minutes);
+  return formatTimeAMPM(time24);
+};
+
+/**
  * Validate CSV file before parsing
  * @param {File} file - The file to validate
  * @returns {object} - { valid: boolean, error: string }
