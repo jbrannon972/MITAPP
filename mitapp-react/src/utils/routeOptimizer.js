@@ -63,45 +63,29 @@ const calculateJobScore = (currentTime, job, travelTime) => {
 };
 
 /**
- * Greedy nearest-neighbor route optimization
+ * Internal greedy nearest-neighbor route optimization
  * @param {Array} jobs - Jobs to optimize
- * @param {string} startLocation - Starting location address
+ * @param {number} shiftStartTime - Start time in minutes
  * @param {Array} distanceMatrix - Matrix of travel times
- * @param {string} shift - 'first' or 'second' shift
- * @param {string} customStartTime - Optional custom start time in HH:MM format (e.g., "09:30")
+ * @param {Map} jobToIndex - Job ID to index mapping
+ * @param {string} strategy - Optimization strategy ('greedy', 'deadline-first')
  */
-export const optimizeRoute = async (jobs, startLocation, distanceMatrix, shift = 'first', customStartTime = null) => {
-  if (!jobs || jobs.length === 0) {
-    return {
-      optimizedJobs: [],
-      totalDuration: 0,
-      totalDistance: 0,
-      unassignableJobs: []
-    };
+const greedyOptimize = (jobs, shiftStartTime, distanceMatrix, jobToIndex, strategy = 'greedy') => {
+  // Sort jobs based on strategy
+  let sortedJobs = [...jobs];
+  if (strategy === 'deadline-first') {
+    sortedJobs.sort((a, b) => {
+      const aEnd = timeToMinutes(a.timeframeEnd);
+      const bEnd = timeToMinutes(b.timeframeEnd);
+      return aEnd - bEnd; // Earlier deadlines first
+    });
   }
 
-  // Determine start time
-  // Custom start time takes precedence, otherwise use shift defaults
-  // First shift: 8:15 AM (495 minutes), goal return 4-6 PM
-  // Second shift: 1:15 PM (795 minutes), goal return 9-11 PM
-  let shiftStartTime;
-  if (customStartTime) {
-    shiftStartTime = timeToMinutes(customStartTime);
-  } else {
-    shiftStartTime = shift === 'second' ? 13 * 60 + 15 : 8 * 60 + 15; // 1:15 PM or 8:15 AM
-  }
-
-  const unassigned = [...jobs];
+  const unassigned = [...sortedJobs]; // Make a copy so we can modify
   const route = [];
   let currentTime = shiftStartTime;
   let currentLocationIndex = 0; // Start location index
   const unassignableJobs = [];
-
-  // Map jobs to their indices for distance lookup
-  const jobToIndex = new Map();
-  jobs.forEach((job, idx) => {
-    jobToIndex.set(job.id, idx + 1); // +1 because index 0 is start location
-  });
 
   while (unassigned.length > 0) {
     let bestJob = null;
@@ -117,9 +101,9 @@ export const optimizeRoute = async (jobs, startLocation, distanceMatrix, shift =
 
       let score = calculateJobScore(currentTime, job, travelTime);
 
-      // Add urgency factor: jobs with earlier deadlines get priority
-      // This prevents the algorithm from "painting itself into a corner"
-      if (score !== Infinity) {
+      // Add urgency factor only for greedy strategy
+      // (deadline-first already sorted by deadline)
+      if (strategy === 'greedy' && score !== Infinity) {
         const arrivalTime = currentTime + travelTime;
         const windowEnd = timeToMinutes(job.timeframeEnd);
         const timeUntilDeadline = windowEnd - arrivalTime;
@@ -183,6 +167,78 @@ export const optimizeRoute = async (jobs, startLocation, distanceMatrix, shift =
     totalDistance: Math.round(totalDistance),
     unassignableJobs
   };
+};
+
+/**
+ * Route optimization with multiple retry strategies
+ * Tries different approaches to minimize unassignable jobs
+ * @param {Array} jobs - Jobs to optimize
+ * @param {string} startLocation - Starting location address
+ * @param {Array} distanceMatrix - Matrix of travel times
+ * @param {string} shift - 'first' or 'second' shift
+ * @param {string} customStartTime - Optional custom start time in HH:MM format (e.g., "09:30")
+ */
+export const optimizeRoute = async (jobs, startLocation, distanceMatrix, shift = 'first', customStartTime = null) => {
+  if (!jobs || jobs.length === 0) {
+    return {
+      optimizedJobs: [],
+      totalDuration: 0,
+      totalDistance: 0,
+      unassignableJobs: []
+    };
+  }
+
+  // Determine start time
+  let shiftStartTime;
+  if (customStartTime) {
+    shiftStartTime = timeToMinutes(customStartTime);
+  } else {
+    shiftStartTime = shift === 'second' ? 13 * 60 + 15 : 8 * 60 + 15; // 1:15 PM or 8:15 AM
+  }
+
+  // Map jobs to their indices for distance lookup
+  const jobToIndex = new Map();
+  jobs.forEach((job, idx) => {
+    jobToIndex.set(job.id, idx + 1); // +1 because index 0 is start location
+  });
+
+  // Strategy 1: Try standard greedy with urgency weighting
+  console.log('🔄 Optimization attempt 1: Greedy with urgency weighting');
+  let result = greedyOptimize(jobs, shiftStartTime, distanceMatrix, jobToIndex, 'greedy');
+
+  // If there are unassignable jobs, try alternate strategies
+  if (result.unassignableJobs.length > 0) {
+    console.log(`⚠️ ${result.unassignableJobs.length} unassignable jobs, trying deadline-first strategy...`);
+
+    // Strategy 2: Sort by deadline first, then optimize
+    const deadlineResult = greedyOptimize(jobs, shiftStartTime, distanceMatrix, jobToIndex, 'deadline-first');
+
+    // Use deadline-first result if it has fewer unassignable jobs
+    if (deadlineResult.unassignableJobs.length < result.unassignableJobs.length) {
+      console.log(`✅ Deadline-first strategy better: ${deadlineResult.unassignableJobs.length} unassignable (was ${result.unassignableJobs.length})`);
+      result = deadlineResult;
+    } else {
+      console.log(`📊 Deadline-first strategy no better: ${deadlineResult.unassignableJobs.length} unassignable (keeping ${result.unassignableJobs.length})`);
+    }
+
+    // Strategy 3: If still have unassignable jobs, try with extra time buffer
+    if (result.unassignableJobs.length > 0) {
+      console.log(`⚠️ Still ${result.unassignableJobs.length} unassignable, trying earlier start time...`);
+      // Try starting 15 minutes earlier
+      const earlyResult = greedyOptimize(jobs, shiftStartTime - 15, distanceMatrix, jobToIndex, 'deadline-first');
+
+      if (earlyResult.unassignableJobs.length < result.unassignableJobs.length) {
+        console.log(`✅ Early start strategy better: ${earlyResult.unassignableJobs.length} unassignable (was ${result.unassignableJobs.length})`);
+        result = earlyResult;
+      } else {
+        console.log(`📊 Early start strategy no better: ${earlyResult.unassignableJobs.length} unassignable (keeping ${result.unassignableJobs.length})`);
+      }
+    }
+  } else {
+    console.log('✅ All jobs assigned on first attempt!');
+  }
+
+  return result;
 };
 
 /**
