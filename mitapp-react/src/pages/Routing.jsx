@@ -733,14 +733,69 @@ const Routing = () => {
               {jobs.length} total | {unassignedJobs.length} unassigned | {assignedJobs.length} assigned
             </p>
           </div>
-          <div style={{ display: 'flex', gap: '12px' }}>
-            <input
-              type="date"
-              className="form-control"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              style={{ width: 'auto' }}
-            />
+          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+            {/* Date Navigation */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '8px 12px',
+              backgroundColor: 'var(--surface-secondary)',
+              borderRadius: '6px',
+              border: '2px solid var(--primary-color)'
+            }}>
+              <button
+                className="btn btn-secondary btn-small"
+                onClick={() => {
+                  const date = new Date(selectedDate + 'T12:00:00');
+                  date.setDate(date.getDate() - 1);
+                  setSelectedDate(date.toISOString().split('T')[0]);
+                }}
+                title="Previous day"
+                style={{ padding: '4px 8px', minWidth: 'auto' }}
+              >
+                <i className="fas fa-chevron-left"></i>
+              </button>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                <label style={{ fontSize: '10px', color: 'var(--text-secondary)', marginBottom: '2px', fontWeight: '600' }}>
+                  SELECT DATE
+                </label>
+                <input
+                  type="date"
+                  className="form-control"
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  style={{
+                    width: '150px',
+                    fontSize: '13px',
+                    padding: '6px 8px',
+                    fontWeight: '600',
+                    textAlign: 'center'
+                  }}
+                />
+              </div>
+              <button
+                className="btn btn-secondary btn-small"
+                onClick={() => {
+                  const date = new Date(selectedDate + 'T12:00:00');
+                  date.setDate(date.getDate() + 1);
+                  setSelectedDate(date.toISOString().split('T')[0]);
+                }}
+                title="Next day"
+                style={{ padding: '4px 8px', minWidth: 'auto' }}
+              >
+                <i className="fas fa-chevron-right"></i>
+              </button>
+              <button
+                className="btn btn-primary btn-small"
+                onClick={() => setSelectedDate(new Date().toISOString().split('T')[0])}
+                title="Go to today"
+                style={{ padding: '4px 12px', marginLeft: '4px' }}
+              >
+                <i className="fas fa-calendar-day"></i> Today
+              </button>
+            </div>
+
             <button
               className="btn btn-success"
               onClick={() => setShowOptimizeModal(true)}
