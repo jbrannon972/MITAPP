@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import Layout from '../components/common/Layout';
 import ManualMode from '../components/routing/ManualMode';
 import KanbanCalendar from '../components/routing/KanbanCalendar';
+import ConfirmModal from '../components/routing/ConfirmModal';
 import { useData } from '../contexts/DataContext';
 import { useAuth } from '../contexts/AuthContext';
 import firebaseService from '../services/firebaseService';
@@ -33,6 +34,8 @@ const Routing = () => {
   const [activeUsers, setActiveUsers] = useState([]);
   const [scheduleForDay, setScheduleForDay] = useState(null);
   const [isFullScreen, setIsFullScreen] = useState(false);
+  const [modal, setModal] = useState({ show: false, title: '', message: '', type: 'info', onConfirm: null });
+  const [techStartTimes, setTechStartTimes] = useState({}); // Store custom start times for techs (for late starts)
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const markersRef = useRef([]);
@@ -49,6 +52,19 @@ const Routing = () => {
       address: '5115 E 5th St, Katy, TX 77493',
       shortName: 'Katy'
     }
+  };
+
+  // Modal helper functions to replace alert/confirm
+  const showAlert = (message, title = 'Notification', type = 'info') => {
+    setModal({ show: true, title, message, type, onConfirm: null });
+  };
+
+  const showConfirm = (message, title, onConfirm, type = 'question') => {
+    setModal({ show: true, title, message, type, onConfirm });
+  };
+
+  const closeModal = () => {
+    setModal({ show: false, title: '', message: '', type: 'info', onConfirm: null });
   };
 
   // Real-time subscriptions for jobs and routes
@@ -195,7 +211,7 @@ const Routing = () => {
       setJobs(parsedJobs);
       saveJobs(parsedJobs);
       setShowImportModal(false);
-      alert(`Successfully imported ${parsedJobs.length} jobs!`);
+      showAlert(`Successfully imported ${parsedJobs.length} jobs!`, 'Import Complete', 'success');
     };
     reader.readAsText(file);
   };
@@ -402,7 +418,7 @@ const Routing = () => {
       console.log('✅ Jobs saved to Firebase');
     } catch (error) {
       console.error('Error saving jobs:', error);
-      alert('Error saving jobs. Please try again.');
+      showAlert('Error saving jobs. Please try again.', 'Error', 'error');
     }
   };
 
@@ -536,7 +552,7 @@ const Routing = () => {
 
   const handleAutoOptimize = async () => {
     if (!mapboxToken) {
-      alert('Please enter a Mapbox API token in the optimization settings.');
+      showAlert('Please enter a Mapbox API token in the optimization settings.', 'Mapbox Token Required', 'warning');
       return;
     }
 
@@ -549,7 +565,7 @@ const Routing = () => {
       const unassignedJobs = jobs.filter(j => !j.assignedTech);
 
       if (unassignedJobs.length === 0) {
-        alert('No unassigned jobs to optimize.');
+        showAlert('No unassigned jobs to optimize.', 'Nothing to Optimize', 'info');
         setOptimizing(false);
         return;
       }
@@ -633,10 +649,10 @@ const Routing = () => {
       setJobs(updatedJobs);
       await saveJobs(updatedJobs);
 
-      alert(`Successfully optimized routes for ${Object.keys(finalRoutes).length} technicians!`);
+      showAlert(`Successfully optimized routes for ${Object.keys(finalRoutes).length} technicians!`, 'Optimization Complete', 'success');
     } catch (error) {
       console.error('Optimization error:', error);
-      alert('Error during optimization. Please try again.');
+      showAlert('Error during optimization. Please try again.', 'Optimization Failed', 'error');
     } finally {
       setOptimizing(false);
     }
@@ -647,7 +663,7 @@ const Routing = () => {
       localStorage.setItem('mapboxToken', mapboxToken);
       // Reinitialize Mapbox service with new token
       initMapboxService(mapboxToken);
-      alert('Mapbox token saved!');
+      showAlert('Mapbox token saved!', 'Settings Updated', 'success');
     }
   };
 
@@ -695,10 +711,10 @@ const Routing = () => {
       });
 
       console.log('✅ All jobs and routes cleared successfully');
-      alert(`✅ All jobs and routes for ${selectedDate} have been deleted.\n\nYou can now import a fresh CSV file.`);
+      showAlert(`All jobs and routes for ${selectedDate} have been deleted.\n\nYou can now import a fresh CSV file.`, 'Data Cleared', 'success');
     } catch (error) {
       console.error('❌ Error clearing jobs and routes:', error);
-      alert('Error clearing data. Please try again.');
+      showAlert('Error clearing data. Please try again.', 'Error', 'error');
     }
   };
 
@@ -898,7 +914,7 @@ const Routing = () => {
 
   const handleRefresh = () => {
     // No need to manually refresh - real-time sync handles updates
-    alert('This page updates automatically! Changes from other users appear in real-time.');
+    showAlert('This page updates automatically! Changes from other users appear in real-time.', 'Real-time Updates', 'info');
   };
 
   const renderRoutingView = () => {
@@ -1359,6 +1375,16 @@ const Routing = () => {
             </div>
           </div>
         )}
+
+        {/* Confirmation Modal */}
+        <ConfirmModal
+          show={modal.show}
+          onClose={closeModal}
+          onConfirm={modal.onConfirm}
+          title={modal.title}
+          message={modal.message}
+          type={modal.type}
+        />
       </div>
     </Layout>
   );
