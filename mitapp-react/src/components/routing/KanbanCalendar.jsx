@@ -17,7 +17,9 @@ const KanbanCalendar = ({
   onUpdateRoutes,
   onUpdateJobs,
   selectedDate,
-  scheduleForDay
+  scheduleForDay,
+  showAlert,
+  showConfirm
 }) => {
   // Local state for instant UI updates
   // Initialize once and NEVER sync from props again - child is authoritative
@@ -201,14 +203,16 @@ const KanbanCalendar = ({
       await onUpdateJobs(result.jobs);
 
       // Show summary
-      alert(
-        `✅ Fixed ${result.fixedConflicts.length} conflicts!\n\n` +
+      showAlert(
+        `Fixed ${result.fixedConflicts.length} conflicts!\n\n` +
         `${result.unfixedConflicts.length > 0
           ? `⚠️ ${result.unfixedConflicts.length} conflicts require manual intervention.`
-          : 'All conflicts resolved!'}`
+          : 'All conflicts resolved!'}`,
+        'Conflicts Resolved',
+        result.unfixedConflicts.length > 0 ? 'warning' : 'success'
       );
     } else {
-      alert('⚠️ Could not automatically fix these conflicts. Please resolve them manually.');
+      showAlert('Could not automatically fix these conflicts. Please resolve them manually.', 'Manual Intervention Required', 'warning');
     }
   }, [localRoutes, localJobs, techs, onUpdateRoutes, onUpdateJobs]);
 
@@ -217,7 +221,7 @@ const KanbanCalendar = ({
     const unassignedJobs = localJobs.filter(j => !j.assignedTech);
 
     if (unassignedJobs.length === 0) {
-      alert('No unassigned jobs available.');
+      showAlert('No unassigned jobs available.', 'No Jobs', 'info');
       return;
     }
 
@@ -228,20 +232,19 @@ const KanbanCalendar = ({
       });
 
       if (result.selectedJobs.length === 0) {
-        alert(`No suitable jobs found for ${tech.name}.`);
+        showAlert(`No suitable jobs found for ${tech.name}.`, 'No Jobs Found', 'info');
         return;
       }
 
       // Show preview
-      const confirmed = confirm(
+      showConfirm(
         `Smart Fill for ${tech.name}\n\n` +
         `Selected ${result.selectedJobs.length} jobs (${result.addedHours.toFixed(1)} hrs)\n` +
         `Total: ${result.totalHours.toFixed(1)}/8 hrs\n\n` +
         `Jobs:\n${result.selectedJobs.map(j => `• ${j.customerName} (${j.duration}h)`).join('\n')}\n\n` +
-        `Continue?`
-      );
-
-      if (!confirmed) return;
+        `Continue?`,
+        'Smart Fill Preview',
+        async () => {
 
       // Optimize job order
       const optimized = await optimizeJobSelection(result.selectedJobs, tech, localRoutes, {
@@ -270,10 +273,13 @@ const KanbanCalendar = ({
       await onUpdateRoutes(updatedRoutes);
       await onUpdateJobs(updatedJobs);
 
-      alert(`✅ Successfully assigned ${result.selectedJobs.length} jobs to ${tech.name}!`);
+      showAlert(`Successfully assigned ${result.selectedJobs.length} jobs to ${tech.name}!`, 'Smart Fill Complete', 'success');
+        },
+        'question'
+      );
     } catch (error) {
       console.error('Error in smart fill:', error);
-      alert(`Error filling day: ${error.message}`);
+      showAlert(`Error filling day: ${error.message}`, 'Error', 'error');
     }
   }, [localJobs, localRoutes, scheduleForDay, offices, techs, onUpdateRoutes, onUpdateJobs]);
 

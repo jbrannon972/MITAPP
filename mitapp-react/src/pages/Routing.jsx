@@ -937,6 +937,8 @@ const Routing = () => {
         activeUsers={activeUsers}
         scheduleForDay={scheduleForDay}
         staffingData={staffingData}
+        showAlert={showAlert}
+        showConfirm={showConfirm}
       />
     );
   };
@@ -957,6 +959,8 @@ const Routing = () => {
         selectedDate={selectedDate}
         activeUsers={activeUsers}
         scheduleForDay={scheduleForDay}
+        showAlert={showAlert}
+        showConfirm={showConfirm}
       />
     );
   };

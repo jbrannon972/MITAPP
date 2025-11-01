@@ -18,7 +18,9 @@ const ManualMode = ({
   selectedDate,
   onImportCSV,
   scheduleForDay,
-  staffingData
+  staffingData,
+  showAlert,
+  showConfirm
 }) => {
   const [jobs, setJobs] = useState(initialJobs);
   const [routes, setRoutes] = useState(initialRoutes);
@@ -491,7 +493,7 @@ const ManualMode = ({
       setPendingRouteDropData(null);
     } catch (error) {
       console.error('Error completing two-tech assignment:', error);
-      alert('Error assigning route. Please try again.');
+      showAlert('Error assigning route. Please try again.', 'Error', 'error');
       setPendingRouteDropData(null);
     }
   };
@@ -570,15 +572,15 @@ const ManualMode = ({
         if (optimized.unassignableJobs && optimized.unassignableJobs.length > 0) {
           const unassignableNames = optimized.unassignableJobs.map(j => `• ${j.customerName} (${j.timeframeStart}-${j.timeframeEnd})`).join('\n');
 
-          const shouldAddAnyway = confirm(
-            `⚠️ Route optimizer couldn't fit all jobs within their time windows:\n\n` +
+          showConfirm(
+            `Route optimizer couldn't fit all jobs within their time windows:\n\n` +
             unassignableNames +
             `\n\nWould you like to add them to the route anyway?\n\n` +
             `Click OK to add them at the end (you can manually adjust timing later)\n` +
-            `Click Cancel to skip these jobs`
-          );
-
-          if (shouldAddAnyway) {
+            `Click Cancel to skip these jobs`,
+            'Timeframe Conflict',
+            () => {
+            // User confirmed - add jobs anyway
             console.log('📌 User chose to add unassignable jobs manually');
 
             // Add unassignable jobs to the end of the route with estimated times
@@ -623,9 +625,9 @@ const ManualMode = ({
             });
 
             console.log(`📋 Final route has ${optimized.optimizedJobs.length} jobs (${optimized.unassignableJobs.length} manually added)`);
-          } else {
-            console.log('❌ User chose to skip unassignable jobs');
-          }
+            },
+            'warning'
+          );
         }
       }
 
@@ -645,7 +647,7 @@ const ManualMode = ({
           `${v.customerName}: Arrives ${v.arrivalTime} but window closes at ${v.timeframeEnd}`
         ).join('\n');
 
-        alert(`⚠️ TIMEFRAME VIOLATIONS DETECTED:\n\n${violationMessages}\n\nThese jobs cannot be completed within their timeframe windows. Please adjust the route or reassign jobs.`);
+        showAlert(`TIMEFRAME VIOLATIONS DETECTED:\n\n${violationMessages}\n\nThese jobs cannot be completed within their timeframe windows. Please adjust the route or reassign jobs.`, 'Timeframe Conflict', 'warning');
         return;
       }
 
@@ -740,7 +742,7 @@ const ManualMode = ({
 
     } catch (error) {
       console.error('Error in route assignment:', error);
-      alert('Error optimizing route. Please try again.');
+      showAlert('Error optimizing route. Please try again.', 'Error', 'error');
     }
   };
 
@@ -782,7 +784,7 @@ const ManualMode = ({
 
     } catch (error) {
       console.error('Error assigning route:', error);
-      alert('Error assigning route. Please try again.');
+      showAlert('Error assigning route. Please try again.', 'Error', 'error');
       setDraggedRoute(null);
     }
   };
@@ -841,7 +843,7 @@ const ManualMode = ({
   const handleSaveGoogleClientId = () => {
     if (googleClientId) {
       localStorage.setItem('googleClientId', googleClientId);
-      alert('Google Client ID saved! You can now push routes to calendars.');
+      showAlert('Google Client ID saved! You can now push routes to calendars.', 'Settings Saved', 'success');
       setShowGoogleSetup(false);
     }
   };
@@ -851,15 +853,18 @@ const ManualMode = ({
     const routesWithJobs = Object.values(routes).filter(r => r.jobs && r.jobs.length > 0);
 
     if (routesWithJobs.length === 0) {
-      alert('No routes to push. Please assign jobs to technicians first.');
+      showAlert('No routes to push. Please assign jobs to technicians first.', 'No Routes', 'info');
       return;
     }
 
     // Check if Google Client ID is configured
     if (!googleClientId) {
-      if (confirm('Google Calendar integration is not set up. Would you like to configure it now?')) {
-        setShowGoogleSetup(true);
-      }
+      showConfirm(
+        'Google Calendar integration is not set up. Would you like to configure it now?',
+        'Setup Required',
+        () => setShowGoogleSetup(true),
+        'question'
+      );
       return;
     }
 
@@ -868,9 +873,7 @@ const ManualMode = ({
     const confirmMessage = `Push ${totalJobs} jobs to ${routesWithJobs.length} technician calendars?\n\n` +
       `This will create Google Calendar events for all assigned routes on ${selectedDate}.`;
 
-    if (!confirm(confirmMessage)) {
-      return;
-    }
+    showConfirm(confirmMessage, 'Push to Calendar', async () => {
 
     setPushingToCalendar(true);
 
@@ -911,14 +914,15 @@ const ManualMode = ({
         resultMessage += `\n✨ All routes successfully pushed to Google Calendar!`;
       }
 
-      alert(resultMessage);
+      showAlert(resultMessage, 'Calendar Push Complete', summary.failedJobs > 0 ? 'warning' : 'success');
 
     } catch (error) {
       console.error('Error pushing to calendars:', error);
-      alert(`Error pushing to calendars: ${error.message}\n\nPlease check your Google Calendar permissions and try again.`);
+      showAlert(`Error pushing to calendars: ${error.message}\n\nPlease check your Google Calendar permissions and try again.`, 'Error', 'error');
     } finally {
       setPushingToCalendar(false);
     }
+    }, 'question');
   };
 
   return (
