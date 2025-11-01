@@ -580,6 +580,8 @@
 }
 
 /* Responsive Adjustments */
+
+/* Small phones */
 @media (max-width: 375px) {
   .tech-job-customer {
     font-size: 16px;
@@ -601,6 +603,183 @@
 
   .tech-stat-card {
     padding: 14px 10px;
+  }
+}
+
+/* Tablets - Portrait (768px and up) */
+@media (min-width: 768px) {
+  .tech-route-container {
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  /* Header - Horizontal layout on tablets */
+  .tech-route-header {
+    flex-direction: row;
+    align-items: center;
+    padding: 20px 24px;
+  }
+
+  .tech-route-date-picker,
+  .tech-route-tech-selector {
+    flex: 1;
+  }
+
+  /* Stats - Larger and more spacious */
+  .tech-route-stats {
+    margin: 0 24px 24px;
+    padding: 24px;
+    gap: 16px;
+  }
+
+  .tech-stat-card {
+    padding: 24px 16px;
+  }
+
+  .tech-stat-value {
+    font-size: 32px;
+  }
+
+  .tech-stat-label {
+    font-size: 13px;
+  }
+
+  /* Calendar sync button */
+  .tech-route-actions {
+    padding: 0 24px 24px;
+  }
+
+  .tech-sync-calendar-btn {
+    padding: 18px;
+    font-size: 16px;
+  }
+
+  /* Job list - 2 column grid */
+  .tech-route-jobs {
+    padding: 0 24px 24px;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+  }
+
+  /* Return to office - full width at bottom */
+  .tech-route-return {
+    grid-column: 1 / -1;
+    padding: 24px;
+  }
+
+  .tech-return-time {
+    font-size: 28px;
+  }
+
+  /* Job cards - Better spacing */
+  .tech-job-header {
+    padding: 20px;
+  }
+
+  .tech-job-quick-info {
+    padding: 0 20px 20px;
+  }
+
+  .tech-job-details {
+    padding: 20px;
+    margin: 0 20px 20px;
+  }
+
+  .tech-job-actions {
+    padding: 20px;
+  }
+
+  /* Notification positioning */
+  .tech-route-notification {
+    top: 80px;
+  }
+
+  .tech-route-syncing {
+    top: 80px;
+  }
+}
+
+/* Tablets - Landscape & Small Desktops (1024px and up) */
+@media (min-width: 1024px) {
+  /* Even more spacious */
+  .tech-route-header {
+    padding: 24px 32px;
+  }
+
+  .tech-route-stats {
+    margin: 0 32px 32px;
+    padding: 28px;
+    gap: 20px;
+  }
+
+  .tech-stat-card {
+    padding: 28px 20px;
+  }
+
+  .tech-stat-value {
+    font-size: 36px;
+  }
+
+  .tech-stat-label {
+    font-size: 14px;
+  }
+
+  /* Calendar sync */
+  .tech-route-actions {
+    padding: 0 32px 32px;
+  }
+
+  /* Job list - 3 column grid */
+  .tech-route-jobs {
+    padding: 0 32px 32px;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+  }
+
+  /* Larger job cards */
+  .tech-job-customer {
+    font-size: 20px;
+  }
+
+  .tech-job-type {
+    font-size: 15px;
+  }
+
+  .tech-job-time,
+  .tech-job-address-short {
+    font-size: 15px;
+  }
+
+  /* Action buttons */
+  .tech-job-action-btn {
+    font-size: 15px;
+    padding: 16px 20px;
+  }
+
+  /* Return to office */
+  .tech-route-return {
+    padding: 28px;
+  }
+
+  .tech-route-return i {
+    font-size: 40px;
+  }
+
+  .tech-return-time {
+    font-size: 32px;
+  }
+}
+
+/* Large Tablets & Desktops (1280px and up) */
+@media (min-width: 1280px) {
+  .tech-route-container {
+    max-width: 1400px;
+  }
+
+  /* 4 column grid for large screens */
+  .tech-route-jobs {
+    grid-template-columns: repeat(4, 1fr);
   }
 }
 
