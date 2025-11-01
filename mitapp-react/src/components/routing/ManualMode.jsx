@@ -1373,6 +1373,11 @@ const ManualMode = ({
                         {job.startTime && (
                           <div style={{ marginBottom: '2px', color: 'var(--success-color)', fontWeight: '600' }}>
                             <i className="fas fa-clock"></i> {job.startTime} - {job.endTime}
+                            {job.arrivalTime && job.arrivalTime !== job.startTime && (
+                              <span style={{ fontSize: '8px', color: 'var(--info-color)', marginLeft: '4px' }}>
+                                (arrive {job.arrivalTime})
+                              </span>
+                            )}
                           </div>
                         )}
                         <div>

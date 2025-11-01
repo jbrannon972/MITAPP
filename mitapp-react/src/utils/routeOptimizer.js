@@ -22,12 +22,12 @@ const minutesToTime = (minutes) => {
 
 /**
  * Check if arrival time is within job's time window
- * Allows arrival up to 90 minutes early (techs can wait/arrive early for flexible jobs)
+ * Allows arrival up to 90 minutes early (techs can start immediately upon arrival)
  */
 const isWithinTimeWindow = (arrivalTime, job) => {
   const startWindow = timeToMinutes(job.timeframeStart);
   const endWindow = timeToMinutes(job.timeframeEnd);
-  const earlyArrivalBuffer = 90; // Can arrive up to 90 minutes early
+  const earlyArrivalBuffer = 90; // Can arrive up to 90 minutes early and start immediately
   return arrivalTime >= (startWindow - earlyArrivalBuffer) && arrivalTime <= endWindow;
 };
 
@@ -40,26 +40,26 @@ const calculateJobScore = (currentTime, job, travelTime) => {
   const arrivalTime = currentTime + travelTime;
   const windowStart = timeToMinutes(job.timeframeStart);
   const windowEnd = timeToMinutes(job.timeframeEnd);
-  const earlyArrivalBuffer = 90; // Can arrive up to 90 minutes early
+  const earlyArrivalBuffer = 90; // Can arrive up to 90 minutes early and start immediately
 
-  // Can't arrive after window ends
+  // Can't arrive after window ends (still need to meet deadline)
   if (arrivalTime > windowEnd) {
     return Infinity;
   }
 
-  // Can't arrive more than 90 minutes before window starts
+  // Can't arrive more than 90 minutes before window starts (reasonable limit)
   if (arrivalTime < (windowStart - earlyArrivalBuffer)) {
     return Infinity;
   }
 
-  // Wait time if we arrive early (up to 90 min early is ok)
-  const waitTime = Math.max(0, windowStart - arrivalTime);
-
-  // Preference for arriving closer to window start (but early is acceptable)
-  const timeWindowScore = Math.abs(arrivalTime + waitTime - windowStart);
+  // Simple scoring: mainly based on travel time
+  // Techs can start immediately upon arrival, so no wait time penalty
+  // Small preference for not arriving too early (10% weight)
+  const earlyArrival = Math.max(0, windowStart - arrivalTime);
+  const earlyArrivalPenalty = earlyArrival * 0.1; // Small penalty for very early arrival
 
   // Total score (lower is better)
-  return travelTime + waitTime * 0.5 + timeWindowScore * 0.3;
+  return travelTime + earlyArrivalPenalty;
 };
 
 /**
@@ -134,7 +134,8 @@ const greedyOptimize = (jobs, shiftStartTime, distanceMatrix, jobToIndex, strate
     // Add best job to route
     const arrivalTime = currentTime + bestTravelTime;
     const windowStart = timeToMinutes(bestJob.timeframeStart);
-    const actualStartTime = Math.max(arrivalTime, windowStart);
+    // Techs can start immediately upon arrival (even before timeframe window opens)
+    const actualStartTime = arrivalTime;
     const endTime = actualStartTime + (bestJob.duration * 60);
 
     route.push({
@@ -143,7 +144,7 @@ const greedyOptimize = (jobs, shiftStartTime, distanceMatrix, jobToIndex, strate
       startTime: minutesToTime(actualStartTime),
       endTime: minutesToTime(endTime),
       travelTime: bestTravelTime,
-      waitTime: Math.max(0, windowStart - arrivalTime)
+      waitTime: 0 // Techs start immediately upon arrival, no waiting
     });
 
     // Update current position and time
