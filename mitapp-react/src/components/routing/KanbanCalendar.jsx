@@ -164,6 +164,46 @@ const KanbanCalendar = ({
     };
   }, [localRoutes, techs, offices]);
 
+  // Recalculate drive times on initial load to fix any default/estimated times
+  // This ensures routes from auto-optimizer get real Mapbox drive times
+  useEffect(() => {
+    const recalculateAllDriveTimes = async () => {
+      let needsUpdate = false;
+      const updatedRoutes = { ...localRoutes };
+
+      for (const tech of techs) {
+        const techRoute = updatedRoutes[tech.id];
+        if (!techRoute || !techRoute.jobs || techRoute.jobs.length === 0) continue;
+
+        // Check if any jobs have missing or default (20 min) travel times
+        const hasDefaultTimes = techRoute.jobs.some(
+          j => !j.travelTime || j.travelTime === 20
+        );
+
+        if (hasDefaultTimes) {
+          console.log(`🔄 Recalculating drive times for ${tech.name}...`);
+          updatedRoutes[tech.id] = await recalculateRouteTimings(tech.id, updatedRoutes);
+          needsUpdate = true;
+        }
+      }
+
+      if (needsUpdate) {
+        console.log('✅ Drive times recalculated with real Mapbox data');
+        setLocalRoutes(updatedRoutes);
+        await onUpdateRoutes(updatedRoutes);
+      }
+    };
+
+    // Only run once on initial load, with a small delay to let other initializations finish
+    if (hasInitialized.current && Object.keys(localRoutes).length > 0) {
+      const timer = setTimeout(() => {
+        recalculateAllDriveTimes();
+      }, 1000);
+
+      return () => clearTimeout(timer);
+    }
+  }, []); // Empty deps - run only once on mount
+
   // Initialize map when modal opens
   useEffect(() => {
     if (!showMapModal || !mapContainerRef.current || mapInstanceRef.current) return;
