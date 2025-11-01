@@ -553,15 +553,18 @@ const KanbanCalendar = ({
   const calculateOptimalStartTime = async (job, targetTechId) => {
     const techRoute = localRoutes[targetTechId];
     const techJobs = techRoute?.jobs || [];
+    const targetTech = techs.find(t => t.id === targetTechId);
 
-    // If no jobs, start from office at 8:15 AM + drive time to first job
+    // Get tech's start time (respect custom start times and second shift)
+    const defaultStartTime = targetTech?.shift === 'second' ? '13:15' : '08:15';
+    const shiftStart = techStartTimes[targetTechId] || defaultStartTime;
+
+    // If no jobs, start from office + drive time to first job
     if (techJobs.length === 0) {
-      const shiftStart = '08:15';
-      const targetTech = techs.find(t => t.id === targetTechId);
       const officeAddress = offices[targetTech?.office || 'office_1']?.address;
 
       if (!officeAddress || !job.address) {
-        // No office address or job address, just use 8:15
+        // No office address or job address, just use shift start time
         return shiftStart;
       }
 
@@ -628,6 +631,10 @@ const KanbanCalendar = ({
     const officeAddress = offices[tech?.office || 'office_1']?.address;
     const mapboxService = getMapboxService();
 
+    // Get tech's start time (respect custom start times and second shift)
+    const defaultStartTime = tech?.shift === 'second' ? '13:15' : '08:15';
+    const shiftStart = techStartTimes[techId] || defaultStartTime;
+
     // Use jobs in their CURRENT order - do NOT sort!
     // The order has been set by arrow buttons or drag-drop
     const jobsInOrder = [...techRoute.jobs];
@@ -641,7 +648,6 @@ const KanbanCalendar = ({
 
       if (i === 0) {
         // First job: calculate from office
-        const shiftStart = '08:15';
         if (officeAddress && job.address) {
           try {
             const result = await mapboxService.getDrivingDistance(officeAddress, job.address);
