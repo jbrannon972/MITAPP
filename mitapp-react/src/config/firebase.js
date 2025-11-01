@@ -13,6 +13,10 @@ const firebaseConfig = {
   measurementId: "G-Z9ZE012Y2C"
 };
 
+// Google Calendar API Configuration
+// To update: Go to Google Cloud Console > Credentials > OAuth 2.0 Client IDs
+export const GOOGLE_CLIENT_ID = '1069061948061-roq457in5ig4hnbd1hq8pt4n5jkl0if6.apps.googleusercontent.com';
+
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);

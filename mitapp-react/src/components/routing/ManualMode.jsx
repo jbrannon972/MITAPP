@@ -5,6 +5,7 @@ import { getMapboxService } from '../../services/mapboxService';
 import { optimizeRoute } from '../../utils/routeOptimizer';
 import googleCalendarService from '../../services/googleCalendarService';
 import TwoTechAssignmentModal from './TwoTechAssignmentModal';
+import { GOOGLE_CLIENT_ID } from '../../config/firebase';
 
 const ManualMode = ({
   jobs: initialJobs,
@@ -39,7 +40,7 @@ const ManualMode = ({
   const [pushingToCalendar, setPushingToCalendar] = useState(false);
   const hoverTimeoutRef = useRef(null);
   const [googleClientId, setGoogleClientId] = useState(
-    localStorage.getItem('googleClientId') || ''
+    localStorage.getItem('googleClientId') || GOOGLE_CLIENT_ID
   );
   const [showGoogleSetup, setShowGoogleSetup] = useState(false);
   const [showTwoTechModal, setShowTwoTechModal] = useState(false);
@@ -1724,8 +1725,8 @@ const ManualMode = ({
               <div className="form-group">
                 <label htmlFor="googleClientId">
                   Google OAuth Client ID
-                  <span style={{ marginLeft: '8px', fontSize: '12px', color: 'var(--text-secondary)' }}>
-                    (Required for calendar integration)
+                  <span style={{ marginLeft: '8px', fontSize: '12px', color: 'var(--success-color)' }}>
+                    ✓ Default configured
                   </span>
                 </label>
                 <input
@@ -1737,6 +1738,9 @@ const ManualMode = ({
                   placeholder="123456789-abcdefg.apps.googleusercontent.com"
                   style={{ fontFamily: 'monospace', fontSize: '13px' }}
                 />
+                <div style={{ marginTop: '8px', fontSize: '12px', color: 'var(--text-secondary)' }}>
+                  A default Client ID is already configured. Only change this if you need to use a different Google Cloud project.
+                </div>
               </div>
 
               <div style={{ padding: '12px', backgroundColor: 'var(--active-bg)', borderRadius: '6px', fontSize: '13px', marginTop: '16px' }}>
