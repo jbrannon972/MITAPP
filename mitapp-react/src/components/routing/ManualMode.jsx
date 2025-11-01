@@ -899,61 +899,80 @@ const ManualMode = ({
       return;
     }
 
-    // Confirm before pushing
-    const totalJobs = routesWithJobs.reduce((sum, r) => sum + r.jobs.length, 0);
-    const confirmMessage = `Push ${totalJobs} jobs to ${routesWithJobs.length} technician calendars?\n\n` +
-      `This will create Google Calendar events for all assigned routes on ${selectedDate}.`;
-
-    showConfirm(confirmMessage, 'Push to Calendar', async () => {
-
-    setPushingToCalendar(true);
-
+    // Initialize and sign in to Google FIRST (before confirmation)
     try {
+      setPushingToCalendar(true);
+
       // Initialize Google Calendar service if needed
       if (!googleCalendarService.isInitialized) {
         await googleCalendarService.initialize(googleClientId);
       }
 
-      // Sign in if not already signed in
+      // Sign in if not already signed in - This will show Google login popup
       if (!googleCalendarService.isSignedIn()) {
         await googleCalendarService.signIn();
       }
 
-      // Push all routes
-      const summary = await googleCalendarService.pushAllRoutes(routes, selectedDate);
+      setPushingToCalendar(false);
 
-      // Show detailed results
-      let resultMessage = `✅ Calendar Push Complete!\n\n`;
-      resultMessage += `Total Techs: ${summary.totalTechs}\n`;
-      resultMessage += `Jobs Pushed: ${summary.successfulJobs} / ${summary.totalJobs}\n`;
+      // Now that we're signed in, show confirmation
+      const totalJobs = routesWithJobs.reduce((sum, r) => sum + r.jobs.length, 0);
+      const confirmMessage = `Push ${totalJobs} jobs to ${routesWithJobs.length} technician calendars?\n\n` +
+        `This will create Google Calendar events for all assigned routes on ${selectedDate}.`;
 
-      if (summary.failedJobs > 0) {
-        resultMessage += `\n⚠️ Failed: ${summary.failedJobs}\n\n`;
-        resultMessage += `Details:\n`;
-        summary.techResults.forEach(tr => {
-          if (tr.failed > 0) {
-            resultMessage += `\n${tr.techName}:\n`;
-            if (!tr.email) {
-              resultMessage += `  ❌ No email configured\n`;
-            }
-            tr.errors.forEach(err => {
-              resultMessage += `  ❌ ${err.job || 'Error'}: ${err.error}\n`;
+      showConfirm(confirmMessage, 'Push to Calendar', async () => {
+
+        setPushingToCalendar(true);
+
+        try {
+          // Push all routes (already signed in at this point)
+          const summary = await googleCalendarService.pushAllRoutes(routes, selectedDate);
+
+          // Show detailed results
+          let resultMessage = `✅ Calendar Push Complete!\n\n`;
+          resultMessage += `Total Techs: ${summary.totalTechs}\n`;
+          resultMessage += `Jobs Pushed: ${summary.successfulJobs} / ${summary.totalJobs}\n`;
+
+          if (summary.failedJobs > 0) {
+            resultMessage += `\n⚠️ Failed: ${summary.failedJobs}\n\n`;
+            resultMessage += `Details:\n`;
+            summary.techResults.forEach(tr => {
+              if (tr.failed > 0) {
+                resultMessage += `\n${tr.techName}:\n`;
+                if (!tr.email) {
+                  resultMessage += `  ❌ No email configured\n`;
+                }
+                tr.errors.forEach(err => {
+                  resultMessage += `  ❌ ${err.job || 'Error'}: ${err.error}\n`;
+                });
+              }
             });
+          } else {
+            resultMessage += `\n✨ All routes successfully pushed to Google Calendar!`;
           }
-        });
-      } else {
-        resultMessage += `\n✨ All routes successfully pushed to Google Calendar!`;
-      }
 
-      showAlert(resultMessage, 'Calendar Push Complete', summary.failedJobs > 0 ? 'warning' : 'success');
+          showAlert(resultMessage, 'Calendar Push Complete', summary.failedJobs > 0 ? 'warning' : 'success');
+
+        } catch (error) {
+          console.error('Error pushing to calendars:', error);
+          showAlert(`Error pushing to calendars: ${error.message}\n\nPlease check your Google Calendar permissions and try again.`, 'Error', 'error');
+        } finally {
+          setPushingToCalendar(false);
+        }
+      }, 'question');
 
     } catch (error) {
-      console.error('Error pushing to calendars:', error);
-      showAlert(`Error pushing to calendars: ${error.message}\n\nPlease check your Google Calendar permissions and try again.`, 'Error', 'error');
-    } finally {
+      console.error('Error with Google sign-in:', error);
       setPushingToCalendar(false);
+
+      // User cancelled or error occurred during sign-in
+      if (error.message && error.message.includes('popup_closed_by_user')) {
+        showAlert('Google sign-in was cancelled. Please try again when ready.', 'Sign-in Cancelled', 'info');
+      } else {
+        showAlert(`Error signing in to Google: ${error.message}\n\nPlease check your Google Client ID configuration.`, 'Sign-in Error', 'error');
+      }
+      return;
     }
-    }, 'question');
   };
 
   return (
