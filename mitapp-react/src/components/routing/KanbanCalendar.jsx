@@ -1183,6 +1183,42 @@ const KanbanCalendar = ({
           </p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          {/* Average Drive Time */}
+          {(() => {
+            const techsWithRoutes = techs.filter(t => {
+              const route = localRoutes[t.id];
+              return route && route.jobs && route.jobs.length > 0;
+            });
+
+            if (techsWithRoutes.length > 0) {
+              const totalDrive = techsWithRoutes.reduce((sum, tech) => {
+                const jobs = localRoutes[tech.id]?.jobs || [];
+                const jobDriveTime = jobs.reduce((s, j) => s + (j.travelTime || 0), 0);
+                const returnTime = returnToOfficeTimes[tech.id]?.driveTime || 0;
+                return sum + jobDriveTime + returnTime;
+              }, 0);
+
+              const avgDrive = Math.round(totalDrive / techsWithRoutes.length);
+
+              return (
+                <div style={{
+                  backgroundColor: 'var(--warning-bg)',
+                  padding: '4px 8px',
+                  borderRadius: '4px',
+                  fontSize: '11px',
+                  fontWeight: '600',
+                  color: 'var(--warning-color)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px'
+                }}>
+                  <i className="fas fa-car"></i>
+                  Avg Drive: {avgDrive}m
+                </div>
+              );
+            }
+            return null;
+          })()}
           {isCalculatingDrive && (
             <span style={{ fontSize: '11px', color: 'var(--warning-color)' }}>
               <i className="fas fa-spinner fa-spin"></i> Calculating...
@@ -1378,6 +1414,11 @@ const KanbanCalendar = ({
 
             // Calculate total hours (only primary jobs, not second tech assignments)
             const totalHours = techJobs.filter(j => j.type !== 'secondTechAssignment').reduce((sum, j) => sum + j.duration, 0);
+
+            // Calculate total drive time (in minutes)
+            const totalDriveTime = techJobs.reduce((sum, j) => sum + (j.travelTime || 0), 0) +
+                                   (returnToOfficeTimes[tech.id]?.driveTime || 0);
+
             const isDragOver = dragOverTech === tech.id;
             const isDragging = draggedTech === tech.id;
             const isOff = isTechOff(tech.id);
@@ -1508,6 +1549,14 @@ const KanbanCalendar = ({
                   <div style={{ marginTop: '4px', display: 'flex', gap: '6px', fontSize: '9px', fontWeight: '500' }}>
                     <span style={{ color: 'var(--info-color)' }}>{techJobs.length}j</span>
                     <span style={{ color: 'var(--success-color)' }}>{totalHours.toFixed(1)}h</span>
+                    {totalDriveTime > 0 && (
+                      <span
+                        style={{ color: 'var(--warning-color)' }}
+                        title={`Total drive time: ${Math.floor(totalDriveTime / 60)}h ${totalDriveTime % 60}m (includes office to first job, between jobs, and return to office)`}
+                      >
+                        <i className="fas fa-car"></i> {totalDriveTime}m
+                      </span>
+                    )}
                     {techRoute?.demoTech && (
                       <span style={{ color: 'var(--warning-color)' }} title={`Demo Tech: ${techRoute.demoTech}`}>
                         <i className="fas fa-user-plus"></i>
