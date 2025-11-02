@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { formatTimeAMPM } from '../../utils/routingHelpers';
 
-const JobCard = ({ job, index, isCurrent, isNext, onStatusChange, onNavigate, onCall }) => {
+const JobCard = ({ job, index, isCurrent, isNext, onStatusChange, onNavigate, onCall, onDurationChange }) => {
   const [expanded, setExpanded] = useState(false);
+  const [isEditingDuration, setIsEditingDuration] = useState(false);
 
   const status = job.status || 'not_started';
 
@@ -56,6 +57,14 @@ const JobCard = ({ job, index, isCurrent, isNext, onStatusChange, onNavigate, on
     ? `${job.driveTimeToNext} min`
     : null;
 
+  // Handle duration change
+  const handleDurationChange = (change) => {
+    const newDuration = Math.max(0.5, (job.duration || 1) + change);
+    if (onDurationChange) {
+      onDurationChange(job.id, newDuration);
+    }
+  };
+
   return (
     <div
       className={`tech-job-card ${statusDisplay.color} ${isCurrent ? 'current' : ''} ${isNext ? 'next' : ''} ${expanded ? 'expanded' : ''}`}
@@ -70,7 +79,24 @@ const JobCard = ({ job, index, isCurrent, isNext, onStatusChange, onNavigate, on
         <div className="tech-job-main-info">
           <div className="tech-job-number">Job {index + 1}</div>
           <div className="tech-job-customer">{job.customer || 'Customer Name'}</div>
-          <div className="tech-job-type">{job.jobType || 'Service'} • {job.duration}h</div>
+          <div className="tech-job-type">{job.jobType || 'Service'}</div>
+          <div className="tech-job-duration-control" onClick={(e) => e.stopPropagation()}>
+            <button
+              className="tech-duration-btn"
+              onClick={() => handleDurationChange(-0.5)}
+              title="Decrease duration"
+            >
+              <i className="fas fa-minus"></i>
+            </button>
+            <span className="tech-duration-value">{job.duration || 1}h</span>
+            <button
+              className="tech-duration-btn"
+              onClick={() => handleDurationChange(0.5)}
+              title="Increase duration"
+            >
+              <i className="fas fa-plus"></i>
+            </button>
+          </div>
         </div>
 
         <div className="tech-job-indicators">

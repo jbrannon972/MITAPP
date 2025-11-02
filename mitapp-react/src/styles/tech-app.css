@@ -34,7 +34,7 @@
 .tech-header-modern {
   background: linear-gradient(135deg, var(--tech-primary) 0%, var(--tech-primary-dark) 100%);
   color: white;
-  padding: max(env(safe-area-inset-top), 12px) 20px 16px;
+  padding: max(env(safe-area-inset-top), 8px) 12px 10px;
   box-shadow: 0 2px 12px rgba(255, 107, 53, 0.2);
   z-index: 100;
   flex-shrink: 0;
@@ -47,23 +47,23 @@
 }
 
 .tech-header-modern h1 {
-  font-size: 1.25rem;
+  font-size: 1.1rem;
   font-weight: 700;
   margin: 0;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   letter-spacing: -0.02em;
 }
 
 .tech-header-user {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
 }
 
 .tech-user-name {
-  font-size: 0.9rem;
+  font-size: 0.8rem;
   font-weight: 600;
   opacity: 0.95;
 }
@@ -97,7 +97,7 @@
   display: flex;
   justify-content: space-around;
   align-items: center;
-  padding: 8px 0 max(env(safe-area-inset-bottom), 8px);
+  padding: 6px 0 max(env(safe-area-inset-bottom), 6px);
   box-shadow: 0 -2px 16px rgba(0, 0, 0, 0.08);
   z-index: 1000;
   backdrop-filter: blur(10px);
@@ -110,12 +110,12 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
-  padding: 8px 12px;
+  gap: 2px;
+  padding: 6px 8px;
   border: none;
   background: transparent;
   color: var(--tech-text-light);
-  font-size: 0.7rem;
+  font-size: 0.65rem;
   font-weight: 600;
   cursor: pointer;
   transition: var(--tech-transition);
@@ -125,7 +125,7 @@
 }
 
 .tech-nav-btn i {
-  font-size: 1.4rem;
+  font-size: 1.3rem;
   transition: var(--tech-transition);
 }
 
@@ -327,18 +327,12 @@
 /* Tablet and Desktop */
 @media (min-width: 769px) {
   .tech-app-container.modern {
-    max-width: 480px;
+    width: 100%;
     margin: 0 auto;
-    border-left: 1px solid var(--tech-border);
-    border-right: 1px solid var(--tech-border);
-    box-shadow: 0 0 40px rgba(0, 0, 0, 0.1);
   }
 
   .tech-bottom-nav {
-    max-width: 480px;
-    left: 50%;
-    transform: translateX(-50%);
-    border-radius: var(--tech-radius) var(--tech-radius) 0 0;
+    width: 100%;
   }
 }
 

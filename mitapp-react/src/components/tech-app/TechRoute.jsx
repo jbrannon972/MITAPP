@@ -166,6 +166,39 @@ const TechRoute = () => {
     }
   };
 
+  // Update job duration
+  const handleDurationChange = async (jobId, newDuration) => {
+    setSyncing(true);
+    try {
+      // Update local state immediately (optimistic update)
+      const updatedRoutes = { ...routes };
+      if (updatedRoutes[selectedTechId]) {
+        updatedRoutes[selectedTechId] = {
+          ...updatedRoutes[selectedTechId],
+          jobs: updatedRoutes[selectedTechId].jobs.map(job => {
+            if (job.id === jobId) {
+              return { ...job, duration: newDuration };
+            }
+            return job;
+          })
+        };
+      }
+      setRoutes(updatedRoutes);
+
+      // Save to Firebase
+      await firebaseService.saveDocument('hou_routing', `routes_${selectedDate}`, {
+        routes: updatedRoutes
+      });
+
+      setSyncing(false);
+    } catch (error) {
+      console.error('Error updating job duration:', error);
+      setSyncing(false);
+      setUpdateNotification('Failed to update duration');
+      setTimeout(() => setUpdateNotification(null), 3000);
+    }
+  };
+
   // Sync to Google Calendar
   const handleSyncToCalendar = async () => {
     if (!currentRoute || !currentTech) return;
@@ -312,6 +345,7 @@ const TechRoute = () => {
                 isCurrent={index === currentJobIndex}
                 isNext={index === currentJobIndex + 1}
                 onStatusChange={handleStatusChange}
+                onDurationChange={handleDurationChange}
                 onNavigate={handleNavigate}
                 onCall={handleCall}
               />
