@@ -21,7 +21,8 @@ const KanbanCalendar = ({
   showAlert,
   showConfirm,
   techStartTimes,
-  setTechStartTimes
+  setTechStartTimes,
+  companyMeetingMode
 }) => {
   // Local state for instant UI updates
   // Initialize once and NEVER sync from props again - child is authoritative
@@ -300,10 +301,15 @@ const KanbanCalendar = ({
         async () => {
 
       // Optimize job order
+      // Company Meeting Mode: All techs start at 9:00 AM
+      const customStartTime = companyMeetingMode
+        ? "09:00"
+        : techStartTimes[tech.id];
       const optimized = await optimizeJobSelection(result.selectedJobs, tech, localRoutes, {
         offices,
         shift: tech.name?.toLowerCase().includes('second') ? 'second' : 'first',
-        customStartTime: techStartTimes[tech.id]
+        customStartTime: customStartTime,
+        companyMeetingMode: companyMeetingMode
       });
 
       // Assign jobs
@@ -375,10 +381,15 @@ const KanbanCalendar = ({
     const jobsToAssign = localJobs.filter(j => selectedJobs.has(j.id));
 
     // Optimize job order
+    // Company Meeting Mode: All techs start at 9:00 AM
+    const customStartTime = companyMeetingMode
+      ? "09:00"
+      : techStartTimes[tech.id];
     const optimized = await optimizeJobSelection(jobsToAssign, tech, localRoutes, {
       offices,
       shift: tech.name?.toLowerCase().includes('second') ? 'second' : 'first',
-      customStartTime: techStartTimes[tech.id]
+      customStartTime: customStartTime,
+      companyMeetingMode: companyMeetingMode
     });
 
     // Update routes
@@ -403,7 +414,7 @@ const KanbanCalendar = ({
     // Clear selection
     setSelectedJobs(new Set());
     setIsMultiSelectMode(false);
-  }, [selectedJobs, techs, localJobs, localRoutes, offices, onUpdateRoutes, onUpdateJobs]);
+  }, [selectedJobs, techs, localJobs, localRoutes, offices, techStartTimes, companyMeetingMode, onUpdateRoutes, onUpdateJobs]);
 
   // Render route on map
   const renderRouteOnMap = () => {
@@ -595,13 +606,17 @@ const KanbanCalendar = ({
     const techJobs = techRoute?.jobs || [];
     const targetTech = techs.find(t => t.id === targetTechId);
 
-    // Get tech's start time (respect custom start times and second shift)
+    // Get tech's start time (respect custom start times, company meeting mode, and second shift)
     const defaultStartTime = targetTech?.shift === 'second' ? '13:15' : '08:15';
-    const shiftStart = techStartTimes[targetTechId] || defaultStartTime;
+    const shiftStart = companyMeetingMode
+      ? "09:00"
+      : (techStartTimes[targetTechId] || defaultStartTime);
 
     // If no jobs, start from office + drive time to first job
+    // Company Meeting Mode: All techs start at Conroe office
     if (techJobs.length === 0) {
-      const officeAddress = offices[targetTech?.office || 'office_1']?.address;
+      const officeKey = companyMeetingMode ? 'office_1' : (targetTech?.office || 'office_1');
+      const officeAddress = offices[officeKey]?.address;
 
       if (!officeAddress || !job.address) {
         // No office address or job address, just use shift start time

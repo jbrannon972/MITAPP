@@ -107,14 +107,15 @@ export const smartFillTechDay = async (
  * @param {Array} jobs - Jobs to optimize
  * @param {Object} tech - Target technician
  * @param {Object} routes - Current routes
- * @param {Object} options - { offices, mapboxService, shift, customStartTime }
+ * @param {Object} options - { offices, mapboxService, shift, customStartTime, companyMeetingMode }
  * @returns {Promise<Object>} - { optimizedJobs, preview }
  */
 export const optimizeJobSelection = async (jobs, tech, routes, options = {}) => {
-  const { offices, shift, customStartTime } = options;
+  const { offices, shift, customStartTime, companyMeetingMode } = options;
 
   // Get office start location
-  const officeKey = tech.office || 'office_1';
+  // Company Meeting Mode: All techs start at Conroe office (office_1)
+  const officeKey = companyMeetingMode ? 'office_1' : (tech.office || 'office_1');
   const startLocation = offices?.[officeKey]?.address;
 
   if (!startLocation) {

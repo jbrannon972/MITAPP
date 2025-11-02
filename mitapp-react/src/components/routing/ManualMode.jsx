@@ -24,7 +24,8 @@ const ManualMode = ({
   showAlert,
   showConfirm,
   techStartTimes,
-  setTechStartTimes
+  setTechStartTimes,
+  companyMeetingMode
 }) => {
   const [jobs, setJobs] = useState(initialJobs);
   const [routes, setRoutes] = useState(initialRoutes);
@@ -570,7 +571,10 @@ const ManualMode = ({
       }
 
       // Optimize the route
-      const customStartTime = techStartTimes[targetTechId] || null;
+      // Company Meeting Mode: All techs start at 9:00 AM
+      const customStartTime = companyMeetingMode
+        ? "09:00"
+        : (techStartTimes[targetTechId] || null);
       const optimized = await optimizeRoute(
         allJobsForTech,
         startLocation,
@@ -817,7 +821,11 @@ const ManualMode = ({
       const isSecondShift = targetTech.name?.toLowerCase().includes('second shift') ||
                            targetTech.name?.toLowerCase().includes('2nd shift');
       const shift = isSecondShift ? 'second' : 'first';
-      const startLocation = offices[targetTech.office].address;
+
+      // Company Meeting Mode: All techs start at Conroe office
+      const startLocation = companyMeetingMode
+        ? offices.office_1.address
+        : offices[targetTech.office].address;
 
       // Check if route has two-tech jobs
       const twoTechJobs = routeJobs.filter(j => j.requiresTwoTechs);

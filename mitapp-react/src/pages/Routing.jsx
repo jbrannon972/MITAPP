@@ -36,6 +36,7 @@ const Routing = () => {
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [modal, setModal] = useState({ show: false, title: '', message: '', type: 'info', onConfirm: null });
   const [techStartTimes, setTechStartTimes] = useState({}); // Store custom start times for techs (for late starts)
+  const [companyMeetingMode, setCompanyMeetingMode] = useState(false); // All techs start at Conroe office at 9am
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const markersRef = useRef([]);
@@ -79,6 +80,7 @@ const Routing = () => {
       `jobs_${selectedDate}`,
       (data) => {
         setJobs(data?.jobs || []);
+        setCompanyMeetingMode(data?.companyMeetingMode || false);
         setLoading(false);
       }
     );
@@ -403,7 +405,8 @@ const Routing = () => {
           `jobs_${selectedDate}`,
           {
             jobs: jobsData,
-            date: selectedDate
+            date: selectedDate,
+            companyMeetingMode: companyMeetingMode
           },
           {
             name: currentUser.displayName || currentUser.email,
@@ -414,6 +417,7 @@ const Routing = () => {
         await firebaseService.saveDocument('hou_routing', `jobs_${selectedDate}`, {
           jobs: jobsData,
           date: selectedDate,
+          companyMeetingMode: companyMeetingMode,
           lastUpdated: new Date().toISOString()
         });
       }
@@ -720,6 +724,52 @@ const Routing = () => {
     }
   };
 
+  const toggleCompanyMeetingMode = async () => {
+    const newMode = !companyMeetingMode;
+    setCompanyMeetingMode(newMode);
+
+    // Save the setting to Firebase
+    try {
+      if (currentUser) {
+        await firebaseService.saveWithMetadata(
+          'hou_routing',
+          `jobs_${selectedDate}`,
+          {
+            jobs: jobs,
+            date: selectedDate,
+            companyMeetingMode: newMode
+          },
+          {
+            name: currentUser.displayName || currentUser.email,
+            id: currentUser.uid
+          }
+        );
+      } else {
+        await firebaseService.saveDocument('hou_routing', `jobs_${selectedDate}`, {
+          jobs: jobs,
+          date: selectedDate,
+          companyMeetingMode: newMode,
+          lastUpdated: new Date().toISOString()
+        });
+      }
+
+      const modeText = newMode ? 'enabled' : 'disabled';
+      console.log(`✅ Company Meeting Mode ${modeText}`);
+      showAlert(
+        newMode
+          ? 'Company Meeting Mode is now ON.\n\nAll technicians will start from the Conroe office at 9:00 AM.'
+          : 'Company Meeting Mode is now OFF.\n\nTechnicians will start from their assigned offices at 8:15 AM.',
+        `Meeting Mode ${modeText.charAt(0).toUpperCase() + modeText.slice(1)}`,
+        'success'
+      );
+    } catch (error) {
+      console.error('Error toggling company meeting mode:', error);
+      showAlert('Error updating meeting mode. Please try again.', 'Error', 'error');
+      // Revert on error
+      setCompanyMeetingMode(!newMode);
+    }
+  };
+
   const renderJobsView = () => {
     const unassignedJobs = jobs.filter(j => !j.assignedTech);
     const assignedJobs = jobs.filter(j => j.assignedTech);
@@ -805,6 +855,17 @@ const Routing = () => {
             </button>
             <button className="btn btn-primary" onClick={() => setShowImportModal(true)}>
               <i className="fas fa-upload"></i> Import CSV
+            </button>
+            <button
+              className={`btn ${companyMeetingMode ? 'btn-warning' : 'btn-secondary'}`}
+              onClick={toggleCompanyMeetingMode}
+              title={companyMeetingMode ? 'Meeting Mode: All techs start at Conroe at 9:00 AM' : 'Normal Mode: Techs start at their offices at 8:15 AM'}
+              style={{
+                fontWeight: companyMeetingMode ? '600' : 'normal',
+                border: companyMeetingMode ? '2px solid var(--warning-color)' : 'none'
+              }}
+            >
+              <i className={`fas ${companyMeetingMode ? 'fa-users' : 'fa-user-clock'}`}></i> {companyMeetingMode ? 'Meeting Mode ON' : 'Meeting Mode'}
             </button>
             <button
               className="btn btn-danger"
@@ -998,6 +1059,7 @@ const Routing = () => {
         showConfirm={showConfirm}
         techStartTimes={techStartTimes}
         setTechStartTimes={setTechStartTimes}
+        companyMeetingMode={companyMeetingMode}
       />
     );
   };
@@ -1022,6 +1084,7 @@ const Routing = () => {
         showConfirm={showConfirm}
         techStartTimes={techStartTimes}
         setTechStartTimes={setTechStartTimes}
+        companyMeetingMode={companyMeetingMode}
       />
     );
   };
