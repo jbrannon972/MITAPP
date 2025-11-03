@@ -32,6 +32,7 @@ const ManualMode = ({
   const [routes, setRoutes] = useState(initialRoutes);
   const [buildingRoute, setBuildingRoute] = useState([]);
   const [showAllJobs, setShowAllJobs] = useState(false);
+  const [showOptionsMenu, setShowOptionsMenu] = useState(false);
   const [hideOffTechs, setHideOffTechs] = useState(() => {
     const saved = localStorage.getItem('hideOffTechs');
     return saved ? JSON.parse(saved) : false;
@@ -1449,33 +1450,31 @@ const ManualMode = ({
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: '12px',
-        padding: '12px 16px',
+        marginBottom: '8px',
+        padding: '8px 12px',
         backgroundColor: 'var(--surface-secondary)',
         borderRadius: '6px',
         border: '1px solid #e5e7eb'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <h3 style={{ margin: 0, fontSize: '16px' }}>Manual Route Builder</h3>
+        {/* Left: Title, Date, Job Counts */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <h3 style={{ margin: 0, fontSize: '14px', fontWeight: '600' }}>Manual Route Builder</h3>
 
-          {/* Date Picker */}
+          {/* Compact Date Picker */}
           {onDateChange && (
             <div style={{
               display: 'flex',
               alignItems: 'center',
-              gap: '8px',
-              padding: '4px 8px',
-              backgroundColor: 'var(--surface-color)',
-              borderRadius: '6px',
-              border: '1px solid #e5e7eb'
+              gap: '4px'
             }}>
               <button
                 onClick={handlePreviousDay}
                 className="btn btn-secondary btn-small"
                 style={{
-                  padding: '4px 8px',
-                  fontSize: '12px',
-                  minWidth: 'unset'
+                  padding: '2px 6px',
+                  fontSize: '11px',
+                  minWidth: 'unset',
+                  lineHeight: '1'
                 }}
                 title="Previous day"
               >
@@ -1488,11 +1487,11 @@ const ManualMode = ({
                 onChange={(e) => onDateChange(e.target.value)}
                 className="form-control"
                 style={{
-                  width: '150px',
-                  fontSize: '13px',
-                  padding: '4px 8px',
-                  border: 'none',
-                  backgroundColor: 'transparent'
+                  width: '110px',
+                  fontSize: '11px',
+                  padding: '2px 6px',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '4px'
                 }}
               />
 
@@ -1500,9 +1499,10 @@ const ManualMode = ({
                 onClick={handleNextDay}
                 className="btn btn-secondary btn-small"
                 style={{
-                  padding: '4px 8px',
-                  fontSize: '12px',
-                  minWidth: 'unset'
+                  padding: '2px 6px',
+                  fontSize: '11px',
+                  minWidth: 'unset',
+                  lineHeight: '1'
                 }}
                 title="Next day"
               >
@@ -1513,9 +1513,8 @@ const ManualMode = ({
                 onClick={handleToday}
                 className="btn btn-primary btn-small"
                 style={{
-                  padding: '4px 8px',
-                  fontSize: '12px',
-                  marginLeft: '4px'
+                  padding: '2px 8px',
+                  fontSize: '11px'
                 }}
                 title="Go to today"
               >
@@ -1524,23 +1523,25 @@ const ManualMode = ({
             </div>
           )}
 
-          <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
+          {/* Job Counts - Smaller */}
+          <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
             <span style={{ fontWeight: '600', color: 'var(--success-color)' }}>{unassignedCount}</span> unassigned •
-            <span style={{ fontWeight: '600', color: 'var(--info-color)', marginLeft: '4px' }}>{assignedCount}</span> assigned
+            <span style={{ fontWeight: '600', color: 'var(--info-color)', marginLeft: '3px' }}>{assignedCount}</span> assigned
           </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        {/* Right: Action Buttons */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           {onImportCSV && (
             <button
               onClick={onImportCSV}
               className="btn btn-primary btn-small"
               style={{
-                padding: '6px 12px',
-                fontSize: '13px',
+                padding: '4px 10px',
+                fontSize: '12px',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '6px'
+                gap: '4px'
               }}
             >
               <i className="fas fa-upload"></i> Import CSV
@@ -1552,88 +1553,157 @@ const ManualMode = ({
             disabled={pushingToCalendar || Object.values(routes).filter(r => r.jobs?.length > 0).length === 0}
             className="btn btn-success btn-small"
             style={{
-              padding: '6px 12px',
-              fontSize: '13px',
+              padding: '4px 10px',
+              fontSize: '12px',
               display: 'flex',
               alignItems: 'center',
-              gap: '6px'
+              gap: '4px'
             }}
           >
             <i className={pushingToCalendar ? "fas fa-spinner fa-spin" : "fas fa-calendar-plus"}></i>
             {pushingToCalendar ? 'Pushing...' : 'Push to Calendars'}
           </button>
 
+          {/* Google Settings Button */}
           <button
             onClick={() => setShowGoogleSetup(true)}
             className="btn btn-secondary btn-small"
             style={{
-              padding: '6px 12px',
-              fontSize: '13px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px'
+              padding: '4px 8px',
+              fontSize: '12px',
+              minWidth: 'unset'
             }}
             title="Configure Google Calendar"
           >
             <i className="fas fa-cog"></i>
           </button>
 
-          <button
-            onClick={handleClearAllRoutes}
-            disabled={jobs.filter(j => j.assignedTech).length === 0}
-            className="btn btn-danger btn-small"
-            style={{
-              padding: '6px 12px',
-              fontSize: '13px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px'
-            }}
-            title="Clear all routes and unassign all jobs"
-          >
-            <i className="fas fa-trash-alt"></i> Clear All Routes
-          </button>
+          {/* Options Menu Button */}
+          <div style={{ position: 'relative' }}>
+            <button
+              onClick={() => setShowOptionsMenu(!showOptionsMenu)}
+              className="btn btn-secondary btn-small"
+              style={{
+                padding: '4px 8px',
+                fontSize: '12px',
+                minWidth: 'unset'
+              }}
+              title="More options"
+            >
+              <i className="fas fa-ellipsis-v"></i>
+            </button>
 
-          <label style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            cursor: 'pointer',
-            padding: '6px 12px',
-            backgroundColor: 'var(--surface-color)',
-            borderRadius: '4px',
-            border: '2px solid #e5e7eb',
-            fontSize: '13px',
-            fontWeight: '500'
-          }}>
-            <input
-              type="checkbox"
-              checked={showAllJobs}
-              onChange={(e) => setShowAllJobs(e.target.checked)}
-              style={{ width: '16px', height: '16px', cursor: 'pointer' }}
-            />
-            <span>Show All Jobs</span>
-          </label>
-          <label style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            cursor: 'pointer',
-            padding: '6px 12px',
-            backgroundColor: 'var(--surface-color)',
-            borderRadius: '4px',
-            border: '2px solid #e5e7eb',
-            fontSize: '13px',
-            fontWeight: '500'
-          }}>
-            <input
-              type="checkbox"
-              checked={hideOffTechs}
-              onChange={(e) => setHideOffTechs(e.target.checked)}
-              style={{ width: '16px', height: '16px', cursor: 'pointer' }}
-            />
-            <span>Hide Off</span>
-          </label>
+            {/* Dropdown Menu */}
+            {showOptionsMenu && (
+              <>
+                {/* Backdrop to close menu */}
+                <div
+                  style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    zIndex: 998
+                  }}
+                  onClick={() => setShowOptionsMenu(false)}
+                />
+
+                {/* Menu */}
+                <div style={{
+                  position: 'absolute',
+                  right: 0,
+                  top: '100%',
+                  marginTop: '4px',
+                  backgroundColor: 'var(--surface-color)',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '6px',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                  minWidth: '200px',
+                  zIndex: 999,
+                  overflow: 'hidden'
+                }}>
+                  {/* Show All Jobs */}
+                  <label style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    padding: '10px 12px',
+                    cursor: 'pointer',
+                    fontSize: '13px',
+                    borderBottom: '1px solid #e5e7eb',
+                    margin: 0
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--surface-secondary)'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={showAllJobs}
+                      onChange={(e) => setShowAllJobs(e.target.checked)}
+                      style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                    />
+                    <span>Show All Jobs</span>
+                  </label>
+
+                  {/* Hide Off Techs */}
+                  <label style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    padding: '10px 12px',
+                    cursor: 'pointer',
+                    fontSize: '13px',
+                    borderBottom: '1px solid #e5e7eb',
+                    margin: 0
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--surface-secondary)'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={hideOffTechs}
+                      onChange={(e) => setHideOffTechs(e.target.checked)}
+                      style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                    />
+                    <span>Hide Off</span>
+                  </label>
+
+                  {/* Clear All Routes */}
+                  <button
+                    onClick={() => {
+                      setShowOptionsMenu(false);
+                      handleClearAllRoutes();
+                    }}
+                    disabled={jobs.filter(j => j.assignedTech).length === 0}
+                    style={{
+                      width: '100%',
+                      textAlign: 'left',
+                      padding: '10px 12px',
+                      border: 'none',
+                      backgroundColor: 'transparent',
+                      cursor: jobs.filter(j => j.assignedTech).length === 0 ? 'not-allowed' : 'pointer',
+                      fontSize: '13px',
+                      color: jobs.filter(j => j.assignedTech).length === 0 ? 'var(--text-disabled)' : 'var(--danger-color)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      fontWeight: '500'
+                    }}
+                    onMouseEnter={(e) => {
+                      if (jobs.filter(j => j.assignedTech).length > 0) {
+                        e.currentTarget.style.backgroundColor = 'var(--surface-secondary)';
+                      }
+                    }}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                  >
+                    <i className="fas fa-trash-alt"></i>
+                    <span>Clear All Routes</span>
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </div>
 
