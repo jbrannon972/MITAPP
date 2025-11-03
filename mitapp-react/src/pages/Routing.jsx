@@ -1,3 +1,7 @@
+/**
+ * Routing Page - Main routing and job assignment interface
+ * Features: Company Meeting Mode for all-staff meetings at Conroe office
+ */
 import { useState, useEffect, useRef } from 'react';
 import Layout from '../components/common/Layout';
 import ManualMode from '../components/routing/ManualMode';
