@@ -1,7 +1,9 @@
 /**
  * Route Optimization Utility
- * Implements Mapbox Optimization API with geographic clustering for optimal routing
- * Falls back to greedy nearest-neighbor for API failures or complex constraints
+ * Uses greedy nearest-neighbor algorithm with multiple retry strategies
+ *
+ * Note: Mapbox Optimization API is disabled (requires premium plan)
+ * All routes use greedy algorithm optimized for time windows and urgency
  */
 
 import { getMapboxService } from '../services/mapboxService';
@@ -279,7 +281,11 @@ const clusterJobsGeographically = async (jobs, k) => {
 
 /**
  * Optimize route using Mapbox Optimization API
- * Works best for ≤12 jobs (Mapbox limit)
+ * ⚠️ DISABLED: This function is no longer used because the Mapbox Optimization API
+ * requires a premium plan and returns 422 errors on the current plan.
+ * All routes now use the greedy algorithm regardless of size.
+ *
+ * @deprecated Use greedy algorithm in optimizeRoute() instead
  * @param {Array} jobs - Jobs to optimize (max 12)
  * @param {string} startLocation - Starting location address
  * @param {number} shiftStartTime - Start time in minutes
@@ -393,81 +399,9 @@ export const optimizeRoute = async (jobs, startLocation, distanceMatrix, shift =
 
   console.log(`🚀 Optimizing route with ${jobs.length} jobs starting at ${minutesToTime(shiftStartTime)}`);
 
-  // Strategy 1: Use Mapbox Optimization API for ≤12 jobs
-  if (jobs.length <= 12) {
-    console.log('📍 Route has ≤12 jobs, using Mapbox Optimization API');
-    const mapboxResult = await optimizeWithMapbox(jobs, startLocation, shiftStartTime);
-
-    if (mapboxResult) {
-      // Success with Mapbox API
-      console.log(`✅ Mapbox optimization successful: ${mapboxResult.optimizedJobs.length} jobs assigned`);
-      return mapboxResult;
-    } else {
-      console.log('⚠️ Mapbox optimization failed, falling back to greedy algorithm');
-      // Fall through to greedy algorithm
-    }
-  }
-
-  // Strategy 2: Cluster and optimize for >12 jobs
-  if (jobs.length > 12) {
-    console.log('📦 Route has >12 jobs, using geographic clustering + Mapbox optimization');
-
-    try {
-      // Determine number of clusters (aim for ~10 jobs per cluster)
-      const numClusters = Math.ceil(jobs.length / 10);
-      const clusters = await clusterJobsGeographically(jobs, numClusters);
-
-      console.log(`📦 Split ${jobs.length} jobs into ${clusters.length} clusters`);
-
-      // Optimize each cluster separately
-      const clusterResults = [];
-      for (let i = 0; i < clusters.length; i++) {
-        const cluster = clusters[i];
-        console.log(`🔧 Optimizing cluster ${i + 1}/${clusters.length} (${cluster.length} jobs)`);
-
-        if (cluster.length <= 12) {
-          // Use Mapbox for small clusters
-          const clusterResult = await optimizeWithMapbox(cluster, startLocation, shiftStartTime);
-          if (clusterResult) {
-            clusterResults.push(clusterResult);
-          } else {
-            // Fallback to greedy for this cluster
-            const jobToIndex = new Map();
-            cluster.forEach((job, idx) => jobToIndex.set(job.id, idx + 1));
-            const greedyResult = greedyOptimize(cluster, shiftStartTime, distanceMatrix, jobToIndex, 'greedy');
-            clusterResults.push(greedyResult);
-          }
-        } else {
-          // Use greedy for larger clusters
-          const jobToIndex = new Map();
-          cluster.forEach((job, idx) => jobToIndex.set(job.id, idx + 1));
-          const greedyResult = greedyOptimize(cluster, shiftStartTime, distanceMatrix, jobToIndex, 'greedy');
-          clusterResults.push(greedyResult);
-        }
-      }
-
-      // Combine all cluster results
-      const allOptimizedJobs = clusterResults.flatMap(r => r.optimizedJobs);
-      const allUnassignableJobs = clusterResults.flatMap(r => r.unassignableJobs);
-      const totalDuration = clusterResults.reduce((sum, r) => sum + r.totalDuration, 0);
-      const totalDistance = clusterResults.reduce((sum, r) => sum + r.totalDistance, 0);
-
-      console.log(`✅ Clustering optimization complete: ${allOptimizedJobs.length} jobs assigned, ${allUnassignableJobs.length} unassignable`);
-
-      return {
-        optimizedJobs: allOptimizedJobs,
-        totalDuration,
-        totalDistance,
-        unassignableJobs: allUnassignableJobs
-      };
-    } catch (error) {
-      console.error('❌ Clustering optimization failed:', error);
-      // Fall through to greedy algorithm
-    }
-  }
-
-  // Fallback: Greedy algorithm with multiple strategies
-  console.log('🔄 Using fallback greedy optimization');
+  // ⚠️ Mapbox Optimization API is disabled (requires premium plan, returns 422 errors)
+  // All routes now use greedy algorithm with multiple retry strategies
+  console.log('📍 Using greedy algorithm (Mapbox Optimization API disabled)');
 
   // Map jobs to their indices for distance lookup
   const jobToIndex = new Map();
