@@ -224,16 +224,17 @@ const Calendar = () => {
         const status = item.querySelector('.status-select')?.value;
         const hours = item.querySelector('.hours-input')?.value?.trim() || '';
 
-        // Find the original staff member to check if this is different from default
+        // Find the original staff member to check if this is different from current calculated status
         const originalStaff = selectedDaySchedule.schedule.staff.find(s => s.id === staffId);
 
         if (originalStaff) {
-          // Only save if it's different from the default (weekend default is 'off', weekday default is 'on')
-          const isWeekend = [0, 6].includes(editingDate.getDay());
-          const defaultStatus = isWeekend ? 'off' : 'on';
+          // Save if status or hours changed from the current calculated value
+          // The current calculated value includes recurring rules AND any existing overrides
+          const statusChanged = status !== originalStaff.status;
+          const hoursChanged = hours !== (originalStaff.hours || '');
 
-          // Save if status is not default OR if there are custom hours
-          if (status !== defaultStatus || hours) {
+          // Always save if something changed - this allows manual overrides of recurring rules
+          if (statusChanged || hoursChanged) {
             staffData.push({
               id: staffId,
               status: status,
