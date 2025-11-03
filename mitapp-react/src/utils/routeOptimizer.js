@@ -659,7 +659,7 @@ export const assignDemoTechs = (routes, demoTechs) => {
 
 /**
  * Filter techs eligible for routing
- * Excludes Management and MIT Leads (except 2nd shift MIT Lead)
+ * Excludes Management but INCLUDES MIT Leads for occasional job assignments
  */
 export const getRoutingEligibleTechs = (allTechs) => {
   return allTechs.filter(tech => {
@@ -668,10 +668,8 @@ export const getRoutingEligibleTechs = (allTechs) => {
       return false;
     }
 
-    // Exclude MIT Leads EXCEPT for 2nd shift
-    if (tech.role === 'MIT Lead' && !tech.name?.toLowerCase().includes('second shift')) {
-      return false;
-    }
+    // MIT Leads are now INCLUDED (they show at end of Kanban, not in counts)
+    // This allows occasional job assignments to MIT Leads
 
     // Exclude Demo Techs from lead routing
     if (tech.isDemoTech) {

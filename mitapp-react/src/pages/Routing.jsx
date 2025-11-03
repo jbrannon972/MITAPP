@@ -1258,7 +1258,7 @@ const Routing = () => {
                     <li>Respects job timeframe windows</li>
                     <li>Keeps techs in their zones when possible</li>
                     <li>Auto-assigns demo techs to 2-person jobs</li>
-                    <li>Excludes Management and MIT Leads (except 2nd shift)</li>
+                    <li>Excludes Management (MIT Leads available for occasional assignments)</li>
                   </ul>
                 </div>
 
