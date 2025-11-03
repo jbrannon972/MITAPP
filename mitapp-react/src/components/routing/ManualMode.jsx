@@ -5,6 +5,7 @@ import { getMapboxService } from '../../services/mapboxService';
 import { optimizeRoute } from '../../utils/routeOptimizer';
 import googleCalendarService from '../../services/googleCalendarService';
 import TwoTechAssignmentModal from './TwoTechAssignmentModal';
+import LoadingModal from './LoadingModal';
 import { GOOGLE_CLIENT_ID } from '../../config/firebase';
 import { formatTimeAMPM } from '../../utils/routingHelpers';
 
@@ -48,6 +49,16 @@ const ManualMode = ({
   const [showTwoTechModal, setShowTwoTechModal] = useState(false);
   const [pendingRouteDropData, setPendingRouteDropData] = useState(null);
   const [officeCoordinates, setOfficeCoordinates] = useState({});
+  const [loadingState, setLoadingState] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    progress: 0,
+    currentStep: '',
+    totalSteps: 0,
+    currentStepNumber: 0,
+    showSteps: false
+  });
   const officesGeocodedRef = useRef(false);
 
   // Helper function to format tech names (First Name + Last Initial)
@@ -1138,8 +1149,96 @@ const ManualMode = ({
         setPushingToCalendar(true);
 
         try {
-          // Push all routes (already signed in at this point)
-          const summary = await googleCalendarService.pushAllRoutes(routes, selectedDate);
+          // Get routes with jobs
+          const routesToPush = Object.entries(routes).filter(([_, r]) => r.jobs && r.jobs.length > 0);
+          const totalTechs = routesToPush.length;
+          const totalJobs = routesToPush.reduce((sum, [_, r]) => sum + r.jobs.length, 0);
+
+          // Show loading modal
+          setLoadingState({
+            isOpen: true,
+            title: 'Pushing to Google Calendar',
+            message: 'Creating calendar events for all technicians',
+            progress: 0,
+            totalSteps: totalTechs,
+            currentStepNumber: 0,
+            currentStep: 'Initializing...',
+            showSteps: true
+          });
+
+          let completedTechs = 0;
+          let completedJobs = 0;
+          const summary = {
+            totalTechs: 0,
+            totalJobs: 0,
+            successfulJobs: 0,
+            failedJobs: 0,
+            techResults: []
+          };
+
+          // Push routes one by one to show progress
+          for (const [techId, route] of routesToPush) {
+            if (!route.jobs || route.jobs.length === 0) continue;
+
+            summary.totalTechs++;
+            summary.totalJobs += route.jobs.length;
+
+            // Update progress
+            setLoadingState(prev => ({
+              ...prev,
+              currentStepNumber: completedTechs + 1,
+              currentStep: `Pushing ${route.jobs.length} jobs to ${route.tech.name}...`,
+              progress: (completedTechs / totalTechs) * 100
+            }));
+
+            const techResult = {
+              techName: route.tech.name,
+              email: route.tech.email,
+              jobCount: route.jobs.length,
+              success: 0,
+              failed: 0,
+              errors: []
+            };
+
+            try {
+              const results = await googleCalendarService.pushTechRoute(route.tech, route.jobs, selectedDate);
+              techResult.success = results.success;
+              techResult.failed = results.failed;
+              techResult.errors = results.errors;
+
+              summary.successfulJobs += results.success;
+              summary.failedJobs += results.failed;
+              completedJobs += results.success;
+            } catch (error) {
+              techResult.failed = route.jobs.length;
+              techResult.errors.push({ error: error.message });
+              summary.failedJobs += route.jobs.length;
+            }
+
+            summary.techResults.push(techResult);
+            completedTechs++;
+
+            // Update progress
+            setLoadingState(prev => ({
+              ...prev,
+              progress: (completedTechs / totalTechs) * 100,
+              message: `${completedJobs} of ${totalJobs} jobs pushed`
+            }));
+          }
+
+          // Complete
+          setLoadingState(prev => ({
+            ...prev,
+            progress: 100,
+            currentStep: 'Complete!',
+            message: `Successfully pushed ${summary.successfulJobs} jobs`
+          }));
+
+          // Wait a moment to show 100% before closing
+          await new Promise(resolve => setTimeout(resolve, 500));
+
+          // Close loading modal
+          setLoadingState(prev => ({ ...prev, isOpen: false }));
 
           // Show detailed results
           let resultMessage = `✅ Calendar Push Complete!\n\n`;
@@ -1168,6 +1267,7 @@ const ManualMode = ({
 
         } catch (error) {
           console.error('Error pushing to calendars:', error);
+          setLoadingState(prev => ({ ...prev, isOpen: false }));
           showAlert(`Error pushing to calendars: ${error.message}\n\nPlease check your Google Calendar permissions and try again.`, 'Error', 'error');
         } finally {
           setPushingToCalendar(false);
@@ -2039,6 +2139,18 @@ const ManualMode = ({
           onComplete={completeTwoTechRouteAssignment}
         />
       )}
+
+      {/* Loading Modal with Progress */}
+      <LoadingModal
+        isOpen={loadingState.isOpen}
+        title={loadingState.title}
+        message={loadingState.message}
+        progress={loadingState.progress}
+        currentStep={loadingState.currentStep}
+        totalSteps={loadingState.totalSteps}
+        currentStepNumber={loadingState.currentStepNumber}
+        showSteps={loadingState.showSteps}
+      />
     </div>
   );
 };

@@ -7,6 +7,7 @@ import Layout from '../components/common/Layout';
 import ManualMode from '../components/routing/ManualMode';
 import KanbanCalendar from '../components/routing/KanbanCalendar';
 import ConfirmModal from '../components/routing/ConfirmModal';
+import LoadingModal from '../components/routing/LoadingModal';
 import { useData } from '../contexts/DataContext';
 import { useAuth } from '../contexts/AuthContext';
 import firebaseService from '../services/firebaseService';
@@ -41,6 +42,16 @@ const Routing = () => {
   const [modal, setModal] = useState({ show: false, title: '', message: '', type: 'info', onConfirm: null, onCancel: null });
   const [techStartTimes, setTechStartTimes] = useState({}); // Store custom start times for techs (for late starts)
   const [companyMeetingMode, setCompanyMeetingMode] = useState(false); // All techs start at Conroe office at 9am
+  const [loadingState, setLoadingState] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    progress: 0,
+    currentStep: '',
+    totalSteps: 0,
+    currentStepNumber: 0,
+    showSteps: false
+  });
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const markersRef = useRef([]);
@@ -284,14 +295,66 @@ const Routing = () => {
     const file = e.target.files[0];
     if (!file) return;
 
+    setShowImportModal(false);
+
+    // Show loading modal
+    setLoadingState({
+      isOpen: true,
+      title: 'Importing CSV',
+      message: 'Reading file...',
+      progress: 10,
+      totalSteps: 3,
+      currentStepNumber: 1,
+      currentStep: 'Reading CSV file...',
+      showSteps: true
+    });
+
     const reader = new FileReader();
-    reader.onload = (event) => {
-      const text = event.target.result;
-      const parsedJobs = parseCSV(text);
-      setJobs(parsedJobs);
-      saveJobs(parsedJobs);
-      setShowImportModal(false);
-      showAlert(`Successfully imported ${parsedJobs.length} jobs!`, 'Import Complete', 'success');
+    reader.onload = async (event) => {
+      try {
+        // Step 2: Parse CSV
+        setLoadingState(prev => ({
+          ...prev,
+          progress: 40,
+          currentStepNumber: 2,
+          currentStep: 'Parsing CSV data...',
+          message: 'Processing job information'
+        }));
+
+        const text = event.target.result;
+        const parsedJobs = parseCSV(text);
+
+        // Step 3: Save to Firebase
+        setLoadingState(prev => ({
+          ...prev,
+          progress: 70,
+          currentStepNumber: 3,
+          currentStep: 'Saving jobs to database...',
+          message: `Saving ${parsedJobs.length} jobs`
+        }));
+
+        setJobs(parsedJobs);
+        await saveJobs(parsedJobs);
+
+        // Complete
+        setLoadingState(prev => ({
+          ...prev,
+          progress: 100,
+          currentStep: 'Complete!',
+          message: `Imported ${parsedJobs.length} jobs successfully`
+        }));
+
+        // Wait a moment to show 100% before closing
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        setLoadingState(prev => ({ ...prev, isOpen: false }));
+
+        showAlert(`Successfully imported ${parsedJobs.length} jobs!`, 'Import Complete', 'success');
+      } catch (error) {
+        console.error('CSV import error:', error);
+        setLoadingState(prev => ({ ...prev, isOpen: false }));
+        showAlert(`Error importing CSV: ${error.message}`, 'Import Failed', 'error');
+      }
     };
     reader.readAsText(file);
   };
@@ -655,23 +718,68 @@ const Routing = () => {
         return;
       }
 
-      // Step 2: Geocode all job addresses
+      // Initialize loading modal
+      setLoadingState({
+        isOpen: true,
+        title: 'Optimizing Routes',
+        message: 'Preparing to optimize routes...',
+        progress: 0,
+        totalSteps: 4,
+        currentStepNumber: 1,
+        currentStep: 'Geocoding job addresses...',
+        showSteps: true
+      });
+
+      // Step 1: Geocode all job addresses
       const mapbox = getMapboxService();
-      const geocodedJobs = await Promise.all(
-        unassignedJobs.map(async (job) => {
-          const coords = await mapbox.geocodeAddress(job.address);
-          return { ...job, coordinates: coords };
-        })
-      );
+      const geocodedJobs = [];
 
-      // Step 3: Balance workload across techs with geocoded jobs
+      for (let i = 0; i < unassignedJobs.length; i++) {
+        const job = unassignedJobs[i];
+        const coords = await mapbox.geocodeAddress(job.address);
+        geocodedJobs.push({ ...job, coordinates: coords });
+
+        // Update progress
+        setLoadingState(prev => ({
+          ...prev,
+          progress: (i + 1) / unassignedJobs.length * 25,
+          message: `Geocoded ${i + 1} of ${unassignedJobs.length} addresses`
+        }));
+      }
+
+      // Step 2: Balance workload across techs
+      setLoadingState(prev => ({
+        ...prev,
+        progress: 25,
+        currentStepNumber: 2,
+        currentStep: 'Balancing workload across technicians...',
+        message: `Assigning ${geocodedJobs.length} jobs to ${leadTechs.length} technicians`
+      }));
+
       const balancedAssignments = balanceWorkload(geocodedJobs, leadTechs);
+      const techsWithJobs = Object.entries(balancedAssignments).filter(([_, a]) => a.jobs.length > 0);
 
-      // Step 4: Optimize each tech's route with Mapbox
+      // Step 3: Optimize each tech's route
+      setLoadingState(prev => ({
+        ...prev,
+        progress: 30,
+        currentStepNumber: 3,
+        currentStep: `Optimizing routes for ${techsWithJobs.length} technicians...`,
+        message: 'Calculating optimal route order'
+      }));
+
       const optimizedRoutes = {};
+      let completedTechs = 0;
 
-      for (const [techId, assignment] of Object.entries(balancedAssignments)) {
+      for (const [techId, assignment] of techsWithJobs) {
         if (assignment.jobs.length === 0) continue;
+
+        // Update progress for this tech
+        setLoadingState(prev => ({
+          ...prev,
+          progress: 30 + (completedTechs / techsWithJobs.length * 60),
+          message: `Optimizing route for ${assignment.tech.name} (${assignment.jobs.length} jobs)`
+        }));
 
         // Get start location for this tech
         const startLocation = offices[assignment.tech.office].address;
@@ -712,12 +820,28 @@ const Routing = () => {
             totalDistance: optimized.totalDistance
           }
         };
+
+        completedTechs++;
       }
 
-      // Step 5: Auto-assign demo techs (keep them with same tech all day)
+      // Step 4: Auto-assign demo techs
+      setLoadingState(prev => ({
+        ...prev,
+        progress: 90,
+        currentStepNumber: 4,
+        currentStep: 'Assigning demo technicians...',
+        message: 'Finalizing route assignments'
+      }));
+
       const { routes: finalRoutes } = assignDemoTechs(optimizedRoutes, demoTechs);
 
-      // Update state
+      // Save to Firebase
+      setLoadingState(prev => ({
+        ...prev,
+        progress: 95,
+        message: 'Saving routes to database...'
+      }));
+
       setRoutes(finalRoutes);
       await saveRoutes(finalRoutes);
 
@@ -734,9 +858,23 @@ const Routing = () => {
       setJobs(updatedJobs);
       await saveJobs(updatedJobs);
 
+      // Complete
+      setLoadingState(prev => ({
+        ...prev,
+        progress: 100,
+        currentStep: 'Complete!',
+        message: `Optimized routes for ${Object.keys(finalRoutes).length} technicians`
+      }));
+
+      // Wait a moment to show 100% before closing
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      setLoadingState(prev => ({ ...prev, isOpen: false }));
+
       showAlert(`Successfully optimized routes for ${Object.keys(finalRoutes).length} technicians!`, 'Optimization Complete', 'success');
     } catch (error) {
       console.error('Optimization error:', error);
+      setLoadingState(prev => ({ ...prev, isOpen: false }));
       showAlert('Error during optimization. Please try again.', 'Optimization Failed', 'error');
     } finally {
       setOptimizing(false);
@@ -1593,6 +1731,18 @@ const Routing = () => {
           title={modal.title}
           message={modal.message}
           type={modal.type}
+        />
+
+        {/* Loading Modal with Progress */}
+        <LoadingModal
+          isOpen={loadingState.isOpen}
+          title={loadingState.title}
+          message={loadingState.message}
+          progress={loadingState.progress}
+          currentStep={loadingState.currentStep}
+          totalSteps={loadingState.totalSteps}
+          currentStepNumber={loadingState.currentStepNumber}
+          showSteps={loadingState.showSteps}
         />
       </div>
     </Layout>

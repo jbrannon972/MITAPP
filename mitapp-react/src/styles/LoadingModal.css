@@ -1,0 +1,245 @@
+/**
+ * Loading Modal Styles
+ * Beautiful loading overlay with animations and progress tracking
+ */
+
+.loading-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  animation: fadeIn 0.2s ease-in;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.loading-modal {
+  background: var(--surface-primary);
+  border-radius: 16px;
+  padding: 40px;
+  max-width: 500px;
+  width: 90%;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  text-align: center;
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.loading-spinner-container {
+  position: relative;
+  width: 80px;
+  height: 80px;
+  margin: 0 auto 24px;
+}
+
+.loading-spinner {
+  width: 80px;
+  height: 80px;
+  border: 4px solid var(--border-color);
+  border-top-color: var(--primary-color);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  position: relative;
+  z-index: 2;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.loading-pulse {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 80px;
+  height: 80px;
+  margin: -40px 0 0 -40px;
+  border: 4px solid var(--primary-color);
+  border-radius: 50%;
+  opacity: 0;
+  animation: pulse 2s ease-out infinite;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(0.8);
+    opacity: 0.8;
+  }
+  50% {
+    transform: scale(1.2);
+    opacity: 0.4;
+  }
+  100% {
+    transform: scale(1.5);
+    opacity: 0;
+  }
+}
+
+.loading-title {
+  margin: 0 0 12px 0;
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.loading-message {
+  margin: 0 0 24px 0;
+  font-size: 16px;
+  color: var(--text-secondary);
+  min-height: 24px;
+}
+
+.loading-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 24px;
+  padding: 16px;
+  background: var(--surface-secondary);
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+}
+
+.loading-step-counter {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--primary-color);
+}
+
+.loading-step-text {
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.loading-progress-container {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.loading-progress-bar {
+  flex: 1;
+  height: 12px;
+  background: var(--surface-secondary);
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+  position: relative;
+}
+
+.loading-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--primary-color), var(--primary-hover));
+  border-radius: 6px;
+  transition: width 0.3s ease-out;
+  position: relative;
+  overflow: hidden;
+}
+
+.loading-progress-shimmer {
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.3),
+    transparent
+  );
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  to {
+    left: 100%;
+  }
+}
+
+.loading-progress-text {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--primary-color);
+  min-width: 60px;
+  text-align: right;
+}
+
+.loading-cancel-button {
+  margin-top: 16px;
+  padding: 10px 24px;
+  background: var(--surface-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.loading-cancel-button:hover {
+  background: var(--surface-hover);
+  border-color: var(--danger-color);
+  color: var(--danger-color);
+}
+
+/* Dark mode adjustments */
+@media (prefers-color-scheme: dark) {
+  .loading-modal-overlay {
+    background: rgba(0, 0, 0, 0.85);
+  }
+}
+
+/* Mobile responsive */
+@media (max-width: 600px) {
+  .loading-modal {
+    padding: 32px 24px;
+  }
+
+  .loading-title {
+    font-size: 20px;
+  }
+
+  .loading-message {
+    font-size: 14px;
+  }
+
+  .loading-spinner-container {
+    width: 60px;
+    height: 60px;
+  }
+
+  .loading-spinner,
+  .loading-pulse {
+    width: 60px;
+    height: 60px;
+  }
+}
