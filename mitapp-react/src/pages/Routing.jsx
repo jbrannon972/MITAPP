@@ -1079,6 +1079,7 @@ const Routing = () => {
         routes={routes}
         techs={allTechs}
         offices={offices}
+        mapboxToken={mapboxToken}
         onUpdateRoutes={saveRoutes}
         onUpdateJobs={saveJobs}
         selectedDate={selectedDate}

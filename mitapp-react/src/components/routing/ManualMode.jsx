@@ -306,7 +306,9 @@ const ManualMode = ({
       // Draw selected tech's route on the map
       if (selectedTech && routes[selectedTech]) {
         const techRoute = routes[selectedTech];
-        const officeCoords = officeCoordinates[techRoute.tech.office];
+        // Use Conroe office during Company Meeting Mode
+        const officeKey = companyMeetingMode ? 'office_1' : techRoute.tech.office;
+        const officeCoords = officeCoordinates[officeKey];
 
         if (!officeCoords || !officeCoords.lng || !officeCoords.lat) {
           console.warn('Office coordinates not available for route drawing');
@@ -361,47 +363,105 @@ const ManualMode = ({
         // Return to office at end
         coordinates.push([officeCoords.lng, officeCoords.lat]);
 
-        // Draw route line if we have coordinates
-        if (coordinates.length > 2) {
-          map.addSource('route', {
-            type: 'geojson',
-            data: {
-              type: 'Feature',
-              properties: {},
-              geometry: {
-                type: 'LineString',
-                coordinates: coordinates
+        // Fetch actual driving routes from Mapbox Directions API
+        if (coordinates.length > 2 && mapboxToken) {
+          // Build Mapbox Directions API request
+          const coordinatesString = coordinates.map(coord => `${coord[0]},${coord[1]}`).join(';');
+          const directionsUrl = `https://api.mapbox.com/directions/v5/mapbox/driving/${coordinatesString}?geometries=geojson&overview=full&access_token=${mapboxToken}`;
+
+          fetch(directionsUrl)
+            .then(response => response.json())
+            .then(data => {
+              if (data.routes && data.routes.length > 0) {
+                const route = data.routes[0];
+
+                // Add route layer with actual driving geometry
+                map.addSource('route', {
+                  type: 'geojson',
+                  data: {
+                    type: 'Feature',
+                    properties: {},
+                    geometry: route.geometry
+                  }
+                });
+
+                map.addLayer({
+                  id: 'route',
+                  type: 'line',
+                  source: 'route',
+                  layout: {
+                    'line-join': 'round',
+                    'line-cap': 'round'
+                  },
+                  paint: {
+                    'line-color': '#3b82f6',
+                    'line-width': 4,
+                    'line-opacity': 0.75
+                  }
+                });
+
+                // Fit map to show entire route
+                const bounds = coordinates.reduce(
+                  (bounds, coord) => bounds.extend(coord),
+                  new mapboxgl.LngLatBounds(coordinates[0], coordinates[0])
+                );
+                map.fitBounds(bounds, { padding: 50 });
+              } else {
+                // Fallback to straight lines if API fails
+                console.warn('No route found from Directions API, using straight lines');
+                drawStraightLineRoute(map, coordinates);
               }
-            }
-          });
-
-          map.addLayer({
-            id: 'route',
-            type: 'line',
-            source: 'route',
-            layout: {
-              'line-join': 'round',
-              'line-cap': 'round'
-            },
-            paint: {
-              'line-color': '#3b82f6', // Blue - Mapbox doesn't support CSS variables
-              'line-width': 4,
-              'line-opacity': 0.75
-            }
-          });
-
-          // Fit map to show entire route
-          const bounds = coordinates.reduce(
-            (bounds, coord) => bounds.extend(coord),
-            new mapboxgl.LngLatBounds(coordinates[0], coordinates[0])
-          );
-          map.fitBounds(bounds, { padding: 50 });
+            })
+            .catch(error => {
+              console.error('Error fetching directions:', error);
+              drawStraightLineRoute(map, coordinates);
+            });
+        } else if (coordinates.length > 2) {
+          // No mapbox token, use straight lines
+          drawStraightLineRoute(map, coordinates);
         }
       }
     };
 
+    // Helper function to draw straight line route (fallback)
+    const drawStraightLineRoute = (map, coordinates) => {
+      map.addSource('route', {
+        type: 'geojson',
+        data: {
+          type: 'Feature',
+          properties: {},
+          geometry: {
+            type: 'LineString',
+            coordinates: coordinates
+          }
+        }
+      });
+
+      map.addLayer({
+        id: 'route',
+        type: 'line',
+        source: 'route',
+        layout: {
+          'line-join': 'round',
+          'line-cap': 'round'
+        },
+        paint: {
+          'line-color': '#3b82f6',
+          'line-width': 4,
+          'line-opacity': 0.75
+        }
+      });
+
+      // Fit map to show entire route
+      const bounds = coordinates.reduce(
+        (bounds, coord) => bounds.extend(coord),
+        new mapboxgl.LngLatBounds(coordinates[0], coordinates[0])
+      );
+      map.fitBounds(bounds, { padding: 50 });
+    };
+
     renderJobMarkers();
-  }, [jobs, showAllJobs, buildingRoute, selectedTech, routes, officeCoordinates]);
+  }, [jobs, showAllJobs, buildingRoute, selectedTech, routes, officeCoordinates, mapboxToken, companyMeetingMode]);
 
   const handleJobClick = (job) => {
     // Don't add assigned jobs to building route unless showing all
