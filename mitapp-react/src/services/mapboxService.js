@@ -9,6 +9,8 @@ class MapboxService {
     this.baseUrl = 'https://api.mapbox.com';
     this.geocodeCache = new Map();
     this.distanceCache = new Map();
+    this.trafficAwareSupported = true; // Start optimistic, disable on first 422 error
+    this.trafficAwareWarningShown = false; // Only show warning once
   }
 
   /**
@@ -68,9 +70,9 @@ class MapboxService {
         throw new Error('Could not geocode addresses');
       }
 
-      // Validate departure time if provided
+      // Validate departure time if provided and traffic-aware routing is supported
       let validDepartureTime = null;
-      if (departureTime) {
+      if (departureTime && this.trafficAwareSupported) {
         const now = new Date();
         const depTime = departureTime instanceof Date ? departureTime : new Date(departureTime);
 
@@ -94,7 +96,10 @@ class MapboxService {
       if (validDepartureTime) {
         const isoTime = validDepartureTime.toISOString();
         url += `&depart_at=${encodeURIComponent(isoTime)}`;
-        console.log(`🚗 Calculating drive time with traffic for departure at ${isoTime}`);
+        // Only log on first attempt
+        if (this.trafficAwareSupported && !this.trafficAwareWarningShown) {
+          console.log(`🚗 Attempting traffic-aware routing for departure at ${isoTime}`);
+        }
       }
 
       const response = await fetch(url);
@@ -102,7 +107,16 @@ class MapboxService {
       // Handle specific error responses
       if (!response.ok) {
         if (response.status === 422) {
-          console.warn(`⚠️ Mapbox rejected departure time, falling back to standard routing`);
+          // Disable traffic-aware routing permanently for this session
+          this.trafficAwareSupported = false;
+
+          // Show warning only once
+          if (!this.trafficAwareWarningShown) {
+            console.warn(`⚠️ Traffic-aware routing not available with your Mapbox plan. Using standard routing.`);
+            console.info(`ℹ️ To enable traffic predictions, upgrade to a Mapbox plan that includes the Directions API with departure_time support.`);
+            this.trafficAwareWarningShown = true;
+          }
+
           // Retry without departure time
           const fallbackUrl = `${this.baseUrl}/directions/v5/mapbox/driving/${originCoords.lng},${originCoords.lat};${destCoords.lng},${destCoords.lat}?access_token=${this.accessToken}&geometries=geojson`;
           const fallbackResponse = await fetch(fallbackUrl);
@@ -255,6 +269,15 @@ class MapboxService {
   clearCache() {
     this.geocodeCache.clear();
     this.distanceCache.clear();
+  }
+
+  /**
+   * Reset traffic-aware routing support (useful if user upgrades Mapbox plan)
+   */
+  resetTrafficAwareSupport() {
+    this.trafficAwareSupported = true;
+    this.trafficAwareWarningShown = false;
+    console.log('🔄 Traffic-aware routing support has been reset. Will retry on next request.');
   }
 }
 
