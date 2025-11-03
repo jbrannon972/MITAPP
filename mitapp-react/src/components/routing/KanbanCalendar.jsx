@@ -30,6 +30,7 @@ const KanbanCalendar = ({
   const [localJobs, setLocalJobs] = useState(initialJobs);
   const [localRoutes, setLocalRoutes] = useState(initialRoutes);
   const hasInitialized = useRef(false);
+  const meetingModeInitialized = useRef(false);
   const [draggedJob, setDraggedJob] = useState(null);
   const [draggedTech, setDraggedTech] = useState(null);
   const [dragOverTech, setDragOverTech] = useState(null);
@@ -78,13 +79,77 @@ const KanbanCalendar = ({
 
   // Removed deepEqual - not currently used in the component
 
+  /**
+   * Sanitize route data to fix inconsistencies from old/corrupted data
+   * - Ensures jobs in routes have assignedTech set on the job objects
+   * - Removes jobs from routes if they no longer exist
+   * - Prevents duplicate jobs in unassigned and assigned
+   */
+  const sanitizeRouteData = (jobs, routes) => {
+    console.log('🧹 Sanitizing route data...');
+    const jobMap = new Map(jobs.map(j => [j.id, j]));
+    const sanitizedJobs = [...jobs];
+    const sanitizedRoutes = { ...routes };
+    const jobsInRoutes = new Set();
+
+    // First pass: collect all jobs that are actually in routes
+    for (const techId in sanitizedRoutes) {
+      const route = sanitizedRoutes[techId];
+      if (route?.jobs) {
+        route.jobs.forEach(job => jobsInRoutes.add(job.id));
+      }
+    }
+
+    // Second pass: update assignedTech on jobs and clean up routes
+    for (const techId in sanitizedRoutes) {
+      const route = sanitizedRoutes[techId];
+      if (!route?.jobs) continue;
+
+      // Filter out jobs that don't exist anymore and update assignedTech
+      const validJobs = route.jobs.filter(routeJob => {
+        const job = jobMap.get(routeJob.id);
+        if (!job) {
+          console.log(`⚠️ Removing orphaned job ${routeJob.id} from route ${techId}`);
+          return false;
+        }
+
+        // Update assignedTech on the job object
+        const jobIndex = sanitizedJobs.findIndex(j => j.id === job.id);
+        if (jobIndex !== -1 && sanitizedJobs[jobIndex].assignedTech !== techId) {
+          console.log(`✓ Syncing job ${job.id} assignment to tech ${techId}`);
+          sanitizedJobs[jobIndex] = { ...sanitizedJobs[jobIndex], assignedTech: techId };
+        }
+
+        return true;
+      });
+
+      sanitizedRoutes[techId] = { ...route, jobs: validJobs };
+    }
+
+    // Third pass: clear assignedTech from jobs not in any route
+    for (let i = 0; i < sanitizedJobs.length; i++) {
+      const job = sanitizedJobs[i];
+      if (job.assignedTech && !jobsInRoutes.has(job.id)) {
+        console.log(`⚠️ Clearing stale assignment for job ${job.id}`);
+        sanitizedJobs[i] = { ...job, assignedTech: null };
+      }
+    }
+
+    console.log('✅ Data sanitization complete');
+    return { sanitizedJobs, sanitizedRoutes };
+  };
+
   // Initialize from props ONLY on first mount or when date changes
   // Child component is the authoritative source of truth during a session
   useEffect(() => {
     if (!hasInitialized.current) {
-      console.log('🎬 Initial load - setting state from props');
-      setLocalJobs(initialJobs);
-      setLocalRoutes(initialRoutes);
+      console.log('🎬 Initial load - setting state from props and sanitizing data');
+
+      // Sanitize data to fix any inconsistencies from old routes
+      const { sanitizedJobs, sanitizedRoutes } = sanitizeRouteData(initialJobs, initialRoutes);
+
+      setLocalJobs(sanitizedJobs);
+      setLocalRoutes(sanitizedRoutes);
       hasInitialized.current = true;
     } else {
       console.log('⏭️ Ignoring prop changes - child state is authoritative');
@@ -93,10 +158,12 @@ const KanbanCalendar = ({
 
   // Reset when date changes
   useEffect(() => {
-    console.log('📅 Date changed, resetting state');
-    setLocalJobs(initialJobs);
-    setLocalRoutes(initialRoutes);
+    console.log('📅 Date changed, resetting state and sanitizing data');
+    const { sanitizedJobs, sanitizedRoutes } = sanitizeRouteData(initialJobs, initialRoutes);
+    setLocalJobs(sanitizedJobs);
+    setLocalRoutes(sanitizedRoutes);
     hasInitialized.current = true;
+    meetingModeInitialized.current = false; // Reset so meeting mode recalculates for new date
   }, [selectedDate]);
 
   // Save hideOffTechs preference to localStorage
@@ -673,14 +740,23 @@ const KanbanCalendar = ({
 
   // Recalculate all routes when Company Meeting Mode is toggled or on initial mount if meeting mode is ON
   useEffect(() => {
-    // On initial mount, only recalculate if meeting mode is ON
-    // On subsequent changes, always recalculate
-    const isInitialMount = !hasInitialized.current;
-    if (isInitialMount && !companyMeetingMode) {
-      return; // Skip initial mount if meeting mode is OFF
+    // Wait for initial data to be loaded
+    if (!hasInitialized.current) {
+      return;
     }
 
-    console.log('🔄 Company Meeting Mode:', companyMeetingMode ? 'ON' : 'OFF', isInitialMount ? '(initial mount)' : '(toggled)');
+    // Check if this is first run after initialization
+    const isFirstRunAfterInit = !meetingModeInitialized.current;
+    meetingModeInitialized.current = true;
+
+    // On first run after init, only recalculate if meeting mode is ON
+    // On subsequent changes, always recalculate
+    if (isFirstRunAfterInit && !companyMeetingMode) {
+      console.log('⏭️ Skipping initial meeting mode check - mode is OFF');
+      return;
+    }
+
+    console.log('🔄 Company Meeting Mode:', companyMeetingMode ? 'ON' : 'OFF', isFirstRunAfterInit ? '(initial check)' : '(toggled)');
 
     // Recalculate all tech routes
     const recalculateAllRoutes = async () => {
@@ -703,7 +779,7 @@ const KanbanCalendar = ({
     };
 
     recalculateAllRoutes();
-  }, [companyMeetingMode]);
+  }, [companyMeetingMode, localRoutes, techs, offices, techStartTimes, selectedDate]);
 
   const getJobTypeColor = (jobType) => {
     const type = jobType.toLowerCase();
