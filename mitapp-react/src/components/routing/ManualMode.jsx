@@ -60,6 +60,66 @@ const ManualMode = ({
     return `${firstName} ${lastInitial}.`;
   };
 
+  /**
+   * Sanitize route data to fix inconsistencies from old/corrupted data
+   * - Ensures jobs in routes have assignedTech set on the job objects
+   * - Removes jobs from routes if they no longer exist
+   * - Prevents duplicate jobs in unassigned and assigned
+   */
+  const sanitizeRouteData = (jobs, routes) => {
+    console.log('🧹 [ManualMode] Sanitizing route data...');
+    const jobMap = new Map(jobs.map(j => [j.id, j]));
+    const sanitizedJobs = [...jobs];
+    const sanitizedRoutes = { ...routes };
+    const jobsInRoutes = new Set();
+
+    // First pass: collect all jobs that are actually in routes
+    for (const techId in sanitizedRoutes) {
+      const route = sanitizedRoutes[techId];
+      if (route?.jobs) {
+        route.jobs.forEach(job => jobsInRoutes.add(job.id));
+      }
+    }
+
+    // Second pass: update assignedTech on jobs and clean up routes
+    for (const techId in sanitizedRoutes) {
+      const route = sanitizedRoutes[techId];
+      if (!route?.jobs) continue;
+
+      // Filter out jobs that don't exist anymore and update assignedTech
+      const validJobs = route.jobs.filter(routeJob => {
+        const job = jobMap.get(routeJob.id);
+        if (!job) {
+          console.log(`⚠️ Removing orphaned job ${routeJob.id} from route ${techId}`);
+          return false;
+        }
+
+        // Update assignedTech on the job object
+        const jobIndex = sanitizedJobs.findIndex(j => j.id === job.id);
+        if (jobIndex !== -1 && sanitizedJobs[jobIndex].assignedTech !== techId) {
+          console.log(`✓ Syncing job ${job.id} assignment to tech ${techId}`);
+          sanitizedJobs[jobIndex] = { ...sanitizedJobs[jobIndex], assignedTech: techId };
+        }
+
+        return true;
+      });
+
+      sanitizedRoutes[techId] = { ...route, jobs: validJobs };
+    }
+
+    // Third pass: clear assignedTech from jobs not in any route
+    for (let i = 0; i < sanitizedJobs.length; i++) {
+      const job = sanitizedJobs[i];
+      if (job.assignedTech && !jobsInRoutes.has(job.id)) {
+        console.log(`⚠️ Clearing stale assignment for job ${job.id}`);
+        sanitizedJobs[i] = { ...job, assignedTech: null };
+      }
+    }
+
+    console.log('✅ [ManualMode] Data sanitization complete');
+    return { sanitizedJobs, sanitizedRoutes };
+  };
+
   // Geocode office addresses once on mount
   useEffect(() => {
     const geocodeOffices = async () => {
@@ -93,14 +153,12 @@ const ManualMode = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Only run once on mount
 
-  // Update local state when props change
+  // Update local state when props change (with sanitization)
   useEffect(() => {
-    setJobs(initialJobs);
-  }, [initialJobs]);
-
-  useEffect(() => {
-    setRoutes(initialRoutes);
-  }, [initialRoutes]);
+    const { sanitizedJobs, sanitizedRoutes } = sanitizeRouteData(initialJobs, initialRoutes);
+    setJobs(sanitizedJobs);
+    setRoutes(sanitizedRoutes);
+  }, [initialJobs, initialRoutes]);
 
   // Save hideOffTechs preference to localStorage
   useEffect(() => {
