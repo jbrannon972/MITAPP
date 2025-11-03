@@ -9,8 +9,7 @@ class MapboxService {
     this.baseUrl = 'https://api.mapbox.com';
     this.geocodeCache = new Map();
     this.distanceCache = new Map();
-    this.trafficAwareSupported = true; // Start optimistic, disable on first 422 error
-    this.trafficAwareWarningShown = false; // Only show warning once
+    this.matrixApiWarningShown = false; // Only show Matrix API warning once
   }
 
   /**
@@ -46,7 +45,7 @@ class MapboxService {
   }
 
   /**
-   * Get driving distance and time between two addresses
+   * Get driving distance and time between two addresses using Matrix API
    * @param {string} origin - Origin address
    * @param {string} destination - Destination address
    * @param {Date|string|null} departureTime - Optional departure time for traffic-aware routing (Date object or ISO 8601 string)
@@ -70,92 +69,33 @@ class MapboxService {
         throw new Error('Could not geocode addresses');
       }
 
-      // Validate departure time if provided and traffic-aware routing is supported
-      let validDepartureTime = null;
-      if (departureTime && this.trafficAwareSupported) {
-        const now = new Date();
-        const depTime = departureTime instanceof Date ? departureTime : new Date(departureTime);
+      // Use the Matrix API for better efficiency and traffic support
+      const matrixResult = await this.getDistanceMatrixWithTraffic(
+        [originCoords],
+        [destCoords],
+        departureTime
+      );
 
-        // Mapbox requires departure time to be in the future and within 12 hours
-        const timeDiffMs = depTime.getTime() - now.getTime();
-        const timeDiffHours = timeDiffMs / (1000 * 60 * 60);
+      if (matrixResult && matrixResult.durations && matrixResult.durations[0]) {
+        const durationSeconds = matrixResult.durations[0][0];
+        const distanceMeters = matrixResult.distances ? matrixResult.distances[0][0] : durationSeconds * 13.41; // Estimate distance if not provided
 
-        // Only use traffic data if time is in the future and within 12 hours
-        if (timeDiffMs > 0 && timeDiffHours <= 12) {
-          validDepartureTime = depTime;
-        } else if (timeDiffMs <= 0) {
-          console.log(`⏰ Departure time ${depTime.toISOString()} is in the past, using current traffic`);
-        } else {
-          console.log(`⏰ Departure time ${depTime.toISOString()} is too far in future (${timeDiffHours.toFixed(1)}h), using current traffic`);
-        }
-      }
-
-      // Build URL with optional departure time for traffic predictions
-      let url = `${this.baseUrl}/directions/v5/mapbox/driving/${originCoords.lng},${originCoords.lat};${destCoords.lng},${destCoords.lat}?access_token=${this.accessToken}&geometries=geojson`;
-
-      if (validDepartureTime) {
-        const isoTime = validDepartureTime.toISOString();
-        url += `&depart_at=${encodeURIComponent(isoTime)}`;
-        // Only log on first attempt
-        if (this.trafficAwareSupported && !this.trafficAwareWarningShown) {
-          console.log(`🚗 Attempting traffic-aware routing for departure at ${isoTime}`);
-        }
-      }
-
-      const response = await fetch(url);
-
-      // Handle specific error responses
-      if (!response.ok) {
-        if (response.status === 422) {
-          // Disable traffic-aware routing permanently for this session
-          this.trafficAwareSupported = false;
-
-          // Show warning only once
-          if (!this.trafficAwareWarningShown) {
-            console.warn(`⚠️ Traffic-aware routing not available with your Mapbox plan. Using standard routing.`);
-            console.info(`ℹ️ To enable traffic predictions, upgrade to a Mapbox plan that includes the Directions API with departure_time support.`);
-            this.trafficAwareWarningShown = true;
-          }
-
-          // Retry without departure time
-          const fallbackUrl = `${this.baseUrl}/directions/v5/mapbox/driving/${originCoords.lng},${originCoords.lat};${destCoords.lng},${destCoords.lat}?access_token=${this.accessToken}&geometries=geojson`;
-          const fallbackResponse = await fetch(fallbackUrl);
-          const fallbackData = await fallbackResponse.json();
-
-          if (fallbackData.routes && fallbackData.routes.length > 0) {
-            const route = fallbackData.routes[0];
-            return {
-              distance: route.distance,
-              duration: route.duration,
-              durationMinutes: Math.round(route.duration / 60),
-              distanceMiles: (route.distance * 0.000621371).toFixed(1),
-              trafficAware: false
-            };
-          }
-        }
-        throw new Error(`Mapbox API error: ${response.status} ${response.statusText}`);
-      }
-
-      const data = await response.json();
-
-      if (data.routes && data.routes.length > 0) {
-        const route = data.routes[0];
         const result = {
-          distance: route.distance, // meters
-          duration: route.duration, // seconds (traffic-adjusted if departureTime provided)
-          durationMinutes: Math.round(route.duration / 60),
-          distanceMiles: (route.distance * 0.000621371).toFixed(1),
-          trafficAware: !!validDepartureTime
+          distance: distanceMeters,
+          duration: durationSeconds,
+          durationMinutes: Math.round(durationSeconds / 60),
+          distanceMiles: (distanceMeters * 0.000621371).toFixed(1),
+          trafficAware: !!departureTime
         };
 
-        // Cache the result (with shorter TTL for traffic-aware results)
+        // Cache the result
         if (!departureTime) {
           this.distanceCache.set(cacheKey, result);
         }
         return result;
       }
 
-      throw new Error('No route found');
+      throw new Error('No route found in matrix');
     } catch (error) {
       console.error('Distance calculation error:', error);
       // Return estimated values as fallback
@@ -170,24 +110,112 @@ class MapboxService {
   }
 
   /**
+   * Get distance matrix with traffic using Mapbox Matrix API
+   * @param {Array} origins - Array of coordinate objects {lng, lat}
+   * @param {Array} destinations - Array of coordinate objects {lng, lat}
+   * @param {Date|string|null} departureTime - Optional departure time for traffic predictions
+   * @returns {Object} Matrix result with durations and distances
+   */
+  async getDistanceMatrixWithTraffic(origins, destinations, departureTime = null) {
+    try {
+      // Combine all coordinates (Matrix API format: origins;destinations)
+      const allCoords = [...origins, ...destinations];
+      const coordsString = allCoords.map(c => `${c.lng},${c.lat}`).join(';');
+
+      // Use driving-traffic profile for traffic data
+      const profile = 'driving-traffic';
+
+      // Build sources and destinations indices
+      const sources = origins.map((_, i) => i).join(';');
+      const destinations_indices = destinations.map((_, i) => i + origins.length).join(';');
+
+      let url = `${this.baseUrl}/directions-matrix/v1/mapbox/${profile}/${coordsString}?sources=${sources}&destinations=${destinations_indices}&access_token=${this.accessToken}`;
+
+      // Add departure time if provided
+      if (departureTime) {
+        const depTime = departureTime instanceof Date ? departureTime : new Date(departureTime);
+        const isoTime = depTime.toISOString().split('.')[0]; // Remove milliseconds
+        url += `&depart_at=${encodeURIComponent(isoTime)}`;
+      }
+
+      const response = await fetch(url);
+
+      if (!response.ok) {
+        // If Matrix API fails, log once and continue
+        if (!this.matrixApiWarningShown) {
+          console.warn(`⚠️ Matrix API returned ${response.status}. Using fallback routing.`);
+          this.matrixApiWarningShown = true;
+        }
+        throw new Error(`Matrix API error: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      return {
+        durations: data.durations,
+        distances: data.distances,
+        sources: data.sources,
+        destinations: data.destinations
+      };
+    } catch (error) {
+      console.error('Matrix API error:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Calculate distance matrix for multiple locations
    * Returns matrix[i][j] = time in minutes from location i to location j
+   * @param {Array<string>} addresses - Array of addresses
+   * @param {Date|string|null} departureTime - Optional departure time for traffic-aware routing
    */
-  async calculateDistanceMatrix(addresses) {
+  async calculateDistanceMatrix(addresses, departureTime = null) {
     const n = addresses.length;
     const matrix = Array(n).fill(null).map(() => Array(n).fill(0));
 
-    // Calculate all pairs
-    for (let i = 0; i < n; i++) {
-      for (let j = 0; j < n; j++) {
-        if (i !== j) {
-          const result = await this.getDrivingDistance(addresses[i], addresses[j]);
-          matrix[i][j] = result.durationMinutes;
+    try {
+      // Geocode all addresses first
+      const coords = await Promise.all(
+        addresses.map(addr => this.geocodeAddress(addr))
+      );
+
+      // Check if all addresses were geocoded successfully
+      if (coords.some(c => !c)) {
+        throw new Error('Failed to geocode some addresses');
+      }
+
+      // Use Matrix API to calculate all distances in one call
+      const matrixResult = await this.getDistanceMatrixWithTraffic(
+        coords,
+        coords,
+        departureTime
+      );
+
+      // Fill the matrix with results (convert seconds to minutes)
+      for (let i = 0; i < n; i++) {
+        for (let j = 0; j < n; j++) {
+          if (i !== j && matrixResult.durations[i] && matrixResult.durations[i][j]) {
+            matrix[i][j] = Math.round(matrixResult.durations[i][j] / 60);
+          }
         }
       }
-    }
 
-    return matrix;
+      return matrix;
+    } catch (error) {
+      console.error('Matrix calculation error, falling back to individual calls:', error);
+
+      // Fallback to individual calls if Matrix API fails
+      for (let i = 0; i < n; i++) {
+        for (let j = 0; j < n; j++) {
+          if (i !== j) {
+            const result = await this.getDrivingDistance(addresses[i], addresses[j], departureTime);
+            matrix[i][j] = result.durationMinutes;
+          }
+        }
+      }
+
+      return matrix;
+    }
   }
 
   /**
@@ -272,12 +300,11 @@ class MapboxService {
   }
 
   /**
-   * Reset traffic-aware routing support (useful if user upgrades Mapbox plan)
+   * Reset warning flags (useful for testing or after configuration changes)
    */
-  resetTrafficAwareSupport() {
-    this.trafficAwareSupported = true;
-    this.trafficAwareWarningShown = false;
-    console.log('🔄 Traffic-aware routing support has been reset. Will retry on next request.');
+  resetWarnings() {
+    this.matrixApiWarningShown = false;
+    console.log('🔄 Warning flags have been reset.');
   }
 }
 
