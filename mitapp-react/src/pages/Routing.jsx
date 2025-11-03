@@ -44,6 +44,8 @@ const Routing = () => {
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const markersRef = useRef([]);
+  const sessionStartTime = useRef(Date.now());
+  const listenerErrorCount = useRef(0);
 
   // Houston office locations
   const offices = {
@@ -72,13 +74,51 @@ const Routing = () => {
     setModal({ show: false, title: '', message: '', type: 'info', onConfirm: null, onCancel: null });
   };
 
+  // Session health monitoring - detect stale connections
+  useEffect(() => {
+    const SESSION_TIMEOUT = 2 * 60 * 60 * 1000; // 2 hours
+    const CHECK_INTERVAL = 5 * 60 * 1000; // Check every 5 minutes
+
+    const healthCheckInterval = setInterval(() => {
+      const sessionAge = Date.now() - sessionStartTime.current;
+
+      // If session is > 2 hours old or multiple listener errors, suggest refresh
+      if (sessionAge > SESSION_TIMEOUT || listenerErrorCount.current > 3) {
+        console.warn('⚠️ Long-running session detected. Recommend refreshing to prevent connection issues.');
+        console.log(`Session age: ${Math.round(sessionAge / 1000 / 60)} minutes, Errors: ${listenerErrorCount.current}`);
+
+        // Show subtle notification (not blocking)
+        if (listenerErrorCount.current > 3) {
+          showAlert(
+            'Connection issues detected. Please save your work and refresh the page to restore full functionality.',
+            'Connection Warning',
+            'warning'
+          );
+        }
+      }
+    }, CHECK_INTERVAL);
+
+    return () => clearInterval(healthCheckInterval);
+  }, []);
+
   // Real-time subscriptions for jobs and routes
   useEffect(() => {
     if (!currentUser) return;
 
     setLoading(true);
 
-    // Subscribe to real-time jobs updates
+    // Error handler for Firestore listeners
+    const handleListenerError = (error) => {
+      listenerErrorCount.current += 1;
+      console.error(`⚠️ Firestore listener error #${listenerErrorCount.current}:`, error.code);
+
+      // If we get multiple errors quickly, suggest refresh
+      if (listenerErrorCount.current >= 3) {
+        console.warn('🔄 Multiple Firestore errors detected. Connection may be stale.');
+      }
+    };
+
+    // Subscribe to real-time jobs updates with error handling
     const jobsUnsubscribe = firebaseService.subscribeToDocument(
       'hou_routing',
       `jobs_${selectedDate}`,
@@ -86,10 +126,11 @@ const Routing = () => {
         setJobs(data?.jobs || []);
         setCompanyMeetingMode(data?.companyMeetingMode || false);
         setLoading(false);
-      }
+      },
+      handleListenerError
     );
 
-    // Subscribe to real-time routes updates
+    // Subscribe to real-time routes updates with error handling
     const routesUnsubscribe = firebaseService.subscribeToDocument(
       'hou_routing',
       `routes_${selectedDate}`,
@@ -97,7 +138,8 @@ const Routing = () => {
         const loadedRoutes = data?.routes || {};
         const enrichedRoutes = enrichRoutesWithEmails(loadedRoutes);
         setRoutes(enrichedRoutes);
-      }
+      },
+      handleListenerError
     );
 
     // Set presence to show this user is viewing routes
@@ -108,7 +150,7 @@ const Routing = () => {
     };
     firebaseService.setPresence('routing', selectedDate, user);
 
-    // Subscribe to presence updates
+    // Subscribe to presence updates with error handling
     const presenceUnsubscribe = firebaseService.subscribeToPresence(
       'routing',
       selectedDate,
@@ -116,7 +158,8 @@ const Routing = () => {
         // Filter out current user and show others
         const otherUsers = users.filter(u => u.userId !== currentUser.uid);
         setActiveUsers(otherUsers);
-      }
+      },
+      handleListenerError
     );
 
     // Cleanup function
@@ -125,8 +168,39 @@ const Routing = () => {
       routesUnsubscribe();
       presenceUnsubscribe();
       firebaseService.removePresence('routing', selectedDate, currentUser.uid);
+
+      // Reset error count when unmounting/changing date
+      listenerErrorCount.current = 0;
     };
   }, [selectedDate, currentUser, staffingData]);
+
+  // Periodic cleanup to prevent memory leaks from long sessions
+  useEffect(() => {
+    const CLEANUP_INTERVAL = 15 * 60 * 1000; // Every 15 minutes
+
+    const cleanupInterval = setInterval(() => {
+      console.log('🧹 Running periodic cleanup...');
+
+      // Clear old map markers if they exist
+      if (markersRef.current && markersRef.current.length > 100) {
+        console.log(`⚠️ Cleaning up ${markersRef.current.length} accumulated map markers`);
+        markersRef.current.forEach(marker => {
+          try {
+            if (marker && marker.remove) marker.remove();
+          } catch (e) {
+            // Marker already removed, ignore
+          }
+        });
+        markersRef.current = [];
+      }
+
+      // Log session age for debugging
+      const sessionMinutes = Math.round((Date.now() - sessionStartTime.current) / 1000 / 60);
+      console.log(`📊 Session age: ${sessionMinutes} minutes, Listener errors: ${listenerErrorCount.current}`);
+    }, CLEANUP_INTERVAL);
+
+    return () => clearInterval(cleanupInterval);
+  }, []);
 
   // Fetch schedule data for selected date
   useEffect(() => {

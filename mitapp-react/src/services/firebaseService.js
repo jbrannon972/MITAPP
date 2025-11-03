@@ -563,9 +563,10 @@ class FirebaseService {
    * @param {string} collectionName - Collection name
    * @param {string} docId - Document ID
    * @param {function} callback - Callback function(data)
+   * @param {function} onError - Optional error callback
    * @returns {function} Unsubscribe function
    */
-  subscribeToDocument(collectionName, docId, callback) {
+  subscribeToDocument(collectionName, docId, callback, onError = null) {
     const docRef = doc(db, collectionName, docId);
 
     return onSnapshot(docRef, (snapshot) => {
@@ -575,7 +576,13 @@ class FirebaseService {
         callback(null);
       }
     }, (error) => {
-      console.error(`Error subscribing to ${collectionName}/${docId}:`, error);
+      console.error(`❌ Firestore listener error for ${collectionName}/${docId}:`, error);
+      console.error(`Error code: ${error.code}, Message: ${error.message}`);
+
+      // Call custom error handler if provided
+      if (onError) {
+        onError(error);
+      }
     });
   }
 
@@ -622,9 +629,10 @@ class FirebaseService {
    * @param {string} resourceType - Type of resource
    * @param {string} resourceId - Resource identifier
    * @param {function} callback - Callback function(users[])
+   * @param {function} onError - Optional error callback
    * @returns {function} Unsubscribe function
    */
-  subscribeToPresence(resourceType, resourceId, callback) {
+  subscribeToPresence(resourceType, resourceId, callback, onError = null) {
     const presenceQuery = query(
       collection(db, 'presence'),
       where('resourceType', '==', resourceType),
@@ -636,7 +644,13 @@ class FirebaseService {
       const users = snapshot.docs.map(doc => doc.data());
       callback(users);
     }, (error) => {
-      console.error('Error subscribing to presence:', error);
+      console.error('❌ Firestore presence listener error:', error);
+      console.error(`Error code: ${error.code}, Message: ${error.message}`);
+
+      // Call custom error handler if provided
+      if (onError) {
+        onError(error);
+      }
     });
   }
 
