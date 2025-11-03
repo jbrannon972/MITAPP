@@ -1344,63 +1344,13 @@ const KanbanCalendar = ({
           minHeight: `${timelineHeight + 100}px`,
           padding: '0 8px 8px 8px'
         }}>
-          {/* Time Column - Sticky */}
-          <div style={{
-            width: '50px',
-            flexShrink: 0,
-            position: 'sticky',
-            left: '8px',
-            zIndex: 10,
-            backgroundColor: 'var(--surface-color)',
-            borderRadius: '6px',
-            border: '1px solid #e5e7eb',
-            height: 'fit-content'
-          }}>
-            <div style={{
-              height: '60px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              borderBottom: '2px solid #e5e7eb',
-              fontSize: '10px',
-              fontWeight: '600',
-              color: 'var(--text-secondary)',
-              position: 'sticky',
-              top: 0,
-              backgroundColor: 'var(--surface-color)'
-            }}>
-              TIME
-            </div>
-            {timeSlots.map((time, idx) => (
-              <div key={time} style={{
-                height: `${pixelsPerHour}px`,
-                display: 'flex',
-                alignItems: 'flex-start',
-                justifyContent: 'center',
-                fontSize: '10px',
-                color: 'var(--text-secondary)',
-                fontWeight: '500',
-                position: 'relative'
-              }}>
-                <span style={{
-                  position: 'absolute',
-                  top: '-6px',
-                  backgroundColor: 'var(--surface-color)',
-                  padding: '0 4px'
-                }}>
-                  {time}
-                </span>
-              </div>
-            ))}
-          </div>
-
           {/* Unassigned Column - Sticky */}
           <div
             style={{
               width: '140px',
               flexShrink: 0,
               position: 'sticky',
-              left: '66px',
+              left: '8px',
               zIndex: 9,
               backgroundColor: dragOverTech === 'unassigned' ? 'var(--status-pending-bg)' : 'var(--surface-color)',
               border: dragOverTech === 'unassigned' ? '2px solid var(--warning-color)' : '1px solid #e5e7eb',
