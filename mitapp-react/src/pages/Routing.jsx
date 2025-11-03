@@ -1477,8 +1477,8 @@ const Routing = () => {
         mapboxToken={mapboxToken}
         onUpdateRoutes={saveRoutes}
         onUpdateJobs={saveJobs}
-        onRefresh={handleRefresh}
         selectedDate={selectedDate}
+        onDateChange={setSelectedDate}
         onImportCSV={() => setShowImportModal(true)}
         activeUsers={activeUsers}
         scheduleForDay={scheduleForDay}

@@ -17,8 +17,8 @@ const ManualMode = ({
   mapboxToken,
   onUpdateRoutes,
   onUpdateJobs,
-  onRefresh,
   selectedDate,
+  onDateChange,
   onImportCSV,
   scheduleForDay,
   staffingData,
@@ -1367,6 +1367,81 @@ const ManualMode = ({
     }
   };
 
+  // Handle clearing all routes - resets jobs to unassigned state
+  const handleClearAllRoutes = async () => {
+    const assignedJobsCount = jobs.filter(j => j.assignedTech).length;
+
+    if (assignedJobsCount === 0) {
+      showAlert('No routes to clear. All jobs are already unassigned.', 'Nothing to Clear', 'info');
+      return;
+    }
+
+    showConfirm(
+      `Clear all routes and unassign all jobs?\n\n` +
+      `This will:\n` +
+      `• Unassign ${assignedJobsCount} job(s)\n` +
+      `• Clear all tech routes\n` +
+      `• Reset to the state after CSV import\n\n` +
+      `This action can be undone by re-optimizing or manually assigning jobs.`,
+      'Clear All Routes',
+      async () => {
+        console.log('🗑️ Clearing all routes...');
+
+        // Unassign all jobs
+        const clearedJobs = jobs.map(job => ({
+          ...job,
+          assignedTech: null,
+          status: 'unassigned',
+          forcedAssignment: undefined,
+          timingConflict: undefined
+        }));
+
+        // Clear all routes
+        const clearedRoutes = {};
+
+        // Update state
+        setJobs(clearedJobs);
+        setRoutes(clearedRoutes);
+
+        // Save to Firebase
+        await onUpdateJobs(clearedJobs);
+        await onUpdateRoutes(clearedRoutes);
+
+        showAlert(
+          `✅ Cleared all routes!\n\n${assignedJobsCount} job(s) have been unassigned and are ready to be routed.`,
+          'Routes Cleared',
+          'success'
+        );
+
+        console.log('✅ All routes cleared successfully');
+      },
+      'warning'
+    );
+  };
+
+  // Handle date change
+  const handlePreviousDay = () => {
+    if (onDateChange) {
+      const date = new Date(selectedDate + 'T12:00:00');
+      date.setDate(date.getDate() - 1);
+      onDateChange(date.toISOString().split('T')[0]);
+    }
+  };
+
+  const handleNextDay = () => {
+    if (onDateChange) {
+      const date = new Date(selectedDate + 'T12:00:00');
+      date.setDate(date.getDate() + 1);
+      onDateChange(date.toISOString().split('T')[0]);
+    }
+  };
+
+  const handleToday = () => {
+    if (onDateChange) {
+      onDateChange(new Date().toISOString().split('T')[0]);
+    }
+  };
+
   return (
     <div style={{ height: 'calc(100vh - 140px)', display: 'flex', flexDirection: 'column' }}>
       {/* Compact Header */}
@@ -1382,6 +1457,73 @@ const ManualMode = ({
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
           <h3 style={{ margin: 0, fontSize: '16px' }}>Manual Route Builder</h3>
+
+          {/* Date Picker */}
+          {onDateChange && (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '4px 8px',
+              backgroundColor: 'var(--surface-color)',
+              borderRadius: '6px',
+              border: '1px solid #e5e7eb'
+            }}>
+              <button
+                onClick={handlePreviousDay}
+                className="btn btn-secondary btn-small"
+                style={{
+                  padding: '4px 8px',
+                  fontSize: '12px',
+                  minWidth: 'unset'
+                }}
+                title="Previous day"
+              >
+                <i className="fas fa-chevron-left"></i>
+              </button>
+
+              <input
+                type="date"
+                value={selectedDate}
+                onChange={(e) => onDateChange(e.target.value)}
+                className="form-control"
+                style={{
+                  width: '150px',
+                  fontSize: '13px',
+                  padding: '4px 8px',
+                  border: 'none',
+                  backgroundColor: 'transparent'
+                }}
+              />
+
+              <button
+                onClick={handleNextDay}
+                className="btn btn-secondary btn-small"
+                style={{
+                  padding: '4px 8px',
+                  fontSize: '12px',
+                  minWidth: 'unset'
+                }}
+                title="Next day"
+              >
+                <i className="fas fa-chevron-right"></i>
+              </button>
+
+              <button
+                onClick={handleToday}
+                className="btn btn-primary btn-small"
+                style={{
+                  padding: '4px 8px',
+                  fontSize: '12px',
+                  marginLeft: '4px'
+                }}
+                title="Go to today"
+              >
+                Today
+              </button>
+            </div>
+          )}
+
           <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
             <span style={{ fontWeight: '600', color: 'var(--success-color)' }}>{unassignedCount}</span> unassigned •
             <span style={{ fontWeight: '600', color: 'var(--info-color)', marginLeft: '4px' }}>{assignedCount}</span> assigned
@@ -1436,21 +1578,21 @@ const ManualMode = ({
             <i className="fas fa-cog"></i>
           </button>
 
-          {onRefresh && (
-            <button
-              onClick={onRefresh}
-              className="btn btn-secondary btn-small"
-              style={{
-                padding: '6px 12px',
-                fontSize: '13px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px'
-              }}
-            >
-              <i className="fas fa-sync-alt"></i> Refresh
-            </button>
-          )}
+          <button
+            onClick={handleClearAllRoutes}
+            disabled={jobs.filter(j => j.assignedTech).length === 0}
+            className="btn btn-danger btn-small"
+            style={{
+              padding: '6px 12px',
+              fontSize: '13px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}
+            title="Clear all routes and unassign all jobs"
+          >
+            <i className="fas fa-trash-alt"></i> Clear All Routes
+          </button>
 
           <label style={{
             display: 'flex',
