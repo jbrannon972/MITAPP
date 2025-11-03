@@ -260,17 +260,58 @@ class MapboxService {
   }
 
   /**
-   * Batch geocode multiple addresses
+   * Batch geocode multiple addresses efficiently
+   * Uses parallel requests with chunking to geocode many addresses quickly
+   * @param {Array<string>} addresses - Array of addresses to geocode
+   * @param {number} chunkSize - Number of addresses to geocode in parallel (default: 10)
+   * @returns {Object} Map of address -> {lng, lat}
    */
-  async batchGeocode(addresses) {
+  async batchGeocode(addresses, chunkSize = 10) {
+    console.log(`📍 Batch geocoding ${addresses.length} addresses (${chunkSize} at a time)...`);
+    const startTime = performance.now();
     const results = {};
+    const uniqueAddresses = [...new Set(addresses)]; // Remove duplicates
 
-    for (const address of addresses) {
-      const coords = await this.geocodeAddress(address);
-      if (coords) {
-        results[address] = coords;
+    // Check cache first for all addresses
+    const uncachedAddresses = [];
+    for (const address of uniqueAddresses) {
+      if (this.geocodeCache.has(address)) {
+        results[address] = this.geocodeCache.get(address);
+      } else {
+        uncachedAddresses.push(address);
       }
     }
+
+    console.log(`✅ Found ${uniqueAddresses.length - uncachedAddresses.length} addresses in cache`);
+    console.log(`🔄 Need to geocode ${uncachedAddresses.length} new addresses`);
+
+    // Geocode uncached addresses in parallel chunks
+    for (let i = 0; i < uncachedAddresses.length; i += chunkSize) {
+      const chunk = uncachedAddresses.slice(i, i + chunkSize);
+
+      // Geocode all addresses in this chunk in parallel
+      const chunkResults = await Promise.all(
+        chunk.map(async (address) => {
+          const coords = await this.geocodeAddress(address);
+          return { address, coords };
+        })
+      );
+
+      // Store results
+      chunkResults.forEach(({ address, coords }) => {
+        if (coords) {
+          results[address] = coords;
+        }
+      });
+
+      // Progress update
+      const progress = Math.min(i + chunkSize, uncachedAddresses.length);
+      console.log(`📍 Geocoded ${progress}/${uncachedAddresses.length} addresses...`);
+    }
+
+    const duration = ((performance.now() - startTime) / 1000).toFixed(2);
+    const avgTime = (duration * 1000 / uniqueAddresses.length).toFixed(0);
+    console.log(`✅ Batch geocoding complete: ${uniqueAddresses.length} addresses in ${duration}s (${avgTime}ms avg per address)`);
 
     return results;
   }

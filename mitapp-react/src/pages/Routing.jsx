@@ -22,6 +22,7 @@ import {
   getRoutingEligibleTechs,
   calculateRouteSummary
 } from '../utils/routeOptimizer';
+import { startTrace, measureOperation, TRACE_NAMES, perfLogger } from '../utils/performanceMonitor';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 
@@ -313,6 +314,10 @@ const Routing = () => {
 
     const reader = new FileReader();
     reader.onload = async (event) => {
+      // Start performance trace for CSV import
+      const csvImportTrace = startTrace(TRACE_NAMES.CSV_IMPORT);
+      perfLogger.startTimer('total_csv_import');
+
       try {
         // Step 1: Parse CSV
         setLoadingState(prev => ({
@@ -323,8 +328,12 @@ const Routing = () => {
           message: 'Processing job information'
         }));
 
+        perfLogger.startTimer('csv_parsing');
         const text = event.target.result;
         const parsedJobs = parseCSV(text);
+        const parsingDuration = perfLogger.endTimer('csv_parsing');
+        csvImportTrace.putMetric('parsing_duration_ms', Math.round(parsingDuration));
+        csvImportTrace.putMetric('jobs_parsed', parsedJobs.length);
 
         // Step 2: Sanitize and validate data
         setLoadingState(prev => ({
@@ -335,11 +344,16 @@ const Routing = () => {
           message: `Checking ${parsedJobs.length} jobs for errors`
         }));
 
+        perfLogger.startTimer('validation');
         // Sanitize all jobs first (fix common issues)
         const sanitizedJobs = parsedJobs.map(sanitizeJob);
 
         // Validate all jobs
         const { validJobs, invalidJobs, stats } = validateJobs(sanitizedJobs);
+        const validationDuration = perfLogger.endTimer('validation');
+        csvImportTrace.putMetric('validation_duration_ms', Math.round(validationDuration));
+        csvImportTrace.putMetric('valid_jobs', validJobs.length);
+        csvImportTrace.putMetric('invalid_jobs', invalidJobs.length);
 
         console.log('📊 Validation results:', stats);
         if (invalidJobs.length > 0) {
@@ -371,6 +385,16 @@ const Routing = () => {
 
         setLoadingState(prev => ({ ...prev, isOpen: false }));
 
+        // Complete performance tracking
+        const totalDuration = perfLogger.endTimer('total_csv_import');
+        csvImportTrace.putMetric('total_duration_ms', Math.round(totalDuration));
+        csvImportTrace.putAttribute('success', 'true');
+        csvImportTrace.putAttribute('has_errors', invalidJobs.length > 0 ? 'true' : 'false');
+        csvImportTrace.stop();
+
+        // Log performance summary
+        perfLogger.logSummary();
+
         // Show results with validation warnings if needed
         if (invalidJobs.length === 0) {
           showAlert(
@@ -389,6 +413,12 @@ const Routing = () => {
       } catch (error) {
         console.error('CSV import error:', error);
         setLoadingState(prev => ({ ...prev, isOpen: false }));
+
+        // Track failure in performance monitoring
+        csvImportTrace.putAttribute('success', 'false');
+        csvImportTrace.putAttribute('error', error.message || 'Unknown error');
+        csvImportTrace.stop();
+
         showAlert(`Error importing CSV: ${error.message}`, 'Import Failed', 'error');
       }
     };
@@ -849,14 +879,23 @@ const Routing = () => {
     setOptimizing(true);
     setShowOptimizeModal(false);
 
+    // Start performance trace for entire auto-optimize operation
+    const autoOptimizeTrace = startTrace(TRACE_NAMES.AUTO_OPTIMIZE);
+    perfLogger.startTimer('total_auto_optimize');
+
     try {
       // Using memoized getLeadTechs, getDemoTechs, and unassignedJobs
 
       if (unassignedJobs.length === 0) {
         showAlert('No unassigned jobs to optimize.', 'Nothing to Optimize', 'info');
         setOptimizing(false);
+        autoOptimizeTrace.stop();
         return;
       }
+
+      // Track metrics
+      autoOptimizeTrace.putMetric('job_count', unassignedJobs.length);
+      autoOptimizeTrace.putMetric('tech_count', getLeadTechs.length);
 
       // Initialize loading modal
       setLoadingState({
@@ -870,22 +909,30 @@ const Routing = () => {
         showSteps: true
       });
 
-      // Step 1: Geocode all job addresses
+      // Step 1: Geocode all job addresses using batch geocoding
+      perfLogger.startTimer('geocoding');
       const mapbox = getMapboxService();
-      const geocodedJobs = [];
 
-      for (let i = 0; i < unassignedJobs.length; i++) {
-        const job = unassignedJobs[i];
-        const coords = await mapbox.geocodeAddress(job.address);
-        geocodedJobs.push({ ...job, coordinates: coords });
+      // Collect all unique addresses
+      const addresses = unassignedJobs.map(job => job.address);
 
-        // Update progress
-        setLoadingState(prev => ({
-          ...prev,
-          progress: (i + 1) / unassignedJobs.length * 25,
-          message: `Geocoded ${i + 1} of ${unassignedJobs.length} addresses`
-        }));
-      }
+      // Use batch geocoding (10 parallel requests at a time)
+      const geocodeResults = await mapbox.batchGeocode(addresses, 10);
+      const geocodingDuration = perfLogger.endTimer('geocoding');
+      autoOptimizeTrace.putMetric('geocoding_duration_ms', Math.round(geocodingDuration));
+
+      // Map results back to jobs
+      const geocodedJobs = unassignedJobs.map(job => ({
+        ...job,
+        coordinates: geocodeResults[job.address] || null
+      }));
+
+      // Update progress
+      setLoadingState(prev => ({
+        ...prev,
+        progress: 25,
+        message: `Batch geocoded ${addresses.length} addresses`
+      }));
 
       // Step 2: Balance workload across techs
       setLoadingState(prev => ({
@@ -893,11 +940,14 @@ const Routing = () => {
         progress: 25,
         currentStepNumber: 2,
         currentStep: 'Balancing workload across technicians...',
-        message: `Assigning ${geocodedJobs.length} jobs to ${leadTechs.length} technicians`
+        message: `Assigning ${geocodedJobs.length} jobs to ${getLeadTechs.length} technicians`
       }));
 
-      const balancedAssignments = balanceWorkload(geocodedJobs, leadTechs);
+      perfLogger.startTimer('workload_balancing');
+      const balancedAssignments = balanceWorkload(geocodedJobs, getLeadTechs);
       const techsWithJobs = Object.entries(balancedAssignments).filter(([_, a]) => a.jobs.length > 0);
+      const balancingDuration = perfLogger.endTimer('workload_balancing');
+      autoOptimizeTrace.putMetric('balancing_duration_ms', Math.round(balancingDuration));
 
       // Step 3: Optimize each tech's route
       setLoadingState(prev => ({
@@ -908,6 +958,7 @@ const Routing = () => {
         message: 'Calculating optimal route order'
       }));
 
+      perfLogger.startTimer('route_optimization');
       const optimizedRoutes = {};
       let completedTechs = 0;
 
@@ -964,6 +1015,9 @@ const Routing = () => {
         completedTechs++;
       }
 
+      const routeOptimizationDuration = perfLogger.endTimer('route_optimization');
+      autoOptimizeTrace.putMetric('route_optimization_duration_ms', Math.round(routeOptimizationDuration));
+
       // Step 4: Auto-assign demo techs
       setLoadingState(prev => ({
         ...prev,
@@ -973,7 +1027,10 @@ const Routing = () => {
         message: 'Finalizing route assignments'
       }));
 
-      const { routes: finalRoutes } = assignDemoTechs(optimizedRoutes, demoTechs);
+      perfLogger.startTimer('demo_tech_assignment');
+      const { routes: finalRoutes } = assignDemoTechs(optimizedRoutes, getDemoTechs);
+      const demoAssignmentDuration = perfLogger.endTimer('demo_tech_assignment');
+      autoOptimizeTrace.putMetric('demo_assignment_duration_ms', Math.round(demoAssignmentDuration));
 
       // Save to Firebase (immediate save for optimization completion)
       setLoadingState(prev => ({
@@ -1011,10 +1068,26 @@ const Routing = () => {
 
       setLoadingState(prev => ({ ...prev, isOpen: false }));
 
+      // Complete performance tracking
+      const totalDuration = perfLogger.endTimer('total_auto_optimize');
+      autoOptimizeTrace.putMetric('total_duration_ms', Math.round(totalDuration));
+      autoOptimizeTrace.putMetric('techs_optimized', Object.keys(finalRoutes).length);
+      autoOptimizeTrace.putAttribute('success', 'true');
+      autoOptimizeTrace.stop();
+
+      // Log performance summary
+      perfLogger.logSummary();
+
       showAlert(`Successfully optimized routes for ${Object.keys(finalRoutes).length} technicians!`, 'Optimization Complete', 'success');
     } catch (error) {
       console.error('Optimization error:', error);
       setLoadingState(prev => ({ ...prev, isOpen: false }));
+
+      // Track failure in performance monitoring
+      autoOptimizeTrace.putAttribute('success', 'false');
+      autoOptimizeTrace.putAttribute('error', error.message || 'Unknown error');
+      autoOptimizeTrace.stop();
+
       showAlert('Error during optimization. Please try again.', 'Optimization Failed', 'error');
     } finally {
       setOptimizing(false);
