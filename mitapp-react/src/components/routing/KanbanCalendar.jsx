@@ -1354,21 +1354,56 @@ const KanbanCalendar = ({
 
               const avgDrive = Math.round(totalDrive / techsWithRoutes.length);
 
+              // Calculate average return time
+              const techsWithReturnTimes = techsWithRoutes.filter(tech => returnToOfficeTimes[tech.id]?.time);
+              let avgReturnTime = null;
+
+              if (techsWithReturnTimes.length > 0) {
+                const totalMinutes = techsWithReturnTimes.reduce((sum, tech) => {
+                  const timeStr = returnToOfficeTimes[tech.id].time;
+                  const [hours, minutes] = timeStr.split(':').map(Number);
+                  return sum + (hours * 60) + minutes;
+                }, 0);
+
+                const avgMinutes = Math.round(totalMinutes / techsWithReturnTimes.length);
+                const avgHours = Math.floor(avgMinutes / 60);
+                const avgMins = avgMinutes % 60;
+                avgReturnTime = `${avgHours}:${String(avgMins).padStart(2, '0')}`;
+              }
+
               return (
-                <div style={{
-                  backgroundColor: 'var(--warning-bg)',
-                  padding: '4px 8px',
-                  borderRadius: '4px',
-                  fontSize: '11px',
-                  fontWeight: '600',
-                  color: 'var(--warning-color)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px'
-                }}>
-                  <i className="fas fa-car"></i>
-                  Avg Drive: {avgDrive}m
-                </div>
+                <>
+                  <div style={{
+                    backgroundColor: 'var(--warning-bg)',
+                    padding: '4px 8px',
+                    borderRadius: '4px',
+                    fontSize: '11px',
+                    fontWeight: '600',
+                    color: 'var(--warning-color)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}>
+                    <i className="fas fa-car"></i>
+                    Avg Drive: {avgDrive}m
+                  </div>
+                  {avgReturnTime && (
+                    <div style={{
+                      backgroundColor: 'var(--success-bg)',
+                      padding: '4px 8px',
+                      borderRadius: '4px',
+                      fontSize: '11px',
+                      fontWeight: '600',
+                      color: 'var(--success-color)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px'
+                    }}>
+                      <i className="fas fa-clock"></i>
+                      Avg Return: {formatTimeAMPM(avgReturnTime)}
+                    </div>
+                  )}
+                </>
               );
             }
             return null;
@@ -1740,31 +1775,6 @@ const KanbanCalendar = ({
                       );
                     })}
                   </select>
-
-                  {/* Smart Fill Button */}
-                  {!isOff && totalHours < 7.5 && (
-                    <button
-                      className="btn btn-primary btn-small"
-                      style={{
-                        width: '100%',
-                        fontSize: '9px',
-                        padding: '4px 6px',
-                        marginTop: '4px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '4px'
-                      }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleSmartFillDay(tech);
-                      }}
-                      title="Auto-fill this tech's day with optimal jobs"
-                    >
-                      <i className="fas fa-magic"></i>
-                      Fill Day
-                    </button>
-                  )}
                 </div>
 
                 {/* Timeline */}

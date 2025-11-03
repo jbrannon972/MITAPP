@@ -3,7 +3,6 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { AuthProvider } from './contexts/AuthContext';
 import { DataProvider } from './contexts/DataContext';
 import ProtectedRoute from './components/common/ProtectedRoute';
-import NotificationPermissionBanner from './components/NotificationPermissionBanner';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import LaborForecasting from './pages/LaborForecasting';
@@ -44,7 +43,6 @@ function App() {
     <AuthProvider>
       <DataProvider>
         <Router>
-          <NotificationPermissionBanner />
           <Routes>
             <Route path="/login" element={<Login />} />
 

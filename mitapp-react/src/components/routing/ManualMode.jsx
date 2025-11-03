@@ -774,92 +774,27 @@ const ManualMode = ({
 
         if (optimized.unassignableJobs && optimized.unassignableJobs.length > 0) {
           const unassignableNames = optimized.unassignableJobs.map(j => `• ${j.customerName} (${j.timeframeStart}-${j.timeframeEnd})`).join('\n');
-
-          // Store a reference to unassignable jobs before showing dialog
-          const skippedJobs = [...optimized.unassignableJobs];
           const assignableJobCount = optimized.optimizedJobs.length;
 
-          showConfirm(
-            `Route optimizer couldn't fit all jobs within their time windows:\n\n` +
+          console.log(`⚠️ ${optimized.unassignableJobs.length} jobs couldn't fit in timeframes, assigning ${assignableJobCount} jobs that did fit`);
+
+          // Finalize route with only the jobs that fit
+          await finalizeRouteAssignment();
+
+          // Show feedback about skipped jobs (non-blocking alert)
+          showAlert(
+            `Route created with ${assignableJobCount} job(s).\n\n` +
+            `${optimized.unassignableJobs.length} job(s) couldn't fit in their timeframe windows and were left unassigned:\n` +
             unassignableNames +
-            `\n\nWould you like to add them to the route anyway?\n\n` +
-            `Click OK to add them at the end (you can manually adjust timing later)\n` +
-            `Click Cancel to skip these jobs (they'll remain unassigned on the map)`,
-            'Timeframe Conflict',
-            async () => {
-              // User confirmed - add jobs anyway
-              console.log('📌 User chose to add unassignable jobs manually');
-
-              // Add unassignable jobs to the end of the route with estimated times
-              let currentTime = shift === 'second' ? 14 * 60 : 8 * 60; // Start time in minutes (2pm or 8am)
-
-              // If there are optimized jobs, start from the end of the last job
-              if (optimized.optimizedJobs.length > 0) {
-                const lastJob = optimized.optimizedJobs[optimized.optimizedJobs.length - 1];
-                const endTimeParts = lastJob.endTime.split(':');
-                currentTime = parseInt(endTimeParts[0]) * 60 + parseInt(endTimeParts[1]);
-                // Add 30 minutes for travel time as a buffer
-                currentTime += 30;
-              }
-
-              // Format time helper
-              const formatTime = (minutes) => {
-                const hours = Math.floor(minutes / 60);
-                const mins = minutes % 60;
-                return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
-              };
-
-              // Add each unassignable job with estimated times
-              optimized.unassignableJobs.forEach(job => {
-                const arrivalTime = currentTime;
-                const startTime = arrivalTime;
-                const endTime = startTime + (job.duration * 60);
-
-                // Add job to optimized list
-                optimized.optimizedJobs.push({
-                  ...job,
-                  arrivalTime: formatTime(arrivalTime),
-                  startTime: formatTime(startTime),
-                  endTime: formatTime(endTime),
-                  travelTime: 30, // Estimated travel time
-                  wasUnassignable: true // Flag to indicate this was manually added
-                });
-
-                console.log(`  ✅ Added ${job.customerName} at ${formatTime(startTime)}-${formatTime(endTime)}`);
-
-                // Update current time for next job (add buffer between jobs)
-                currentTime = endTime + 30;
-              });
-
-              console.log(`📋 Final route has ${optimized.optimizedJobs.length} jobs (${optimized.unassignableJobs.length} manually added)`);
-
-              // Now finalize the route assignment
-              await finalizeRouteAssignment();
-            },
-            'warning',
-            async () => {
-              // User canceled - finalize route with only the jobs that fit
-              console.log('⏭️ User chose to skip unassignable jobs');
-
-              // Finalize route with only the jobs that fit
-              await finalizeRouteAssignment();
-
-              // Show feedback about skipped jobs
-              showAlert(
-                `Route created with ${assignableJobCount} job(s).\n\n` +
-                `${skippedJobs.length} job(s) couldn't fit in timeframes and were skipped:\n` +
-                skippedJobs.map(j => `• ${j.customerName}`).join('\n') +
-                `\n\nThese jobs remain unassigned on the map. You can:\n` +
-                `• Try assigning them to a different tech\n` +
-                `• Adjust their timeframes\n` +
-                `• Manually add them to this route later`,
-                'Jobs Skipped',
-                'info'
-              );
-            }
+            `\n\nThese jobs remain on the map. You can:\n` +
+            `• Try assigning them to a different tech\n` +
+            `• Adjust their timeframes\n` +
+            `• Manually drag them to this route later`,
+            'Some Jobs Skipped',
+            'warning'
           );
 
-          return; // Wait for user confirmation, don't proceed
+          return; // Already finalized, don't proceed to the next finalizeRouteAssignment
         }
       }
 
