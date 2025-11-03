@@ -11,6 +11,7 @@ class MapboxService {
     this.distanceCache = new Map();
     this.matrixApiWarningShown = false; // Only show Matrix API warning once
     this.matrixApiFallbackShown = false; // Only show fallback message once
+    this.matrixApiAvailable = true; // Assume available, disable on first 422 error
   }
 
   /**
@@ -68,38 +69,41 @@ class MapboxService {
         throw new Error('Could not geocode addresses');
       }
 
-      // Try Matrix API first (more efficient for batch operations)
-      try {
-        const matrixResult = await this.getDistanceMatrixWithTraffic(
-          [originCoords],
-          [destCoords],
-          null
-        );
+      // Only try Matrix API if it's available (not disabled by previous 422 errors)
+      if (this.matrixApiAvailable) {
+        try {
+          const matrixResult = await this.getDistanceMatrixWithTraffic(
+            [originCoords],
+            [destCoords],
+            null
+          );
 
-        if (matrixResult && matrixResult.durations && matrixResult.durations[0]) {
-          const durationSeconds = matrixResult.durations[0][0];
-          const distanceMeters = matrixResult.distances ? matrixResult.distances[0][0] : durationSeconds * 13.41;
+          if (matrixResult && matrixResult.durations && matrixResult.durations[0]) {
+            const durationSeconds = matrixResult.durations[0][0];
+            const distanceMeters = matrixResult.distances ? matrixResult.distances[0][0] : durationSeconds * 13.41;
 
-          const result = {
-            distance: distanceMeters,
-            duration: durationSeconds,
-            durationMinutes: Math.round(durationSeconds / 60),
-            distanceMiles: (distanceMeters * 0.000621371).toFixed(1),
-            trafficAware: false
-          };
+            const result = {
+              distance: distanceMeters,
+              duration: durationSeconds,
+              durationMinutes: Math.round(durationSeconds / 60),
+              distanceMiles: (distanceMeters * 0.000621371).toFixed(1),
+              trafficAware: false
+            };
 
-          this.distanceCache.set(cacheKey, result);
-          return result;
-        }
-      } catch (matrixError) {
-        // Matrix API failed, fall back to Directions API
-        if (!this.matrixApiFallbackShown) {
-          console.info('ℹ️ Matrix API not available, using Directions API instead');
-          this.matrixApiFallbackShown = true;
+            this.distanceCache.set(cacheKey, result);
+            return result;
+          }
+        } catch (matrixError) {
+          // Matrix API failed, disable it and fall back to Directions API
+          if (!this.matrixApiFallbackShown) {
+            console.info('ℹ️ Matrix API not available on your plan. Using Directions API for all routes.');
+            this.matrixApiFallbackShown = true;
+          }
+          this.matrixApiAvailable = false; // Disable for future calls
         }
       }
 
-      // Fallback to Directions API
+      // Use Directions API (either as fallback or because Matrix API is disabled)
       const url = `${this.baseUrl}/directions/v5/mapbox/driving/${originCoords.lng},${originCoords.lat};${destCoords.lng},${destCoords.lat}?access_token=${this.accessToken}&geometries=geojson`;
 
       const response = await fetch(url);
@@ -158,8 +162,14 @@ class MapboxService {
       const response = await fetch(url);
 
       if (!response.ok) {
-        // If Matrix API fails, log once and continue
-        if (!this.matrixApiWarningShown) {
+        // If 422, Matrix API is not supported by this plan
+        if (response.status === 422) {
+          this.matrixApiAvailable = false;
+          if (!this.matrixApiWarningShown) {
+            console.warn(`⚠️ Matrix API not supported by your Mapbox plan (422). Using Directions API.`);
+            this.matrixApiWarningShown = true;
+          }
+        } else if (!this.matrixApiWarningShown) {
           console.warn(`⚠️ Matrix API returned ${response.status}. Using fallback routing.`);
           this.matrixApiWarningShown = true;
         }
@@ -189,6 +199,19 @@ class MapboxService {
   async calculateDistanceMatrix(addresses, departureTime = null) {
     const n = addresses.length;
     const matrix = Array(n).fill(null).map(() => Array(n).fill(0));
+
+    // If Matrix API is disabled, use individual calls directly
+    if (!this.matrixApiAvailable) {
+      for (let i = 0; i < n; i++) {
+        for (let j = 0; j < n; j++) {
+          if (i !== j) {
+            const result = await this.getDrivingDistance(addresses[i], addresses[j], departureTime);
+            matrix[i][j] = result.durationMinutes;
+          }
+        }
+      }
+      return matrix;
+    }
 
     try {
       // Geocode all addresses first
@@ -220,6 +243,7 @@ class MapboxService {
       return matrix;
     } catch (error) {
       console.error('Matrix calculation error, falling back to individual calls:', error);
+      this.matrixApiAvailable = false; // Disable Matrix API
 
       // Fallback to individual calls if Matrix API fails
       for (let i = 0; i < n; i++) {
