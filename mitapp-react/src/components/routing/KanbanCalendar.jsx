@@ -544,6 +544,36 @@ const KanbanCalendar = ({
     });
   }, []);
 
+  // Recalculate all routes when Company Meeting Mode is toggled
+  useEffect(() => {
+    // Skip on initial mount
+    if (!hasInitialized.current) return;
+
+    console.log('🔄 Company Meeting Mode changed:', companyMeetingMode ? 'ON' : 'OFF');
+
+    // Recalculate all tech routes
+    const recalculateAllRoutes = async () => {
+      const updatedRoutes = { ...localRoutes };
+      let hasChanges = false;
+
+      for (const techId in updatedRoutes) {
+        if (updatedRoutes[techId]?.jobs?.length > 0) {
+          console.log(`♻️ Recalculating route for tech ${techId}`);
+          updatedRoutes[techId] = await recalculateRouteTimings(techId, updatedRoutes);
+          hasChanges = true;
+        }
+      }
+
+      if (hasChanges) {
+        console.log('✅ All routes recalculated for meeting mode:', companyMeetingMode ? 'ON' : 'OFF');
+        setLocalRoutes(updatedRoutes);
+        await onUpdateRoutes(updatedRoutes);
+      }
+    };
+
+    recalculateAllRoutes();
+  }, [companyMeetingMode]);
+
   const getJobTypeColor = (jobType) => {
     const type = jobType.toLowerCase();
     if (type.includes('install')) return 'var(--purple-color)';
