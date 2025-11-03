@@ -4,7 +4,7 @@ import React from 'react';
  * Clean confirmation/alert modal for routing page
  * Replaces browser alert() and confirm() with better UI
  */
-const ConfirmModal = ({ show, onClose, onConfirm, title, message, type = 'info', confirmText = 'OK', cancelText = 'Cancel' }) => {
+const ConfirmModal = ({ show, onClose, onConfirm, onCancel, title, message, type = 'info', confirmText = 'OK', cancelText = 'Cancel' }) => {
   if (!show) return null;
 
   const isConfirm = !!onConfirm;
@@ -77,7 +77,12 @@ const ConfirmModal = ({ show, onClose, onConfirm, title, message, type = 'info',
         <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
           {isConfirm && (
             <button
-              onClick={onClose}
+              onClick={() => {
+                if (onCancel) {
+                  onCancel();
+                }
+                onClose();
+              }}
               className="btn btn-secondary"
               style={{ minWidth: '80px' }}
             >

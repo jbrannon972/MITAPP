@@ -775,12 +775,16 @@ const ManualMode = ({
         if (optimized.unassignableJobs && optimized.unassignableJobs.length > 0) {
           const unassignableNames = optimized.unassignableJobs.map(j => `• ${j.customerName} (${j.timeframeStart}-${j.timeframeEnd})`).join('\n');
 
+          // Store a reference to unassignable jobs before showing dialog
+          const skippedJobs = [...optimized.unassignableJobs];
+          const assignableJobCount = optimized.optimizedJobs.length;
+
           showConfirm(
             `Route optimizer couldn't fit all jobs within their time windows:\n\n` +
             unassignableNames +
             `\n\nWould you like to add them to the route anyway?\n\n` +
             `Click OK to add them at the end (you can manually adjust timing later)\n` +
-            `Click Cancel to skip these jobs`,
+            `Click Cancel to skip these jobs (they'll remain unassigned on the map)`,
             'Timeframe Conflict',
             async () => {
               // User confirmed - add jobs anyway
@@ -832,8 +836,29 @@ const ManualMode = ({
               // Now finalize the route assignment
               await finalizeRouteAssignment();
             },
-            'warning'
+            'warning',
+            async () => {
+              // User canceled - finalize route with only the jobs that fit
+              console.log('⏭️ User chose to skip unassignable jobs');
+
+              // Finalize route with only the jobs that fit
+              await finalizeRouteAssignment();
+
+              // Show feedback about skipped jobs
+              showAlert(
+                `Route created with ${assignableJobCount} job(s).\n\n` +
+                `${skippedJobs.length} job(s) couldn't fit in timeframes and were skipped:\n` +
+                skippedJobs.map(j => `• ${j.customerName}`).join('\n') +
+                `\n\nThese jobs remain unassigned on the map. You can:\n` +
+                `• Try assigning them to a different tech\n` +
+                `• Adjust their timeframes\n` +
+                `• Manually add them to this route later`,
+                'Jobs Skipped',
+                'info'
+              );
+            }
           );
+
           return; // Wait for user confirmation, don't proceed
         }
       }

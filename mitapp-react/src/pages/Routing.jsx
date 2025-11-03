@@ -38,7 +38,7 @@ const Routing = () => {
   const [activeUsers, setActiveUsers] = useState([]);
   const [scheduleForDay, setScheduleForDay] = useState(null);
   const [isFullScreen, setIsFullScreen] = useState(false);
-  const [modal, setModal] = useState({ show: false, title: '', message: '', type: 'info', onConfirm: null });
+  const [modal, setModal] = useState({ show: false, title: '', message: '', type: 'info', onConfirm: null, onCancel: null });
   const [techStartTimes, setTechStartTimes] = useState({}); // Store custom start times for techs (for late starts)
   const [companyMeetingMode, setCompanyMeetingMode] = useState(false); // All techs start at Conroe office at 9am
   const mapContainerRef = useRef(null);
@@ -61,15 +61,15 @@ const Routing = () => {
 
   // Modal helper functions to replace alert/confirm
   const showAlert = (message, title = 'Notification', type = 'info') => {
-    setModal({ show: true, title, message, type, onConfirm: null });
+    setModal({ show: true, title, message, type, onConfirm: null, onCancel: null });
   };
 
-  const showConfirm = (message, title, onConfirm, type = 'question') => {
-    setModal({ show: true, title, message, type, onConfirm });
+  const showConfirm = (message, title, onConfirm, type = 'question', onCancel = null) => {
+    setModal({ show: true, title, message, type, onConfirm, onCancel });
   };
 
   const closeModal = () => {
-    setModal({ show: false, title: '', message: '', type: 'info', onConfirm: null });
+    setModal({ show: false, title: '', message: '', type: 'info', onConfirm: null, onCancel: null });
   };
 
   // Real-time subscriptions for jobs and routes
@@ -1513,6 +1513,7 @@ const Routing = () => {
           show={modal.show}
           onClose={closeModal}
           onConfirm={modal.onConfirm}
+          onCancel={modal.onCancel}
           title={modal.title}
           message={modal.message}
           type={modal.type}
