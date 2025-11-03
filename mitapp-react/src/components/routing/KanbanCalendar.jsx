@@ -65,6 +65,16 @@ const KanbanCalendar = ({
   const allTechs = [...techs];
   const demoTechs = techs.filter(t => t.isDemoTech || t.role?.toLowerCase().includes('demo'));
 
+  // Helper function to format tech names (First Name + Last Initial)
+  const formatTechName = (fullName) => {
+    if (!fullName) return '';
+    const parts = fullName.trim().split(' ');
+    if (parts.length < 2) return fullName;
+    const firstName = parts[0];
+    const lastInitial = parts[parts.length - 1][0];
+    return `${firstName} ${lastInitial}.`;
+  };
+
   // Removed deepEqual - not currently used in the component
 
   // Initialize from props ONLY on first mount or when date changes
@@ -1608,7 +1618,7 @@ const KanbanCalendar = ({
               <div
                 key={tech.id}
                 style={{
-                  width: '150px',
+                  width: '180px',
                   flexShrink: 0,
                   backgroundColor: isOff
                     ? 'rgba(239, 68, 68, 0.1)'
@@ -1672,7 +1682,7 @@ const KanbanCalendar = ({
                       </span>
                     )}
                     <h4 style={{ margin: 0, fontSize: '11px', fontWeight: '600', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <span>{tech.name}</span>
+                      <span>{formatTechName(tech.name)}</span>
                       {!isOff && (
                         <span
                           title={techStartTimes[tech.id] ? `Custom start: ${techStartTimes[tech.id]}` : "Set start time"}

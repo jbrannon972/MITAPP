@@ -50,6 +50,16 @@ const ManualMode = ({
   const [officeCoordinates, setOfficeCoordinates] = useState({});
   const officesGeocodedRef = useRef(false);
 
+  // Helper function to format tech names (First Name + Last Initial)
+  const formatTechName = (fullName) => {
+    if (!fullName) return '';
+    const parts = fullName.trim().split(' ');
+    if (parts.length < 2) return fullName;
+    const firstName = parts[0];
+    const lastInitial = parts[parts.length - 1][0];
+    return `${firstName} ${lastInitial}.`;
+  };
+
   // Geocode office addresses once on mount
   useEffect(() => {
     const geocodeOffices = async () => {
@@ -1154,7 +1164,7 @@ const ManualMode = ({
       </div>
 
       {/* Main layout: Map + Compact Tech List */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 200px', gap: '12px', flex: 1, minHeight: 0 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 230px', gap: '12px', flex: 1, minHeight: 0 }}>
 
         {/* Map Section */}
         <div className="card" style={{ padding: 0, overflow: 'hidden', position: 'relative', height: '100%' }}>
@@ -1631,7 +1641,7 @@ const ManualMode = ({
                             {zonePrefix}
                           </span>
                         )}
-                        <span>{tech.name}</span>
+                        <span>{formatTechName(tech.name)}</span>
                         {!isOff && (
                           <span
                             title={techStartTimes[tech.id] ? `Custom start: ${techStartTimes[tech.id]}` : "Set start time"}
