@@ -166,11 +166,33 @@ class GoogleCalendarService {
     const startDateTime = `${date}T${job.startTime || job.timeframeStart}:00`;
     const endDateTime = `${date}T${job.endTime || job.timeframeEnd}:00`;
 
-    // Include job's zone in the title for easy identification
-    const zonePrefix = job.zone ? `[${job.zone}] ` : '';
+    // Parse route_title to create formatted calendar title
+    // route_title format: "Customer Name | 25-12369-hou-vip-williams-villageplumbing | Demo | Z3"
+    // Desired format: "Z3 | Demo | 25-12369-hou-vip-williams-villageplumbing"
+    let eventTitle;
+    if (job.route_title) {
+      const parts = job.route_title.split(' | ').map(p => p.trim());
+      if (parts.length >= 4) {
+        // parts[0] = Customer Name (skip)
+        // parts[1] = Full job string (25-12369-hou-vip-williams-villageplumbing)
+        // parts[2] = Job Type (Demo)
+        // parts[3] = Zone (Z3)
+        const fullString = parts[1];
+        const jobType = parts[2];
+        const zone = parts[3];
+        eventTitle = `${zone} | ${jobType} | ${fullString}`;
+      } else {
+        // Fallback if route_title format is unexpected
+        eventTitle = job.route_title;
+      }
+    } else {
+      // Fallback to old format if route_title doesn't exist
+      const zonePrefix = job.zone ? `[${job.zone}] ` : '';
+      eventTitle = `${zonePrefix}${job.jobType} - ${job.customerName}`;
+    }
 
     const event = {
-      summary: `${zonePrefix}${job.jobType} - ${job.customerName}`,
+      summary: eventTitle,
       location: job.address,
       description: this.buildEventDescription(job, techInfo),
       start: {
