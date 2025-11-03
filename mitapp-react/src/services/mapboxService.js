@@ -108,7 +108,7 @@ class MapboxService {
   }
 
   /**
-   * Get distance matrix with traffic using Mapbox Matrix API
+   * Get distance matrix using Mapbox Matrix API
    * @param {Array} origins - Array of coordinate objects {lng, lat}
    * @param {Array} destinations - Array of coordinate objects {lng, lat}
    * @param {Date|string|null} departureTime - Optional departure time (currently ignored - not supported by plan)
@@ -120,15 +120,13 @@ class MapboxService {
       const allCoords = [...origins, ...destinations];
       const coordsString = allCoords.map(c => `${c.lng},${c.lat}`).join(';');
 
-      // Use driving-traffic profile for current traffic data
-      const profile = 'driving-traffic';
+      // Use basic driving profile (driving-traffic requires premium plan)
+      const profile = 'driving';
 
       // Build sources and destinations indices
       const sources = origins.map((_, i) => i).join(';');
       const destinations_indices = destinations.map((_, i) => i + origins.length).join(';');
 
-      // Note: depart_at parameter removed as it's not supported by current Mapbox plan
-      // The driving-traffic profile still provides current traffic data
       let url = `${this.baseUrl}/directions-matrix/v1/mapbox/${profile}/${coordsString}?sources=${sources}&destinations=${destinations_indices}&access_token=${this.accessToken}`;
 
       const response = await fetch(url);
