@@ -217,32 +217,54 @@ const Calendar = () => {
       // Get notes from textarea
       const notes = document.getElementById('calNotes')?.value?.trim() || '';
 
-      // Get staff data from the form - only save overrides
+      // Get staff data from the form - ONLY save actual overrides
       const staffData = [];
+
+      console.log('🔍 SAVE DEBUG: Starting to process staff items');
+
       document.querySelectorAll('.staff-item-edit').forEach(item => {
         const staffId = item.dataset.staffId;
         const status = item.querySelector('.status-select')?.value;
         const hours = item.querySelector('.hours-input')?.value?.trim() || '';
 
-        // Find the original staff member to check if this is different from current calculated status
+        // Find the original staff member from when we opened the modal
         const originalStaff = selectedDaySchedule.schedule.staff.find(s => s.id === staffId);
 
         if (originalStaff) {
-          // Save if status or hours changed from the current calculated value
-          // The current calculated value includes recurring rules AND any existing overrides
-          const statusChanged = status !== originalStaff.status;
-          const hoursChanged = hours !== (originalStaff.hours || '');
+          // Get what the status would be WITHOUT any specific override for this day
+          // We need to recalculate from scratch, ignoring the specific override
+          const { status: baseStatus, hours: baseHours, source: baseSource } =
+            getDefaultStatusForPerson(originalStaff, editingDate);
 
-          // Always save if something changed - this allows manual overrides of recurring rules
-          if (statusChanged || hoursChanged) {
+          console.log(`👤 ${originalStaff.name}:`, {
+            formStatus: status,
+            formHours: hours,
+            baseStatus,
+            baseHours,
+            baseSource,
+            currentStatus: originalStaff.status,
+            currentSource: originalStaff.source
+          });
+
+          // Only save if the form values differ from the base (non-override) values
+          // This allows overriding recurring rules while not saving unnecessary data
+          const statusDiffersFromBase = status !== baseStatus;
+          const hoursDiffersFromBase = hours !== (baseHours || '');
+
+          if (statusDiffersFromBase || hoursDiffersFromBase) {
+            console.log(`✅ SAVING override for ${originalStaff.name}`);
             staffData.push({
               id: staffId,
               status: status,
               hours: hours
             });
+          } else {
+            console.log(`⏭️  SKIPPING ${originalStaff.name} (matches base)`);
           }
         }
       });
+
+      console.log('💾 Total staff to save:', staffData.length, staffData);
 
       const scheduleData = {
         date: editingDate,
