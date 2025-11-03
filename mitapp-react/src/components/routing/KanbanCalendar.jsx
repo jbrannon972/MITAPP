@@ -1834,7 +1834,9 @@ const KanbanCalendar = ({
                         onClick={(e) => {
                           e.stopPropagation();
                           if (job.type !== 'secondTechAssignment') {
-                            handleJobClick(job, e);
+                            // Jobs in tech columns are assigned - open edit modal directly
+                            setSelectedJob({...job, assignedTech: tech.id}); // Ensure assignedTech is set
+                            setShowJobModal(true);
                           }
                         }}
                         style={{
