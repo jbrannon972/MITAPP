@@ -2,7 +2,7 @@
  * Routing Page - Main routing and job assignment interface
  * Features: Company Meeting Mode for all-staff meetings at Conroe office
  */
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import Layout from '../components/common/Layout';
 import ManualMode from '../components/routing/ManualMode';
 import KanbanCalendar from '../components/routing/KanbanCalendar';
@@ -14,6 +14,7 @@ import firebaseService from '../services/firebaseService';
 import { getMapboxService, initMapboxService } from '../services/mapboxService';
 import { getCalculatedScheduleForDay } from '../utils/calendarManager';
 import { debounce } from '../utils/routingHelpers';
+import { validateJobs, sanitizeJob, formatValidationErrors } from '../utils/validators';
 import {
   optimizeRoute,
   balanceWorkload,
@@ -313,11 +314,11 @@ const Routing = () => {
     const reader = new FileReader();
     reader.onload = async (event) => {
       try {
-        // Step 2: Parse CSV
+        // Step 1: Parse CSV
         setLoadingState(prev => ({
           ...prev,
-          progress: 40,
-          currentStepNumber: 2,
+          progress: 20,
+          currentStepNumber: 1,
           currentStep: 'Parsing CSV data...',
           message: 'Processing job information'
         }));
@@ -325,24 +326,44 @@ const Routing = () => {
         const text = event.target.result;
         const parsedJobs = parseCSV(text);
 
-        // Step 3: Save to Firebase (immediate save for CSV import)
+        // Step 2: Sanitize and validate data
+        setLoadingState(prev => ({
+          ...prev,
+          progress: 40,
+          currentStepNumber: 2,
+          currentStep: 'Validating job data...',
+          message: `Checking ${parsedJobs.length} jobs for errors`
+        }));
+
+        // Sanitize all jobs first (fix common issues)
+        const sanitizedJobs = parsedJobs.map(sanitizeJob);
+
+        // Validate all jobs
+        const { validJobs, invalidJobs, stats } = validateJobs(sanitizedJobs);
+
+        console.log('📊 Validation results:', stats);
+        if (invalidJobs.length > 0) {
+          console.warn('⚠️ Invalid jobs found:', invalidJobs);
+        }
+
+        // Step 3: Save valid jobs to Firebase
         setLoadingState(prev => ({
           ...prev,
           progress: 70,
           currentStepNumber: 3,
           currentStep: 'Saving jobs to database...',
-          message: `Saving ${parsedJobs.length} jobs`
+          message: `Saving ${validJobs.length} valid jobs`
         }));
 
-        setJobs(parsedJobs);
-        await saveJobsNow(parsedJobs);
+        setJobs(validJobs);
+        await saveJobsNow(validJobs);
 
         // Complete
         setLoadingState(prev => ({
           ...prev,
           progress: 100,
           currentStep: 'Complete!',
-          message: `Imported ${parsedJobs.length} jobs successfully`
+          message: `Imported ${validJobs.length} jobs successfully`
         }));
 
         // Wait a moment to show 100% before closing
@@ -350,7 +371,21 @@ const Routing = () => {
 
         setLoadingState(prev => ({ ...prev, isOpen: false }));
 
-        showAlert(`Successfully imported ${parsedJobs.length} jobs!`, 'Import Complete', 'success');
+        // Show results with validation warnings if needed
+        if (invalidJobs.length === 0) {
+          showAlert(
+            `✅ Successfully imported ${validJobs.length} jobs!\n\nAll jobs passed validation.`,
+            'Import Complete',
+            'success'
+          );
+        } else {
+          const errorMessage = formatValidationErrors(invalidJobs);
+          showAlert(
+            `⚠️ Imported ${validJobs.length} of ${stats.total} jobs (${stats.successRate}% success)\n\n${errorMessage}\n\nValid jobs have been imported. Please fix the errors in your CSV and re-import if needed.`,
+            'Import Complete with Warnings',
+            'warning'
+          );
+        }
       } catch (error) {
         console.error('CSV import error:', error);
         setLoadingState(prev => ({ ...prev, isOpen: false }));
@@ -588,7 +623,8 @@ const Routing = () => {
     await saveJobsImmediate(jobsData);
   };
 
-  const getTechList = () => {
+  // Memoized tech list calculation (performance optimization)
+  const getTechList = useMemo(() => {
     if (!staffingData?.zones) return [];
 
     const allTechs = [];
@@ -621,43 +657,73 @@ const Routing = () => {
     });
 
     return allTechs;
-  };
+  }, [staffingData?.zones]);
 
-  const getDemoTechs = () => {
-    return getTechList().filter(t => t.isDemoTech);
-  };
+  // Memoized filtered tech lists (performance optimization)
+  const getDemoTechs = useMemo(() => {
+    return getTechList.filter(t => t.isDemoTech);
+  }, [getTechList]);
 
-  const getLeadTechs = () => {
-    const allTechs = getTechList();
-    return getRoutingEligibleTechs(allTechs);
-  };
+  const getLeadTechs = useMemo(() => {
+    return getRoutingEligibleTechs(getTechList);
+  }, [getTechList]);
+
+  // Memoized job filters (performance optimization)
+  const unassignedJobs = useMemo(() => {
+    return jobs.filter(j => !j.assignedTech);
+  }, [jobs]);
+
+  const assignedJobs = useMemo(() => {
+    return jobs.filter(j => j.assignedTech);
+  }, [jobs]);
 
   const assignJobToTech = async (jobId, techId) => {
-    const updatedJobs = jobs.map(job => {
-      if (job.id === jobId) {
-        return { ...job, assignedTech: techId, status: 'assigned' };
+    // Store original state for potential rollback (optimistic UI)
+    const originalJobs = jobs;
+    const originalRoutes = routes;
+
+    try {
+      // Step 1: Update UI immediately (optimistic)
+      const updatedJobs = jobs.map(job => {
+        if (job.id === jobId) {
+          return { ...job, assignedTech: techId, status: 'assigned' };
+        }
+        return job;
+      });
+
+      setJobs(updatedJobs);
+
+      // Update routes optimistically
+      const tech = getTechList.find(t => t.id === techId);
+      const job = updatedJobs.find(j => j.id === jobId);
+
+      const updatedRoutes = { ...routes };
+      if (!updatedRoutes[techId]) {
+        updatedRoutes[techId] = {
+          tech: tech,
+          jobs: []
+        };
       }
-      return job;
-    });
+      updatedRoutes[techId].jobs.push(job);
 
-    setJobs(updatedJobs);
-    await saveJobs(updatedJobs);
+      setRoutes(updatedRoutes);
 
-    // Update routes
-    const tech = getTechList().find(t => t.id === techId);
-    const job = updatedJobs.find(j => j.id === jobId);
+      // Step 2: Save to Firebase in background (debounced)
+      saveJobs(updatedJobs);
+      saveRoutes(updatedRoutes);
 
-    const updatedRoutes = { ...routes };
-    if (!updatedRoutes[techId]) {
-      updatedRoutes[techId] = {
-        tech: tech,
-        jobs: []
-      };
+      console.log(`✅ Job ${jobId} optimistically assigned to ${tech.name}`);
+    } catch (error) {
+      // Step 3: Rollback on error
+      console.error('❌ Failed to assign job:', error);
+      setJobs(originalJobs);
+      setRoutes(originalRoutes);
+      showAlert(
+        `Failed to assign job. Please try again.\n\nError: ${error.message}`,
+        'Assignment Failed',
+        'error'
+      );
     }
-    updatedRoutes[techId].jobs.push(job);
-
-    setRoutes(updatedRoutes);
-    await saveRoutes(updatedRoutes);
   };
 
   // Immediate save function (private)
@@ -713,24 +779,41 @@ const Routing = () => {
   };
 
   const unassignJob = async (jobId) => {
-    const updatedJobs = jobs.map(job => {
-      if (job.id === jobId) {
-        return { ...job, assignedTech: null, status: 'unassigned' };
-      }
-      return job;
-    });
+    // Store original state for potential rollback (optimistic UI)
+    const originalJobs = jobs;
+    const originalRoutes = routes;
 
-    setJobs(updatedJobs);
-    await saveJobs(updatedJobs);
+    try {
+      // Step 1: Update UI immediately (optimistic)
+      const updatedJobs = jobs.map(job => {
+        if (job.id === jobId) {
+          return { ...job, assignedTech: null, status: 'unassigned' };
+        }
+        return job;
+      });
 
-    // Remove from routes
-    const updatedRoutes = { ...routes };
-    Object.keys(updatedRoutes).forEach(techId => {
-      updatedRoutes[techId].jobs = updatedRoutes[techId].jobs.filter(j => j.id !== jobId);
-    });
+      setJobs(updatedJobs);
 
-    setRoutes(updatedRoutes);
-    await saveRoutes(updatedRoutes);
+      // Remove from routes optimistically
+      const updatedRoutes = { ...routes };
+      Object.keys(updatedRoutes).forEach(techId => {
+        updatedRoutes[techId].jobs = updatedRoutes[techId].jobs.filter(j => j.id !== jobId);
+      });
+
+      setRoutes(updatedRoutes);
+
+      // Step 2: Save to Firebase in background (debounced)
+      saveJobs(updatedJobs);
+      saveRoutes(updatedRoutes);
+
+      console.log(`✅ Job ${jobId} optimistically unassigned`);
+    } catch (error) {
+      // Step 3: Rollback on error
+      console.error('❌ Failed to unassign job:', error);
+      setJobs(originalJobs);
+      setRoutes(originalRoutes);
+      showAlert('Failed to unassign job. Please try again.', 'Unassign Failed', 'error');
+    }
   };
 
   const handleAutoOptimize = async () => {
@@ -743,9 +826,7 @@ const Routing = () => {
     setShowOptimizeModal(false);
 
     try {
-      const leadTechs = getLeadTechs();
-      const demoTechs = getDemoTechs();
-      const unassignedJobs = jobs.filter(j => !j.assignedTech);
+      // Using memoized getLeadTechs, getDemoTechs, and unassignedJobs
 
       if (unassignedJobs.length === 0) {
         showAlert('No unassigned jobs to optimize.', 'Nothing to Optimize', 'info');
@@ -1023,8 +1104,7 @@ const Routing = () => {
   };
 
   const renderJobsView = () => {
-    const unassignedJobs = jobs.filter(j => !j.assignedTech);
-    const assignedJobs = jobs.filter(j => j.assignedTech);
+    // Using memoized unassignedJobs and assignedJobs from component level
 
     return (
       <div>
@@ -1210,7 +1290,7 @@ const Routing = () => {
                           defaultValue=""
                         >
                           <option value="">Assign to...</option>
-                          {getLeadTechs().map(tech => (
+                          {getLeadTechs.map(tech => (
                             <option key={tech.id} value={tech.id}>
                               {tech.name} ({tech.zone}) - {offices[tech.office]?.shortName}
                             </option>
@@ -1249,7 +1329,7 @@ const Routing = () => {
                 </thead>
                 <tbody>
                   {assignedJobs.map((job) => {
-                    const tech = getTechList().find(t => t.id === job.assignedTech);
+                    const tech = getTechList.find(t => t.id === job.assignedTech);
                     return (
                       <tr key={job.id}>
                         <td><strong>{job.customerName}</strong></td>
@@ -1288,9 +1368,8 @@ const Routing = () => {
   };
 
   const renderRoutingView = () => {
-    const leadTechs = getLeadTechs();
-    const demoTechs = getDemoTechs();
-    const allTechs = [...leadTechs, ...demoTechs];
+    // Using memoized getLeadTechs and getDemoTechs
+    const allTechs = [...getLeadTechs, ...getDemoTechs];
 
     return (
       <ManualMode
@@ -1317,9 +1396,8 @@ const Routing = () => {
   };
 
   const renderKanbanView = () => {
-    const leadTechs = getLeadTechs();
-    const demoTechs = getDemoTechs();
-    const allTechs = [...leadTechs, ...demoTechs];
+    // Using memoized getLeadTechs and getDemoTechs
+    const allTechs = [...getLeadTechs, ...getDemoTechs];
 
     return (
       <KanbanCalendar
