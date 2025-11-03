@@ -306,16 +306,20 @@ const ManualMode = ({
       // Draw selected tech's route on the map
       if (selectedTech && routes[selectedTech]) {
         const techRoute = routes[selectedTech];
-        // Use Conroe office during Company Meeting Mode
-        const officeKey = companyMeetingMode ? 'office_1' : techRoute.tech.office;
-        const officeCoords = officeCoordinates[officeKey];
+        // Use Conroe office for START during Company Meeting Mode
+        const startOfficeKey = companyMeetingMode ? 'office_1' : techRoute.tech.office;
+        const startOfficeCoords = officeCoordinates[startOfficeKey];
 
-        if (!officeCoords || !officeCoords.lng || !officeCoords.lat) {
+        // Always return to tech's home office at END
+        const returnOfficeKey = techRoute.tech.office;
+        const returnOfficeCoords = officeCoordinates[returnOfficeKey];
+
+        if (!startOfficeCoords || !startOfficeCoords.lng || !startOfficeCoords.lat) {
           console.warn('Office coordinates not available for route drawing');
           return;
         }
 
-        const coordinates = [[officeCoords.lng, officeCoords.lat]];
+        const coordinates = [[startOfficeCoords.lng, startOfficeCoords.lat]];
 
         // Add route job markers
         for (let idx = 0; idx < (techRoute.jobs?.length || 0); idx++) {
@@ -360,8 +364,8 @@ const ManualMode = ({
           }
         }
 
-        // Return to office at end
-        coordinates.push([officeCoords.lng, officeCoords.lat]);
+        // Return to tech's home office at end
+        coordinates.push([returnOfficeCoords.lng, returnOfficeCoords.lat]);
 
         // Fetch actual driving routes from Mapbox Directions API
         if (coordinates.length > 2 && mapboxToken) {
@@ -697,6 +701,17 @@ const ManualMode = ({
             const [hours, minutes] = timeString.split(':').map(Number);
             const departureDate = new Date(selectedDate + 'T00:00:00');
             departureDate.setHours(hours, minutes, 0, 0);
+
+            // Mapbox requires departure time to be in the future and within 12 hours
+            const now = new Date();
+            const timeDiffMs = departureDate.getTime() - now.getTime();
+            const timeDiffHours = timeDiffMs / (1000 * 60 * 60);
+
+            // Only use traffic data if time is in the future and within 12 hours
+            if (timeDiffMs <= 0 || timeDiffHours > 12) {
+              return null; // Use current traffic instead
+            }
+
             return departureDate;
           };
 

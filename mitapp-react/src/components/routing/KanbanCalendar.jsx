@@ -466,21 +466,27 @@ const KanbanCalendar = ({
     if (map.getLayer('route')) map.removeLayer('route');
     if (map.getSource('route')) map.removeSource('route');
 
-    // Get office coordinates - use Conroe during Company Meeting Mode
-    const officeKey = companyMeetingMode ? 'office_1' : techRoute.tech.office;
-    const officeCoords = officeKey === 'office_1'
+    // Get START office coordinates - use Conroe during Company Meeting Mode
+    const startOfficeKey = companyMeetingMode ? 'office_1' : techRoute.tech.office;
+    const startOfficeCoords = startOfficeKey === 'office_1'
       ? { lng: -95.4559, lat: 30.3119 } // Conroe
       : { lng: -95.6508, lat: 29.7858 }; // Katy
 
-    const coordinates = [[officeCoords.lng, officeCoords.lat]];
+    // Get RETURN office coordinates - always use tech's home office
+    const returnOfficeKey = techRoute.tech.office;
+    const returnOfficeCoords = returnOfficeKey === 'office_1'
+      ? { lng: -95.4559, lat: 30.3119 } // Conroe
+      : { lng: -95.6508, lat: 29.7858 }; // Katy
 
-    // Add office marker
-    const officeEl = document.createElement('div');
-    officeEl.innerHTML = `<div style="background-color: var(--success-color); color: var(--surface-color); width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 16px; border: 3px solid var(--surface-color); box-shadow: 0 2px 8px rgba(0,0,0,0.3);"><i class="fas fa-home"></i></div>`;
-    new mapboxgl.Marker(officeEl)
-      .setLngLat([officeCoords.lng, officeCoords.lat])
+    const coordinates = [[startOfficeCoords.lng, startOfficeCoords.lat]];
+
+    // Add START office marker
+    const startOfficeEl = document.createElement('div');
+    startOfficeEl.innerHTML = `<div style="background-color: var(--success-color); color: var(--surface-color); width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 16px; border: 3px solid var(--surface-color); box-shadow: 0 2px 8px rgba(0,0,0,0.3);"><i class="fas fa-home"></i></div>`;
+    new mapboxgl.Marker(startOfficeEl)
+      .setLngLat([startOfficeCoords.lng, startOfficeCoords.lat])
       .setPopup(new mapboxgl.Popup({ offset: 25 })
-        .setHTML(`<div style="padding: 8px;"><strong>${offices[officeKey]?.name}</strong><br/>Start/End Point</div>`))
+        .setHTML(`<div style="padding: 8px;"><strong>${offices[startOfficeKey]?.name}</strong><br/>Start Point</div>`))
       .addTo(map);
 
     // Add job markers and build route
@@ -499,8 +505,19 @@ const KanbanCalendar = ({
       }
     });
 
-    // Return to office
-    coordinates.push([officeCoords.lng, officeCoords.lat]);
+    // Return to tech's home office
+    coordinates.push([returnOfficeCoords.lng, returnOfficeCoords.lat]);
+
+    // Add RETURN office marker (only if different from start)
+    if (startOfficeKey !== returnOfficeKey) {
+      const returnOfficeEl = document.createElement('div');
+      returnOfficeEl.innerHTML = `<div style="background-color: var(--warning-color); color: var(--surface-color); width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 16px; border: 3px solid var(--surface-color); box-shadow: 0 2px 8px rgba(0,0,0,0.3);"><i class="fas fa-flag-checkered"></i></div>`;
+      new mapboxgl.Marker(returnOfficeEl)
+        .setLngLat([returnOfficeCoords.lng, returnOfficeCoords.lat])
+        .setPopup(new mapboxgl.Popup({ offset: 25 })
+          .setHTML(`<div style="padding: 8px;"><strong>${offices[returnOfficeKey]?.name}</strong><br/>End Point</div>`))
+        .addTo(map);
+    }
 
     // Fetch actual driving routes from Mapbox Directions API
     if (coordinates.length > 2) {
@@ -885,6 +902,17 @@ const KanbanCalendar = ({
       const [hours, minutes] = timeString.split(':').map(Number);
       const departureDate = new Date(selectedDate + 'T00:00:00');
       departureDate.setHours(hours, minutes, 0, 0);
+
+      // Mapbox requires departure time to be in the future and within 12 hours
+      const now = new Date();
+      const timeDiffMs = departureDate.getTime() - now.getTime();
+      const timeDiffHours = timeDiffMs / (1000 * 60 * 60);
+
+      // Only use traffic data if time is in the future and within 12 hours
+      if (timeDiffMs <= 0 || timeDiffHours > 12) {
+        return null; // Use current traffic instead
+      }
+
       return departureDate;
     };
 
