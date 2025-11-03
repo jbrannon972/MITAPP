@@ -9,8 +9,8 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.75);
-  backdrop-filter: blur(4px);
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(8px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -28,14 +28,26 @@
 }
 
 .loading-modal {
-  background: var(--surface-primary);
+  background: #ffffff;
   border-radius: 16px;
   padding: 40px;
   max-width: 500px;
   width: 90%;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7);
   text-align: center;
   animation: slideUp 0.3s ease-out;
+}
+
+/* Dark mode - solid dark background */
+[data-theme="dark"] .loading-modal,
+.dark-mode .loading-modal {
+  background: #1e1e1e;
+}
+
+@media (prefers-color-scheme: dark) {
+  .loading-modal {
+    background: #1e1e1e;
+  }
 }
 
 @keyframes slideUp {
@@ -59,12 +71,26 @@
 .loading-spinner {
   width: 80px;
   height: 80px;
-  border: 4px solid var(--border-color);
-  border-top-color: var(--primary-color);
+  border: 4px solid #e0e0e0;
+  border-top-color: #3b82f6;
   border-radius: 50%;
   animation: spin 1s linear infinite;
   position: relative;
   z-index: 2;
+}
+
+/* Dark mode spinner */
+[data-theme="dark"] .loading-spinner,
+.dark-mode .loading-spinner {
+  border-color: #404040;
+  border-top-color: #60a5fa;
+}
+
+@media (prefers-color-scheme: dark) {
+  .loading-spinner {
+    border-color: #404040;
+    border-top-color: #60a5fa;
+  }
 }
 
 @keyframes spin {
@@ -80,10 +106,22 @@
   width: 80px;
   height: 80px;
   margin: -40px 0 0 -40px;
-  border: 4px solid var(--primary-color);
+  border: 4px solid #3b82f6;
   border-radius: 50%;
   opacity: 0;
   animation: pulse 2s ease-out infinite;
+}
+
+/* Dark mode pulse */
+[data-theme="dark"] .loading-pulse,
+.dark-mode .loading-pulse {
+  border-color: #60a5fa;
+}
+
+@media (prefers-color-scheme: dark) {
+  .loading-pulse {
+    border-color: #60a5fa;
+  }
 }
 
 @keyframes pulse {
@@ -105,14 +143,36 @@
   margin: 0 0 12px 0;
   font-size: 24px;
   font-weight: 600;
-  color: var(--text-primary);
+  color: #1a1a1a;
 }
 
 .loading-message {
   margin: 0 0 24px 0;
   font-size: 16px;
-  color: var(--text-secondary);
+  color: #4a4a4a;
   min-height: 24px;
+  font-weight: 500;
+}
+
+/* Dark mode text colors */
+[data-theme="dark"] .loading-title,
+.dark-mode .loading-title {
+  color: #ffffff;
+}
+
+[data-theme="dark"] .loading-message,
+.dark-mode .loading-message {
+  color: #b0b0b0;
+}
+
+@media (prefers-color-scheme: dark) {
+  .loading-title {
+    color: #ffffff;
+  }
+
+  .loading-message {
+    color: #b0b0b0;
+  }
 }
 
 .loading-steps {
@@ -121,20 +181,59 @@
   gap: 8px;
   margin-bottom: 24px;
   padding: 16px;
-  background: var(--surface-secondary);
+  background: #f5f5f5;
   border-radius: 8px;
-  border: 1px solid var(--border-color);
+  border: 1px solid #e0e0e0;
+}
+
+/* Dark mode steps */
+[data-theme="dark"] .loading-steps,
+.dark-mode .loading-steps {
+  background: #2a2a2a;
+  border-color: #404040;
+}
+
+@media (prefers-color-scheme: dark) {
+  .loading-steps {
+    background: #2a2a2a;
+    border-color: #404040;
+  }
 }
 
 .loading-step-counter {
   font-size: 14px;
   font-weight: 600;
-  color: var(--primary-color);
+  color: #3b82f6;
+}
+
+/* Dark mode step counter */
+[data-theme="dark"] .loading-step-counter,
+.dark-mode .loading-step-counter {
+  color: #60a5fa;
+}
+
+@media (prefers-color-scheme: dark) {
+  .loading-step-counter {
+    color: #60a5fa;
+  }
 }
 
 .loading-step-text {
   font-size: 14px;
-  color: var(--text-secondary);
+  color: #4a4a4a;
+  font-weight: 500;
+}
+
+/* Dark mode step text */
+[data-theme="dark"] .loading-step-text,
+.dark-mode .loading-step-text {
+  color: #b0b0b0;
+}
+
+@media (prefers-color-scheme: dark) {
+  .loading-step-text {
+    color: #b0b0b0;
+  }
 }
 
 .loading-progress-container {
@@ -147,20 +246,46 @@
 .loading-progress-bar {
   flex: 1;
   height: 12px;
-  background: var(--surface-secondary);
+  background: #f0f0f0;
   border-radius: 6px;
   overflow: hidden;
-  border: 1px solid var(--border-color);
+  border: 1px solid #d0d0d0;
   position: relative;
+}
+
+/* Dark mode progress bar */
+[data-theme="dark"] .loading-progress-bar,
+.dark-mode .loading-progress-bar {
+  background: #2a2a2a;
+  border-color: #404040;
+}
+
+@media (prefers-color-scheme: dark) {
+  .loading-progress-bar {
+    background: #2a2a2a;
+    border-color: #404040;
+  }
 }
 
 .loading-progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, var(--primary-color), var(--primary-hover));
+  background: linear-gradient(90deg, #3b82f6, #2563eb);
   border-radius: 6px;
   transition: width 0.3s ease-out;
   position: relative;
   overflow: hidden;
+}
+
+/* Dark mode progress fill */
+[data-theme="dark"] .loading-progress-fill,
+.dark-mode .loading-progress-fill {
+  background: linear-gradient(90deg, #60a5fa, #3b82f6);
+}
+
+@media (prefers-color-scheme: dark) {
+  .loading-progress-fill {
+    background: linear-gradient(90deg, #60a5fa, #3b82f6);
+  }
 }
 
 .loading-progress-shimmer {
@@ -187,17 +312,29 @@
 .loading-progress-text {
   font-size: 18px;
   font-weight: 700;
-  color: var(--primary-color);
+  color: #3b82f6;
   min-width: 60px;
   text-align: right;
+}
+
+/* Dark mode progress text */
+[data-theme="dark"] .loading-progress-text,
+.dark-mode .loading-progress-text {
+  color: #60a5fa;
+}
+
+@media (prefers-color-scheme: dark) {
+  .loading-progress-text {
+    color: #60a5fa;
+  }
 }
 
 .loading-cancel-button {
   margin-top: 16px;
   padding: 10px 24px;
-  background: var(--surface-secondary);
-  color: var(--text-primary);
-  border: 1px solid var(--border-color);
+  background: #f5f5f5;
+  color: #1a1a1a;
+  border: 1px solid #d0d0d0;
   border-radius: 6px;
   font-size: 14px;
   font-weight: 500;
@@ -206,15 +343,44 @@
 }
 
 .loading-cancel-button:hover {
-  background: var(--surface-hover);
-  border-color: var(--danger-color);
-  color: var(--danger-color);
+  background: #e5e5e5;
+  border-color: #ef4444;
+  color: #ef4444;
 }
 
-/* Dark mode adjustments */
+/* Dark mode cancel button */
+[data-theme="dark"] .loading-cancel-button,
+.dark-mode .loading-cancel-button {
+  background: #2a2a2a;
+  color: #ffffff;
+  border-color: #404040;
+}
+
+[data-theme="dark"] .loading-cancel-button:hover,
+.dark-mode .loading-cancel-button:hover {
+  background: #333333;
+  border-color: #f87171;
+  color: #f87171;
+}
+
+@media (prefers-color-scheme: dark) {
+  .loading-cancel-button {
+    background: #2a2a2a;
+    color: #ffffff;
+    border-color: #404040;
+  }
+
+  .loading-cancel-button:hover {
+    background: #333333;
+    border-color: #f87171;
+    color: #f87171;
+  }
+}
+
+/* Additional dark mode adjustments */
 @media (prefers-color-scheme: dark) {
   .loading-modal-overlay {
-    background: rgba(0, 0, 0, 0.85);
+    background: rgba(0, 0, 0, 0.90);
   }
 }
 
