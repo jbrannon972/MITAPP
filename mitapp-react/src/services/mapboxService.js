@@ -85,13 +85,11 @@ class MapboxService {
           duration: durationSeconds,
           durationMinutes: Math.round(durationSeconds / 60),
           distanceMiles: (distanceMeters * 0.000621371).toFixed(1),
-          trafficAware: !!departureTime
+          trafficAware: false // Using driving-traffic profile for current traffic, but not future predictions
         };
 
-        // Cache the result
-        if (!departureTime) {
-          this.distanceCache.set(cacheKey, result);
-        }
+        // Cache the result (shorter TTL since it includes traffic)
+        this.distanceCache.set(cacheKey, result);
         return result;
       }
 
@@ -113,7 +111,7 @@ class MapboxService {
    * Get distance matrix with traffic using Mapbox Matrix API
    * @param {Array} origins - Array of coordinate objects {lng, lat}
    * @param {Array} destinations - Array of coordinate objects {lng, lat}
-   * @param {Date|string|null} departureTime - Optional departure time for traffic predictions
+   * @param {Date|string|null} departureTime - Optional departure time (currently ignored - not supported by plan)
    * @returns {Object} Matrix result with durations and distances
    */
   async getDistanceMatrixWithTraffic(origins, destinations, departureTime = null) {
@@ -122,21 +120,16 @@ class MapboxService {
       const allCoords = [...origins, ...destinations];
       const coordsString = allCoords.map(c => `${c.lng},${c.lat}`).join(';');
 
-      // Use driving-traffic profile for traffic data
+      // Use driving-traffic profile for current traffic data
       const profile = 'driving-traffic';
 
       // Build sources and destinations indices
       const sources = origins.map((_, i) => i).join(';');
       const destinations_indices = destinations.map((_, i) => i + origins.length).join(';');
 
+      // Note: depart_at parameter removed as it's not supported by current Mapbox plan
+      // The driving-traffic profile still provides current traffic data
       let url = `${this.baseUrl}/directions-matrix/v1/mapbox/${profile}/${coordsString}?sources=${sources}&destinations=${destinations_indices}&access_token=${this.accessToken}`;
-
-      // Add departure time if provided
-      if (departureTime) {
-        const depTime = departureTime instanceof Date ? departureTime : new Date(departureTime);
-        const isoTime = depTime.toISOString().split('.')[0]; // Remove milliseconds
-        url += `&depart_at=${encodeURIComponent(isoTime)}`;
-      }
 
       const response = await fetch(url);
 
