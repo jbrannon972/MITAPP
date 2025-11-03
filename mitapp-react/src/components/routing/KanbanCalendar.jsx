@@ -117,9 +117,17 @@ const KanbanCalendar = ({
         const lastJob = sortedJobs[sortedJobs.length - 1];
         const lastJobEndTime = lastJob.endTime || lastJob.timeframeEnd;
 
-        // Get office address
+        // Get office address - ALWAYS use tech's home office for return
+        // Even in Company Meeting Mode, techs return to their home office
         const officeKey = tech.office;
         const officeAddress = offices[officeKey]?.address;
+        const officeName = offices[officeKey]?.name || 'Office';
+
+        console.log(`🏠 Return calculation for ${tech.name}:`, {
+          homeOffice: officeName,
+          lastJob: lastJob.customerName,
+          companyMeetingMode
+        });
 
         if (!officeAddress || !lastJob.address) {
           // Fallback: use default travel time
