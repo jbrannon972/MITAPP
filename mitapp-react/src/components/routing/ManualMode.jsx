@@ -963,7 +963,21 @@ const ManualMode = ({
         console.warn('⚠️ Jobs lost during optimization:', lostJobs.map(j => j.customerName));
 
         if (optimized.unassignableJobs && optimized.unassignableJobs.length > 0) {
-          const unassignableNames = optimized.unassignableJobs.map(j => `• ${j.customerName} (${j.timeframeStart}-${j.timeframeEnd})`).join('\n');
+          // Build detailed message with timing information
+          const unassignableDetails = optimized.unassignableJobs.map(j => {
+            const timing = j.timingConflict;
+            if (timing && timing.wouldArriveLate) {
+              const hours = Math.floor(timing.minutesLate / 60);
+              const mins = timing.minutesLate % 60;
+              const lateBy = hours > 0
+                ? `${hours}h ${mins}m`
+                : `${mins} minutes`;
+
+              return `• ${j.customerName} (${j.timeframeStart}-${j.timeframeEnd})\n  ⏰ Would arrive at ${timing.estimatedArrival}, ${lateBy} past deadline`;
+            }
+            return `• ${j.customerName} (${j.timeframeStart}-${j.timeframeEnd})`;
+          }).join('\n');
+
           const assignableJobCount = optimized.optimizedJobs.length;
 
           console.log(`⚠️ ${optimized.unassignableJobs.length} jobs couldn't fit in timeframes, assigning ${assignableJobCount} jobs that did fit`);
@@ -971,17 +985,66 @@ const ManualMode = ({
           // Finalize route with only the jobs that fit
           await finalizeRouteAssignment();
 
-          // Show feedback about skipped jobs (non-blocking alert)
-          showAlert(
+          // Function to force-add the skipped jobs
+          const forceAddSkippedJobs = async () => {
+            console.log('🔧 Force-adding skipped jobs to route...');
+
+            // Add unassignable jobs to the end of the route
+            const updatedRoute = {
+              ...routes[targetTechId],
+              jobs: [
+                ...routes[targetTechId].jobs,
+                ...optimized.unassignableJobs.map(j => ({
+                  ...j,
+                  forcedAssignment: true, // Flag to indicate this was manually forced
+                  timingConflict: j.timingConflict // Preserve timing info
+                }))
+              ]
+            };
+
+            const updatedRoutes = {
+              ...routes,
+              [targetTechId]: updatedRoute
+            };
+
+            // Update job assignments
+            const updatedJobs = jobs.map(job => {
+              if (optimized.unassignableJobs.find(uj => uj.id === job.id)) {
+                return { ...job, assignedTech: targetTechId, status: 'assigned', forcedAssignment: true };
+              }
+              return job;
+            });
+
+            setRoutes(updatedRoutes);
+            setJobs(updatedJobs);
+
+            await onUpdateRoutes(updatedRoutes);
+            await onUpdateJobs(updatedJobs);
+
+            showAlert(
+              `✅ Added ${optimized.unassignableJobs.length} job(s) to ${targetTech.name}'s route.\n\n` +
+              `⚠️ Note: These jobs may arrive outside their timeframe windows. ` +
+              `Please coordinate with the customer or adjust the schedule.`,
+              'Jobs Added',
+              'success'
+            );
+          };
+
+          // Show confirmation dialog with "Add Anyway" button
+          showConfirm(
             `Route created with ${assignableJobCount} job(s).\n\n` +
-            `${optimized.unassignableJobs.length} job(s) couldn't fit in their timeframe windows and were left unassigned:\n` +
-            unassignableNames +
-            `\n\nThese jobs remain on the map. You can:\n` +
+            `${optimized.unassignableJobs.length} job(s) couldn't fit in their timeframe windows and were left unassigned:\n\n` +
+            unassignableDetails +
+            `\n\n` +
+            `These jobs remain on the map. You can:\n` +
+            `• Click "Add Anyway" to force-add them to this route (they'll be late)\n` +
             `• Try assigning them to a different tech\n` +
             `• Adjust their timeframes\n` +
             `• Manually drag them to this route later`,
             'Some Jobs Skipped',
-            'warning'
+            forceAddSkippedJobs, // onConfirm callback
+            'question',
+            null // onCancel
           );
 
           return; // Already finalized, don't proceed to the next finalizeRouteAssignment

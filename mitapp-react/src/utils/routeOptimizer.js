@@ -130,9 +130,33 @@ const greedyOptimize = (jobs, shiftStartTime, distanceMatrix, jobToIndex, strate
       }
     }
 
-    // If no valid job found, mark remaining as unassignable
+    // If no valid job found, mark remaining as unassignable WITH timing details
     if (bestScore === Infinity) {
-      unassignableJobs.push(...unassigned);
+      // Calculate timing conflicts for each unassignable job
+      const unassignableWithTiming = unassigned.map(job => {
+        const jobIndex = jobToIndex.get(job.id);
+        const travelTime = distanceMatrix
+          ? distanceMatrix[currentLocationIndex][jobIndex]
+          : 20;
+
+        const estimatedArrival = currentTime + travelTime;
+        const windowEnd = timeToMinutes(job.timeframeEnd);
+        const minutesLate = Math.max(0, estimatedArrival - windowEnd);
+
+        return {
+          ...job,
+          timingConflict: {
+            estimatedArrival: minutesToTime(estimatedArrival),
+            estimatedArrivalMinutes: estimatedArrival,
+            windowEnd: job.timeframeEnd,
+            windowEndMinutes: windowEnd,
+            minutesLate: Math.round(minutesLate),
+            wouldArriveLate: estimatedArrival > windowEnd
+          }
+        };
+      });
+
+      unassignableJobs.push(...unassignableWithTiming);
       break;
     }
 
