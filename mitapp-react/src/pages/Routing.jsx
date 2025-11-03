@@ -718,11 +718,21 @@ const Routing = () => {
       console.error('❌ Failed to assign job:', error);
       setJobs(originalJobs);
       setRoutes(originalRoutes);
-      showAlert(
-        `Failed to assign job. Please try again.\n\nError: ${error.message}`,
-        'Assignment Failed',
-        'error'
-      );
+
+      // Provide helpful error message based on error type
+      let errorMessage = 'Failed to assign job. Your changes have been rolled back.\n\n';
+
+      if (error.code === 'permission-denied') {
+        errorMessage += 'Error: Permission denied. Please check your access rights.';
+      } else if (error.message?.includes('network') || error.message?.includes('offline')) {
+        errorMessage += 'Error: Network issue detected. Please check your internet connection and try again.';
+      } else if (error.code === 'unavailable') {
+        errorMessage += 'Error: Firebase service temporarily unavailable. Please try again in a moment.';
+      } else {
+        errorMessage += `Error: ${error.message || 'Unknown error occurred'}`;
+      }
+
+      showAlert(errorMessage, 'Assignment Failed - Changes Rolled Back', 'error');
     }
   };
 
@@ -812,7 +822,21 @@ const Routing = () => {
       console.error('❌ Failed to unassign job:', error);
       setJobs(originalJobs);
       setRoutes(originalRoutes);
-      showAlert('Failed to unassign job. Please try again.', 'Unassign Failed', 'error');
+
+      // Provide helpful error message based on error type
+      let errorMessage = 'Failed to unassign job. Your changes have been rolled back.\n\n';
+
+      if (error.code === 'permission-denied') {
+        errorMessage += 'Error: Permission denied. Please check your access rights.';
+      } else if (error.message?.includes('network') || error.message?.includes('offline')) {
+        errorMessage += 'Error: Network issue detected. Please check your internet connection and try again.';
+      } else if (error.code === 'unavailable') {
+        errorMessage += 'Error: Firebase service temporarily unavailable. Please try again in a moment.';
+      } else {
+        errorMessage += `Error: ${error.message || 'Unknown error occurred'}`;
+      }
+
+      showAlert(errorMessage, 'Unassign Failed - Changes Rolled Back', 'error');
     }
   };
 
