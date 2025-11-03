@@ -1359,13 +1359,19 @@ const KanbanCalendar = ({
                 display: 'flex',
                 alignItems: 'flex-start',
                 justifyContent: 'center',
-                paddingTop: '2px',
-                borderTop: idx === 0 ? 'none' : '1px solid #f3f4f6',
                 fontSize: '10px',
                 color: 'var(--text-secondary)',
-                fontWeight: '500'
+                fontWeight: '500',
+                position: 'relative'
               }}>
-                {time}
+                <span style={{
+                  position: 'absolute',
+                  top: '-6px',
+                  backgroundColor: 'var(--surface-color)',
+                  padding: '0 4px'
+                }}>
+                  {time}
+                </span>
               </div>
             ))}
           </div>
