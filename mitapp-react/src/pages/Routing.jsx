@@ -13,6 +13,7 @@ import { useAuth } from '../contexts/AuthContext';
 import firebaseService from '../services/firebaseService';
 import { getMapboxService, initMapboxService } from '../services/mapboxService';
 import { getCalculatedScheduleForDay } from '../utils/calendarManager';
+import { debounce } from '../utils/routingHelpers';
 import {
   optimizeRoute,
   balanceWorkload,
@@ -324,7 +325,7 @@ const Routing = () => {
         const text = event.target.result;
         const parsedJobs = parseCSV(text);
 
-        // Step 3: Save to Firebase
+        // Step 3: Save to Firebase (immediate save for CSV import)
         setLoadingState(prev => ({
           ...prev,
           progress: 70,
@@ -334,7 +335,7 @@ const Routing = () => {
         }));
 
         setJobs(parsedJobs);
-        await saveJobs(parsedJobs);
+        await saveJobsNow(parsedJobs);
 
         // Complete
         setLoadingState(prev => ({
@@ -532,15 +533,13 @@ const Routing = () => {
     return jobs;
   };
 
-  const saveJobs = async (jobsData) => {
+  // Immediate save function (private)
+  const saveJobsImmediate = async (jobsData) => {
     try {
-      // Don't do optimistic update - let Firebase subscription handle it
-      // This prevents race conditions with child component's local state
       const stack = new Error().stack;
       console.log('📤 Saving jobs to Firebase...', jobsData.length, 'jobs');
       console.log('📍 Called from:', stack.split('\n')[2]);
 
-      // Save to Firebase with metadata for conflict tracking
       if (currentUser) {
         await firebaseService.saveWithMetadata(
           'hou_routing',
@@ -568,6 +567,25 @@ const Routing = () => {
       console.error('Error saving jobs:', error);
       showAlert('Error saving jobs. Please try again.', 'Error', 'error');
     }
+  };
+
+  // Debounced save function (waits 1 second after last change)
+  const saveJobsDebounced = useRef(
+    debounce((jobsData) => {
+      saveJobsImmediate(jobsData);
+    }, 1000)
+  ).current;
+
+  // Public save function (uses debouncing for drag/drop operations)
+  const saveJobs = (jobsData) => {
+    console.log('⏳ Queuing jobs save (debounced)...');
+    saveJobsDebounced(jobsData);
+  };
+
+  // Immediate save (for operations that need confirmation like CSV import, optimization)
+  const saveJobsNow = async (jobsData) => {
+    console.log('💾 Saving jobs immediately (no debounce)...');
+    await saveJobsImmediate(jobsData);
   };
 
   const getTechList = () => {
@@ -642,15 +660,13 @@ const Routing = () => {
     await saveRoutes(updatedRoutes);
   };
 
-  const saveRoutes = async (routesData) => {
+  // Immediate save function (private)
+  const saveRoutesImmediate = async (routesData) => {
     try {
-      // Don't do optimistic update - let Firebase subscription handle it
-      // This prevents race conditions with child component's local state
       const stack = new Error().stack;
       console.log('📤 Saving routes to Firebase...', Object.keys(routesData).length, 'routes');
       console.log('📍 Called from:', stack.split('\n')[2]);
 
-      // Save to Firebase with metadata for conflict tracking
       if (currentUser) {
         await firebaseService.saveWithMetadata(
           'hou_routing',
@@ -675,6 +691,25 @@ const Routing = () => {
     } catch (error) {
       console.error('Error saving routes:', error);
     }
+  };
+
+  // Debounced save function (waits 1 second after last change)
+  const saveRoutesDebounced = useRef(
+    debounce((routesData) => {
+      saveRoutesImmediate(routesData);
+    }, 1000)
+  ).current;
+
+  // Public save function (uses debouncing for drag/drop operations)
+  const saveRoutes = (routesData) => {
+    console.log('⏳ Queuing routes save (debounced)...');
+    saveRoutesDebounced(routesData);
+  };
+
+  // Immediate save (for operations that need confirmation like optimization, calendar push)
+  const saveRoutesNow = async (routesData) => {
+    console.log('💾 Saving routes immediately (no debounce)...');
+    await saveRoutesImmediate(routesData);
   };
 
   const unassignJob = async (jobId) => {
@@ -835,7 +870,7 @@ const Routing = () => {
 
       const { routes: finalRoutes } = assignDemoTechs(optimizedRoutes, demoTechs);
 
-      // Save to Firebase
+      // Save to Firebase (immediate save for optimization completion)
       setLoadingState(prev => ({
         ...prev,
         progress: 95,
@@ -843,7 +878,7 @@ const Routing = () => {
       }));
 
       setRoutes(finalRoutes);
-      await saveRoutes(finalRoutes);
+      await saveRoutesNow(finalRoutes);
 
       // Update jobs with assignments
       const updatedJobs = jobs.map(job => {
@@ -856,7 +891,7 @@ const Routing = () => {
       });
 
       setJobs(updatedJobs);
-      await saveJobs(updatedJobs);
+      await saveJobsNow(updatedJobs);
 
       // Complete
       setLoadingState(prev => ({
