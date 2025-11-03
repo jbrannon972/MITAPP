@@ -192,6 +192,22 @@ const ManualMode = ({
         ? jobs
         : jobs.filter(j => !j.assignedTech);
 
+      // Debug: Check for any job ID duplicates
+      const jobIds = jobs.map(j => j.id);
+      const duplicateIds = jobIds.filter((id, index) => jobIds.indexOf(id) !== index);
+      if (duplicateIds.length > 0) {
+        console.error('🚨 DUPLICATE JOB IDS DETECTED:', duplicateIds);
+        console.error('Jobs with duplicate IDs:', jobs.filter(j => duplicateIds.includes(j.id)));
+      }
+
+      console.log('🗺️ Map render:', {
+        totalJobs: jobs.length,
+        visibleJobs: visibleJobs.length,
+        assignedJobs: jobs.filter(j => j.assignedTech).length,
+        unassignedJobs: jobs.filter(j => !j.assignedTech).length,
+        showAllJobs
+      });
+
       // Geocode and add job markers
       const mapbox = getMapboxService();
 
@@ -698,6 +714,7 @@ const ManualMode = ({
         let updatedJobs = jobs.map(job => {
           const optimizedJob = optimized.optimizedJobs.find(oj => oj.id === job.id);
           if (optimizedJob) {
+            console.log(`✅ Marking job as assigned: ${job.customerName} -> Tech ${targetTechId}`);
             return {
               ...job,
               ...optimizedJob,
@@ -716,10 +733,22 @@ const ManualMode = ({
           return job;
         });
 
+        console.log('📊 Job assignment summary:', {
+          totalJobs: updatedJobs.length,
+          assignedToTech: updatedJobs.filter(j => j.assignedTech === targetTechId).length,
+          unassigned: updatedJobs.filter(j => !j.assignedTech).length
+        });
+
         // Add helper jobs to jobs list (use geocoded version)
         if (geocodedHelperJobs && geocodedHelperJobs.length > 0) {
-          console.log('➕ Adding helper jobs to job list:', geocodedHelperJobs.map(j => j.customerName));
+          console.log('➕ Adding helper jobs to job list:', geocodedHelperJobs.map(j => `${j.customerName} (${j.id})`));
           updatedJobs = [...updatedJobs, ...geocodedHelperJobs];
+
+          console.log('📊 After adding helper jobs:', {
+            totalJobs: updatedJobs.length,
+            helperJobs: updatedJobs.filter(j => j.isHelperJob).length,
+            unassigned: updatedJobs.filter(j => !j.assignedTech).length
+          });
         }
 
         // Clear building route if it was dragged
