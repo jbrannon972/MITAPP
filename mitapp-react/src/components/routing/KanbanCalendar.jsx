@@ -530,6 +530,20 @@ const KanbanCalendar = ({
     return `${String(hour).padStart(2, '0')}:00`;
   });
 
+  // Debug: log time configuration on first render
+  useEffect(() => {
+    console.log('📊 Time Configuration:', {
+      startHour,
+      endHour,
+      totalHours,
+      pixelsPerHour,
+      timelineHeight,
+      timeSlotsCount: timeSlots.length,
+      firstSlot: timeSlots[0],
+      lastSlot: timeSlots[timeSlots.length - 1]
+    });
+  }, []);
+
   const getJobTypeColor = (jobType) => {
     const type = jobType.toLowerCase();
     if (type.includes('install')) return 'var(--purple-color)';
@@ -688,12 +702,16 @@ const KanbanCalendar = ({
     }
 
     const tech = techs.find(t => t.id === techId);
-    const officeAddress = offices[tech?.office || 'office_1']?.address;
+    // Company Meeting Mode: All techs start at Conroe office
+    const officeKey = companyMeetingMode ? 'office_1' : (tech?.office || 'office_1');
+    const officeAddress = offices[officeKey]?.address;
     const mapboxService = getMapboxService();
 
-    // Get tech's start time (respect custom start times and second shift)
+    // Get tech's start time (respect company meeting mode, custom start times, and second shift)
     const defaultStartTime = tech?.shift === 'second' ? '13:15' : '08:15';
-    const shiftStart = techStartTimes[techId] || defaultStartTime;
+    const shiftStart = companyMeetingMode
+      ? "09:00"
+      : (techStartTimes[techId] || defaultStartTime);
 
     // Use jobs in their CURRENT order - do NOT sort!
     // The order has been set by arrow buttons or drag-drop
@@ -1721,7 +1739,20 @@ const KanbanCalendar = ({
                         borderTop: idx === 0 ? 'none' : '1px solid #f3f4f6',
                         pointerEvents: 'none'
                       }}
-                    />
+                    >
+                      {/* Debug: Show time on grid line */}
+                      <span style={{
+                        position: 'absolute',
+                        top: '-8px',
+                        left: '2px',
+                        fontSize: '8px',
+                        color: '#999',
+                        backgroundColor: 'rgba(255,255,255,0.8)',
+                        padding: '0 2px'
+                      }}>
+                        {time}
+                      </span>
+                    </div>
                   ))}
 
                   {/* Jobs */}
