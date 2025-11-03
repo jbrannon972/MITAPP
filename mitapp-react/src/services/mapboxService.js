@@ -10,6 +10,7 @@ class MapboxService {
     this.geocodeCache = new Map();
     this.distanceCache = new Map();
     this.matrixApiWarningShown = false; // Only show Matrix API warning once
+    this.matrixApiFallbackShown = false; // Only show fallback message once
   }
 
   /**
@@ -45,18 +46,16 @@ class MapboxService {
   }
 
   /**
-   * Get driving distance and time between two addresses using Matrix API
+   * Get driving distance and time between two addresses
    * @param {string} origin - Origin address
    * @param {string} destination - Destination address
-   * @param {Date|string|null} departureTime - Optional departure time for traffic-aware routing (Date object or ISO 8601 string)
+   * @param {Date|string|null} departureTime - Optional departure time (currently ignored - not supported by plan)
    */
   async getDrivingDistance(origin, destination, departureTime = null) {
-    // Include departure time in cache key for traffic-aware caching
-    const timeKey = departureTime ? `|${departureTime}` : '';
-    const cacheKey = `${origin}|${destination}${timeKey}`;
+    const cacheKey = `${origin}|${destination}`;
 
-    // Check cache - only use cached results if no specific departure time requested
-    if (!departureTime && this.distanceCache.has(cacheKey)) {
+    // Check cache
+    if (this.distanceCache.has(cacheKey)) {
       return this.distanceCache.get(cacheKey);
     }
 
@@ -69,31 +68,58 @@ class MapboxService {
         throw new Error('Could not geocode addresses');
       }
 
-      // Use the Matrix API for better efficiency and traffic support
-      const matrixResult = await this.getDistanceMatrixWithTraffic(
-        [originCoords],
-        [destCoords],
-        departureTime
-      );
+      // Try Matrix API first (more efficient for batch operations)
+      try {
+        const matrixResult = await this.getDistanceMatrixWithTraffic(
+          [originCoords],
+          [destCoords],
+          null
+        );
 
-      if (matrixResult && matrixResult.durations && matrixResult.durations[0]) {
-        const durationSeconds = matrixResult.durations[0][0];
-        const distanceMeters = matrixResult.distances ? matrixResult.distances[0][0] : durationSeconds * 13.41; // Estimate distance if not provided
+        if (matrixResult && matrixResult.durations && matrixResult.durations[0]) {
+          const durationSeconds = matrixResult.durations[0][0];
+          const distanceMeters = matrixResult.distances ? matrixResult.distances[0][0] : durationSeconds * 13.41;
 
+          const result = {
+            distance: distanceMeters,
+            duration: durationSeconds,
+            durationMinutes: Math.round(durationSeconds / 60),
+            distanceMiles: (distanceMeters * 0.000621371).toFixed(1),
+            trafficAware: false
+          };
+
+          this.distanceCache.set(cacheKey, result);
+          return result;
+        }
+      } catch (matrixError) {
+        // Matrix API failed, fall back to Directions API
+        if (!this.matrixApiFallbackShown) {
+          console.info('ℹ️ Matrix API not available, using Directions API instead');
+          this.matrixApiFallbackShown = true;
+        }
+      }
+
+      // Fallback to Directions API
+      const url = `${this.baseUrl}/directions/v5/mapbox/driving/${originCoords.lng},${originCoords.lat};${destCoords.lng},${destCoords.lat}?access_token=${this.accessToken}&geometries=geojson`;
+
+      const response = await fetch(url);
+      const data = await response.json();
+
+      if (data.routes && data.routes.length > 0) {
+        const route = data.routes[0];
         const result = {
-          distance: distanceMeters,
-          duration: durationSeconds,
-          durationMinutes: Math.round(durationSeconds / 60),
-          distanceMiles: (distanceMeters * 0.000621371).toFixed(1),
-          trafficAware: false // Using driving-traffic profile for current traffic, but not future predictions
+          distance: route.distance,
+          duration: route.duration,
+          durationMinutes: Math.round(route.duration / 60),
+          distanceMiles: (route.distance * 0.000621371).toFixed(1),
+          trafficAware: false
         };
 
-        // Cache the result (shorter TTL since it includes traffic)
         this.distanceCache.set(cacheKey, result);
         return result;
       }
 
-      throw new Error('No route found in matrix');
+      throw new Error('No route found');
     } catch (error) {
       console.error('Distance calculation error:', error);
       // Return estimated values as fallback
