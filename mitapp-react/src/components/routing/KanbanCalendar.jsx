@@ -1465,7 +1465,7 @@ const KanbanCalendar = ({
                   key={job.id}
                   draggable
                   onDragStart={(e) => handleJobDragStart(e, job, null)}
-                  onClick={() => handleJobClick(job)}
+                  onClick={(e) => handleJobClick(job, e)}
                   style={{
                     marginBottom: '4px',
                     padding: '6px',
@@ -1834,7 +1834,7 @@ const KanbanCalendar = ({
                         onClick={(e) => {
                           e.stopPropagation();
                           if (job.type !== 'secondTechAssignment') {
-                            handleJobClick(job);
+                            handleJobClick(job, e);
                           }
                         }}
                         style={{
