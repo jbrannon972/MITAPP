@@ -27,6 +27,34 @@ class FirebaseService {
     slackMentions: 'hou_slack_mentions'
   };
 
+  /**
+   * Remove undefined values from an object (Firebase doesn't allow undefined)
+   * @param {any} obj - Object to clean
+   * @returns {any} Cleaned object without undefined values
+   */
+  removeUndefined(obj) {
+    if (obj === null || obj === undefined) {
+      return null;
+    }
+
+    if (Array.isArray(obj)) {
+      return obj.map(item => this.removeUndefined(item));
+    }
+
+    if (typeof obj === 'object' && obj !== null) {
+      const cleaned = {};
+      Object.keys(obj).forEach(key => {
+        const value = obj[key];
+        if (value !== undefined) {
+          cleaned[key] = this.removeUndefined(value);
+        }
+      });
+      return cleaned;
+    }
+
+    return obj;
+  }
+
   // Load staffing data
   async loadStaffingData() {
     try {
@@ -353,7 +381,9 @@ class FirebaseService {
   async saveDocument(collectionName, docId, data) {
     try {
       const docRef = doc(db, collectionName, docId);
-      await setDoc(docRef, data);
+      // Clean undefined values before saving (Firebase doesn't allow them)
+      const cleanedData = this.removeUndefined(data);
+      await setDoc(docRef, cleanedData);
     } catch (error) {
       console.error(`Error saving document to ${collectionName}:`, error);
       throw error;
@@ -364,7 +394,9 @@ class FirebaseService {
   async updateDocument(collectionName, docId, data) {
     try {
       const docRef = doc(db, collectionName, docId);
-      await updateDoc(docRef, data);
+      // Clean undefined values before updating (Firebase doesn't allow them)
+      const cleanedData = this.removeUndefined(data);
+      await updateDoc(docRef, cleanedData);
     } catch (error) {
       console.error(`Error updating document in ${collectionName}:`, error);
       throw error;
@@ -664,11 +696,15 @@ class FirebaseService {
   async saveWithMetadata(collectionName, docId, data, user) {
     try {
       const docRef = doc(db, collectionName, docId);
-      await setDoc(docRef, {
+
+      // Clean undefined values before saving (Firebase doesn't allow them)
+      const cleanedData = this.removeUndefined({
         ...data,
         lastModifiedBy: user.name || 'Unknown',
         lastModifiedAt: serverTimestamp()
       });
+
+      await setDoc(docRef, cleanedData);
     } catch (error) {
       console.error(`Error saving document with metadata to ${collectionName}:`, error);
       throw error;

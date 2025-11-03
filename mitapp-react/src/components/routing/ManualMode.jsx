@@ -1388,14 +1388,15 @@ const ManualMode = ({
       async () => {
         console.log('🗑️ Clearing all routes...');
 
-        // Unassign all jobs
-        const clearedJobs = jobs.map(job => ({
-          ...job,
-          assignedTech: null,
-          status: 'unassigned',
-          forcedAssignment: undefined,
-          timingConflict: undefined
-        }));
+        // Unassign all jobs and remove forced assignment flags
+        const clearedJobs = jobs.map(job => {
+          const { forcedAssignment, timingConflict, ...jobWithoutFlags } = job;
+          return {
+            ...jobWithoutFlags,
+            assignedTech: null,
+            status: 'unassigned'
+          };
+        });
 
         // Clear all routes
         const clearedRoutes = {};
