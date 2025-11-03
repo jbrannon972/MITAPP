@@ -151,11 +151,17 @@ const KanbanCalendar = ({
           continue;
         }
 
-        // Use safeAsync for error handling
+        // Use safeAsync for error handling with traffic-aware routing
         const result = await safeAsync(
           async () => {
             const mapboxService = getMapboxService();
-            return await mapboxService.getDrivingDistance(lastJob.address, officeAddress);
+
+            // Create departure time for traffic-aware routing (when last job ends)
+            const [hours, minutes] = lastJobEndTime.split(':').map(Number);
+            const departureTime = new Date(selectedDate + 'T00:00:00');
+            departureTime.setHours(hours, minutes, 0, 0);
+
+            return await mapboxService.getDrivingDistance(lastJob.address, officeAddress, departureTime);
           },
           'Error calculating return time',
           () => null // Return null on error
@@ -164,6 +170,10 @@ const KanbanCalendar = ({
         const driveMinutes = result?.durationMinutes || DEFAULT_TRAVEL_TIME;
         const endMinutes = timeToMinutes(lastJobEndTime);
         const returnTime = minutesToTime(endMinutes + driveMinutes);
+
+        if (result?.trafficAware) {
+          console.log(`🚦 Traffic-aware return time for ${tech.name}: ${driveMinutes}m (departure: ${lastJobEndTime})`);
+        }
 
         newReturnTimes[tech.id] = {
           time: returnTime,
@@ -772,12 +782,22 @@ const KanbanCalendar = ({
         return shiftStart;
       }
 
-      // Calculate drive time from office to job
+      // Calculate drive time from office to job with traffic-aware routing
       setIsCalculatingDrive(true);
       try {
         const mapboxService = getMapboxService();
-        const result = await mapboxService.getDrivingDistance(officeAddress, job.address);
+
+        // Create departure time for traffic-aware routing
+        const [hours, minutes] = shiftStart.split(':').map(Number);
+        const departureTime = new Date(selectedDate + 'T00:00:00');
+        departureTime.setHours(hours, minutes, 0, 0);
+
+        const result = await mapboxService.getDrivingDistance(officeAddress, job.address, departureTime);
         const driveMinutes = Math.ceil(result.durationMinutes || 20);
+
+        if (result.trafficAware) {
+          console.log(`🚦 Traffic-aware drive time for new job: ${driveMinutes}m (departure: ${shiftStart})`);
+        }
 
         const shiftMinutes = timeToMinutes(shiftStart);
         const calculatedStartMinutes = shiftMinutes + driveMinutes;
@@ -800,14 +820,25 @@ const KanbanCalendar = ({
 
     const lastJob = sortedJobs[sortedJobs.length - 1];
 
-    // Calculate drive time from last job to new job
+    // Calculate drive time from last job to new job with traffic-aware routing
     setIsCalculatingDrive(true);
     try {
       const mapboxService = getMapboxService();
-      const result = await mapboxService.getDrivingDistance(lastJob.address, job.address);
+
+      // Create departure time for traffic-aware routing (when last job ends)
+      const lastJobEndTime = lastJob.endTime || lastJob.timeframeEnd;
+      const [hours, minutes] = lastJobEndTime.split(':').map(Number);
+      const departureTime = new Date(selectedDate + 'T00:00:00');
+      departureTime.setHours(hours, minutes, 0, 0);
+
+      const result = await mapboxService.getDrivingDistance(lastJob.address, job.address, departureTime);
       const driveMinutes = Math.ceil(result.durationMinutes || 20);
 
-      const lastJobEndMinutes = timeToMinutes(lastJob.endTime || lastJob.timeframeEnd);
+      if (result.trafficAware) {
+        console.log(`🚦 Traffic-aware drive time after last job: ${driveMinutes}m (departure: ${lastJobEndTime})`);
+      }
+
+      const lastJobEndMinutes = timeToMinutes(lastJobEndTime);
       const calculatedStartMinutes = lastJobEndMinutes + driveMinutes;
 
       setIsCalculatingDrive(false);
@@ -849,29 +880,48 @@ const KanbanCalendar = ({
 
     const recalculatedJobs = [];
 
+    // Helper to create departure time Date object for traffic-aware routing
+    const createDepartureTime = (timeString) => {
+      const [hours, minutes] = timeString.split(':').map(Number);
+      const departureDate = new Date(selectedDate + 'T00:00:00');
+      departureDate.setHours(hours, minutes, 0, 0);
+      return departureDate;
+    };
+
     for (let i = 0; i < jobsInOrder.length; i++) {
       const job = jobsInOrder[i];
       let startTime;
       let driveMinutes = 0;
 
       if (i === 0) {
-        // First job: calculate from office
+        // First job: calculate from office with traffic at shift start time
         if (officeAddress && job.address) {
           try {
-            const result = await mapboxService.getDrivingDistance(officeAddress, job.address);
+            const departureTime = createDepartureTime(shiftStart);
+            const result = await mapboxService.getDrivingDistance(officeAddress, job.address, departureTime);
             driveMinutes = Math.ceil(result.durationMinutes || 20);
+
+            if (result.trafficAware) {
+              console.log(`🚦 Traffic-aware drive time to first job: ${driveMinutes}m (departure: ${shiftStart})`);
+            }
           } catch (error) {
             driveMinutes = 20;
           }
         }
         startTime = minutesToTime(timeToMinutes(shiftStart) + driveMinutes);
       } else {
-        // Subsequent jobs: calculate from previous job
+        // Subsequent jobs: calculate from previous job with traffic at departure time
         const prevJob = recalculatedJobs[i - 1];
         if (prevJob.address && job.address) {
           try {
-            const result = await mapboxService.getDrivingDistance(prevJob.address, job.address);
+            // Departure time is when the previous job ends
+            const departureTime = createDepartureTime(prevJob.endTime);
+            const result = await mapboxService.getDrivingDistance(prevJob.address, job.address, departureTime);
             driveMinutes = Math.ceil(result.durationMinutes || 20);
+
+            if (result.trafficAware) {
+              console.log(`🚦 Traffic-aware drive time from job ${i} to ${i+1}: ${driveMinutes}m (departure: ${prevJob.endTime})`);
+            }
           } catch (error) {
             driveMinutes = 20;
           }

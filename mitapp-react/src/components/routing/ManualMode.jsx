@@ -685,30 +685,66 @@ const ManualMode = ({
         unassignableJobs: optimized.unassignableJobs?.length || 0
       });
 
-      // If distance matrix failed, calculate real drive times now
+      // If distance matrix failed, calculate real drive times now with traffic awareness
       if (!distanceMatrix && optimized.optimizedJobs.length > 0) {
-        console.log('⚠️ Distance matrix unavailable, calculating real drive times...');
+        console.log('⚠️ Distance matrix unavailable, calculating traffic-aware drive times...');
         try {
           let prevAddress = startLocation;
+          let currentTime = shift === 'second' ? '13:15' : '08:15';
+
+          // Helper to create departure time
+          const createDepartureTime = (timeString) => {
+            const [hours, minutes] = timeString.split(':').map(Number);
+            const departureDate = new Date(selectedDate + 'T00:00:00');
+            departureDate.setHours(hours, minutes, 0, 0);
+            return departureDate;
+          };
+
           for (let i = 0; i < optimized.optimizedJobs.length; i++) {
             const job = optimized.optimizedJobs[i];
             if (job.address && prevAddress) {
               try {
-                const result = await mapbox.getDrivingDistance(prevAddress, job.address);
+                // Use traffic-aware routing with departure time
+                const departureTime = createDepartureTime(currentTime);
+                const result = await mapbox.getDrivingDistance(prevAddress, job.address, departureTime);
                 job.travelTime = Math.ceil(result.durationMinutes || 20);
-                console.log(`  ✓ ${job.customerName}: ${job.travelTime}m drive`);
+
+                if (result.trafficAware) {
+                  console.log(`  🚦 ${job.customerName}: ${job.travelTime}m drive (traffic-aware, depart: ${currentTime})`);
+                } else {
+                  console.log(`  ✓ ${job.customerName}: ${job.travelTime}m drive`);
+                }
+
+                // Update current time for next leg (arrival time + job duration)
+                const arrivalMinutes = timeToMinutes(currentTime) + job.travelTime;
+                const endMinutes = arrivalMinutes + (job.duration * 60);
+                currentTime = minutesToTime(endMinutes);
               } catch (err) {
                 console.warn(`  ⚠️ ${job.customerName}: Using default 20m (API error)`);
                 job.travelTime = 20;
+                const endMinutes = timeToMinutes(currentTime) + 20 + (job.duration * 60);
+                currentTime = minutesToTime(endMinutes);
               }
               prevAddress = job.address;
             }
           }
-          console.log('✅ Real drive times calculated');
+          console.log('✅ Traffic-aware drive times calculated');
         } catch (error) {
           console.error('Error calculating drive times:', error);
         }
       }
+
+      // Helper function for time conversion (if not already defined)
+      const timeToMinutes = (timeStr) => {
+        const [hours, minutes] = timeStr.split(':').map(Number);
+        return hours * 60 + minutes;
+      };
+
+      const minutesToTime = (minutes) => {
+        const hours = Math.floor(minutes / 60);
+        const mins = minutes % 60;
+        return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
+      };
 
       // Function to finalize route assignment (called after user confirms or if no unassignable jobs)
       const finalizeRouteAssignment = async () => {

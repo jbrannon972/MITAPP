@@ -45,12 +45,17 @@ class MapboxService {
 
   /**
    * Get driving distance and time between two addresses
+   * @param {string} origin - Origin address
+   * @param {string} destination - Destination address
+   * @param {Date|string|null} departureTime - Optional departure time for traffic-aware routing (Date object or ISO 8601 string)
    */
-  async getDrivingDistance(origin, destination) {
-    const cacheKey = `${origin}|${destination}`;
+  async getDrivingDistance(origin, destination, departureTime = null) {
+    // Include departure time in cache key for traffic-aware caching
+    const timeKey = departureTime ? `|${departureTime}` : '';
+    const cacheKey = `${origin}|${destination}${timeKey}`;
 
-    // Check cache
-    if (this.distanceCache.has(cacheKey)) {
+    // Check cache - only use cached results if no specific departure time requested
+    if (!departureTime && this.distanceCache.has(cacheKey)) {
       return this.distanceCache.get(cacheKey);
     }
 
@@ -63,8 +68,17 @@ class MapboxService {
         throw new Error('Could not geocode addresses');
       }
 
-      // Get directions
-      const url = `${this.baseUrl}/directions/v5/mapbox/driving/${originCoords.lng},${originCoords.lat};${destCoords.lng},${destCoords.lat}?access_token=${this.accessToken}&geometries=geojson`;
+      // Build URL with optional departure time for traffic predictions
+      let url = `${this.baseUrl}/directions/v5/mapbox/driving/${originCoords.lng},${originCoords.lat};${destCoords.lng},${destCoords.lat}?access_token=${this.accessToken}&geometries=geojson`;
+
+      if (departureTime) {
+        // Convert to ISO 8601 format if needed
+        const isoTime = departureTime instanceof Date
+          ? departureTime.toISOString()
+          : departureTime;
+        url += `&depart_at=${encodeURIComponent(isoTime)}`;
+        console.log(`🚗 Calculating drive time with traffic for departure at ${isoTime}`);
+      }
 
       const response = await fetch(url);
       const data = await response.json();
@@ -73,13 +87,16 @@ class MapboxService {
         const route = data.routes[0];
         const result = {
           distance: route.distance, // meters
-          duration: route.duration, // seconds
+          duration: route.duration, // seconds (traffic-adjusted if departureTime provided)
           durationMinutes: Math.round(route.duration / 60),
-          distanceMiles: (route.distance * 0.000621371).toFixed(1)
+          distanceMiles: (route.distance * 0.000621371).toFixed(1),
+          trafficAware: !!departureTime
         };
 
-        // Cache the result
-        this.distanceCache.set(cacheKey, result);
+        // Cache the result (with shorter TTL for traffic-aware results)
+        if (!departureTime) {
+          this.distanceCache.set(cacheKey, result);
+        }
         return result;
       }
 
@@ -91,7 +108,8 @@ class MapboxService {
         distance: 16000, // ~10 miles in meters
         duration: 1200, // 20 minutes
         durationMinutes: 20,
-        distanceMiles: '10.0'
+        distanceMiles: '10.0',
+        trafficAware: false
       };
     }
   }
