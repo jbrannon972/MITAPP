@@ -671,12 +671,16 @@ const KanbanCalendar = ({
     });
   }, []);
 
-  // Recalculate all routes when Company Meeting Mode is toggled
+  // Recalculate all routes when Company Meeting Mode is toggled or on initial mount if meeting mode is ON
   useEffect(() => {
-    // Skip on initial mount
-    if (!hasInitialized.current) return;
+    // On initial mount, only recalculate if meeting mode is ON
+    // On subsequent changes, always recalculate
+    const isInitialMount = !hasInitialized.current;
+    if (isInitialMount && !companyMeetingMode) {
+      return; // Skip initial mount if meeting mode is OFF
+    }
 
-    console.log('🔄 Company Meeting Mode changed:', companyMeetingMode ? 'ON' : 'OFF');
+    console.log('🔄 Company Meeting Mode:', companyMeetingMode ? 'ON' : 'OFF', isInitialMount ? '(initial mount)' : '(toggled)');
 
     // Recalculate all tech routes
     const recalculateAllRoutes = async () => {
