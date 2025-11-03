@@ -11,7 +11,7 @@ class MapboxService {
     this.distanceCache = new Map();
     this.matrixApiWarningShown = false; // Only show Matrix API warning once
     this.matrixApiFallbackShown = false; // Only show fallback message once
-    this.matrixApiAvailable = true; // Assume available, disable on first 422 error
+    this.matrixApiAvailable = false; // Disabled: Matrix API requires premium Mapbox plan
   }
 
   /**
