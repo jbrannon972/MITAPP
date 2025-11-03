@@ -68,19 +68,60 @@ class MapboxService {
         throw new Error('Could not geocode addresses');
       }
 
+      // Validate departure time if provided
+      let validDepartureTime = null;
+      if (departureTime) {
+        const now = new Date();
+        const depTime = departureTime instanceof Date ? departureTime : new Date(departureTime);
+
+        // Mapbox requires departure time to be in the future and within 12 hours
+        const timeDiffMs = depTime.getTime() - now.getTime();
+        const timeDiffHours = timeDiffMs / (1000 * 60 * 60);
+
+        // Only use traffic data if time is in the future and within 12 hours
+        if (timeDiffMs > 0 && timeDiffHours <= 12) {
+          validDepartureTime = depTime;
+        } else if (timeDiffMs <= 0) {
+          console.log(`⏰ Departure time ${depTime.toISOString()} is in the past, using current traffic`);
+        } else {
+          console.log(`⏰ Departure time ${depTime.toISOString()} is too far in future (${timeDiffHours.toFixed(1)}h), using current traffic`);
+        }
+      }
+
       // Build URL with optional departure time for traffic predictions
       let url = `${this.baseUrl}/directions/v5/mapbox/driving/${originCoords.lng},${originCoords.lat};${destCoords.lng},${destCoords.lat}?access_token=${this.accessToken}&geometries=geojson`;
 
-      if (departureTime) {
-        // Convert to ISO 8601 format if needed
-        const isoTime = departureTime instanceof Date
-          ? departureTime.toISOString()
-          : departureTime;
+      if (validDepartureTime) {
+        const isoTime = validDepartureTime.toISOString();
         url += `&depart_at=${encodeURIComponent(isoTime)}`;
         console.log(`🚗 Calculating drive time with traffic for departure at ${isoTime}`);
       }
 
       const response = await fetch(url);
+
+      // Handle specific error responses
+      if (!response.ok) {
+        if (response.status === 422) {
+          console.warn(`⚠️ Mapbox rejected departure time, falling back to standard routing`);
+          // Retry without departure time
+          const fallbackUrl = `${this.baseUrl}/directions/v5/mapbox/driving/${originCoords.lng},${originCoords.lat};${destCoords.lng},${destCoords.lat}?access_token=${this.accessToken}&geometries=geojson`;
+          const fallbackResponse = await fetch(fallbackUrl);
+          const fallbackData = await fallbackResponse.json();
+
+          if (fallbackData.routes && fallbackData.routes.length > 0) {
+            const route = fallbackData.routes[0];
+            return {
+              distance: route.distance,
+              duration: route.duration,
+              durationMinutes: Math.round(route.duration / 60),
+              distanceMiles: (route.distance * 0.000621371).toFixed(1),
+              trafficAware: false
+            };
+          }
+        }
+        throw new Error(`Mapbox API error: ${response.status} ${response.statusText}`);
+      }
+
       const data = await response.json();
 
       if (data.routes && data.routes.length > 0) {
@@ -90,7 +131,7 @@ class MapboxService {
           duration: route.duration, // seconds (traffic-adjusted if departureTime provided)
           durationMinutes: Math.round(route.duration / 60),
           distanceMiles: (route.distance * 0.000621371).toFixed(1),
-          trafficAware: !!departureTime
+          trafficAware: !!validDepartureTime
         };
 
         // Cache the result (with shorter TTL for traffic-aware results)
