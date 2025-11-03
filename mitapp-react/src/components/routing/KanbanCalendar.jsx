@@ -555,7 +555,12 @@ const KanbanCalendar = ({
   const getYPosition = (timeStr) => {
     const [hours, minutes] = timeStr.split(':').map(Number);
     const minutesFromStart = (hours - startHour) * 60 + minutes;
-    return (minutesFromStart / 60) * pixelsPerHour;
+    const yPos = (minutesFromStart / 60) * pixelsPerHour;
+
+    // Debug logging to help identify timezone issues
+    console.log(`📍 getYPosition: ${timeStr} → ${hours}h ${minutes}m → ${minutesFromStart}min from ${startHour}:00 → ${yPos}px`);
+
+    return yPos;
   };
 
   const getTimeFromY = (yPos) => {
@@ -1717,6 +1722,11 @@ const KanbanCalendar = ({
                   {techJobs.map((job, jobIndex) => {
                     const yPos = job.startTime ? getYPosition(job.startTime) : 0;
                     const height = job.duration * pixelsPerHour;
+
+                    // Debug log for first job to help identify timezone issue
+                    if (jobIndex === 0) {
+                      console.log(`🔍 First job for ${tech.name}: startTime=${job.startTime}, yPos=${yPos}px, formatted=${formatTimeAMPM(job.startTime)}`);
+                    }
 
                     // Get sorted primary jobs (exclude second tech assignments) for arrow display
                     const primaryJobs = techJobs.filter(j => j.type !== 'secondTechAssignment')
