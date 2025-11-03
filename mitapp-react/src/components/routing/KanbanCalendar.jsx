@@ -1168,8 +1168,19 @@ const KanbanCalendar = ({
     const originalJob = localJobs.find(j => j.id === selectedJob.id);
     const secondTechChanged = originalJob?.demoTech !== selectedJob.demoTech;
     const requiresTwoTechsChanged = originalJob?.requiresTwoTechs !== selectedJob.requiresTwoTechs;
+    const durationChanged = originalJob?.duration !== selectedJob.duration;
+    const notesChanged = (originalJob?.notes || '') !== (selectedJob.notes || '');
     const oldSecondTech = originalJob?.demoTech;
     const newSecondTech = selectedJob.demoTech;
+
+    console.log('💾 Saving job details:', {
+      jobId: selectedJob.id,
+      customerName: selectedJob.customerName,
+      durationChanged,
+      notesChanged,
+      secondTechChanged,
+      assignedTech: selectedJob.assignedTech
+    });
 
     // Set flag to prevent useEffect syncs during update
     isUpdatingRef.current = true;
@@ -1182,7 +1193,7 @@ const KanbanCalendar = ({
         return j;
       });
 
-      const updatedRoutes = { ...localRoutes };
+      let updatedRoutes = { ...localRoutes };
 
       // Update primary job in primary tech's route
       if (selectedJob.assignedTech && updatedRoutes[selectedJob.assignedTech]) {
@@ -1255,12 +1266,37 @@ const KanbanCalendar = ({
         }
       }
 
-      setLocalJobs(updatedJobs);
-      setLocalRoutes(updatedRoutes);
-      setShowJobModal(false);
+      // If duration changed, recalculate the tech's route to adjust subsequent job timings
+      if ((durationChanged || notesChanged) && selectedJob.assignedTech && updatedRoutes[selectedJob.assignedTech]) {
+        console.log('⏱️ Duration or notes changed, recalculating route for tech:', selectedJob.assignedTech);
+        updatedRoutes[selectedJob.assignedTech] = await recalculateRouteTimings(
+          selectedJob.assignedTech,
+          updatedRoutes
+        );
 
-      await onUpdateJobs(updatedJobs);
-      await onUpdateRoutes(updatedRoutes);
+        // Update jobs with new timings
+        const recalculatedJobs = updatedJobs.map(j => {
+          const recalculatedJob = updatedRoutes[selectedJob.assignedTech].jobs.find(
+            rj => rj.id === j.id && rj.type !== 'secondTechAssignment'
+          );
+          return recalculatedJob || j;
+        });
+
+        console.log('✅ Route recalculated successfully');
+        setLocalJobs(recalculatedJobs);
+        setLocalRoutes(updatedRoutes);
+        setShowJobModal(false);
+
+        await onUpdateJobs(recalculatedJobs);
+        await onUpdateRoutes(updatedRoutes);
+      } else {
+        setLocalJobs(updatedJobs);
+        setLocalRoutes(updatedRoutes);
+        setShowJobModal(false);
+
+        await onUpdateJobs(updatedJobs);
+        await onUpdateRoutes(updatedRoutes);
+      }
     } finally {
       // Clear any existing timeout
       if (updateTimeoutRef.current) {
@@ -2098,6 +2134,17 @@ const KanbanCalendar = ({
                     <option>Inspection</option>
                   </select>
                 </div>
+
+                <div className="form-group">
+                  <label>Job Notes</label>
+                  <textarea
+                    className="form-control"
+                    rows="3"
+                    value={selectedJob.notes || ''}
+                    onChange={(e) => setSelectedJob({...selectedJob, notes: e.target.value})}
+                    placeholder="Add any additional notes about this job..."
+                  />
+                </div>
               </div>
             </div>
             <div className="modal-footer">
@@ -2105,7 +2152,7 @@ const KanbanCalendar = ({
                 Cancel
               </button>
               <button className="btn btn-primary" onClick={handleSaveJobDetails}>
-                <i className="fas fa-save"></i> Save Changes
+                <i className="fas fa-save"></i> Save & Recalculate Route
               </button>
             </div>
           </div>
