@@ -1507,21 +1507,38 @@ const KanbanCalendar = ({
           {[...techs]
             .filter(tech => !hideOffTechs || !isTechOff(tech.id))
             .sort((a, b) => {
-            // MIT Leads always go to the end
             const aIsLead = a.role === 'MIT Lead';
             const bIsLead = b.role === 'MIT Lead';
-            if (aIsLead && !bIsLead) return 1;  // a goes after b
-            if (!aIsLead && bIsLead) return -1; // b goes after a
 
-            // For non-MIT-Leads, sort by zone (Z1, Z2, 2nd, etc)
-            const getZoneOrder = (zone) => {
+            // Check if MIT Lead is 2nd shift - check both zone and name
+            const aIs2ndShiftLead = aIsLead && (
+              (a.zone && (String(a.zone).toLowerCase().includes('2nd') || String(a.zone).toLowerCase().includes('second'))) ||
+              (a.name && (String(a.name).toLowerCase().includes('2nd shift') || String(a.name).toLowerCase().includes('second shift')))
+            );
+            const bIs2ndShiftLead = bIsLead && (
+              (b.zone && (String(b.zone).toLowerCase().includes('2nd') || String(b.zone).toLowerCase().includes('second'))) ||
+              (b.name && (String(b.name).toLowerCase().includes('2nd shift') || String(b.name).toLowerCase().includes('second shift')))
+            );
+
+            // For sorting, treat 2nd shift MIT Lead as a regular tech with zone order 100
+            // Other MIT Leads get zone order 1000 (at the end)
+            const getZoneOrder = (tech, isMITLead, is2ndShiftLead) => {
+              // 2nd shift MIT Lead sorts with 2nd shift techs
+              if (is2ndShiftLead) return 100;
+
+              // Other MIT Leads go to the very end
+              if (isMITLead) return 1000;
+
+              // Regular techs sort by zone
+              const zone = tech.zone;
               if (!zone) return 999;
               const zoneStr = String(zone).toLowerCase();
               if (zoneStr.includes('2nd') || zoneStr.includes('second')) return 100;
               const match = zoneStr.match(/\d+/);
               return match ? parseInt(match[0]) : 999;
             };
-            return getZoneOrder(a.zone) - getZoneOrder(b.zone);
+
+            return getZoneOrder(a, aIsLead, aIs2ndShiftLead) - getZoneOrder(b, bIsLead, bIs2ndShiftLead);
           }).map(tech => {
             const techRoute = localRoutes[tech.id];
 
