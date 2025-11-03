@@ -108,6 +108,16 @@ const TwoTechAssignmentModal = ({
     moveToNextJob(updates); // Pass updated assignments directly
   };
 
+  const handleSubcontractors = () => {
+    const updates = { ...jobAssignments };
+    updates[currentJob.id] = {
+      type: 'subcontractor',
+      shortenTo1Hour: true
+    };
+    setJobAssignments(updates);
+    moveToNextJob(updates); // Pass updated assignments directly
+  };
+
   const moveToNextJob = (updatedAssignments) => {
     // Use the passed assignments if provided, otherwise fall back to state
     const assignmentsToUse = updatedAssignments || jobAssignments;
@@ -265,6 +275,15 @@ const TwoTechAssignmentModal = ({
                 >
                   <i className="fas fa-user-clock"></i>
                   Will Assign Another Tech (Custom Hours)
+                </button>
+
+                <button
+                  className="btn btn-info"
+                  onClick={handleSubcontractors}
+                  style={{ width: '100%', justifyContent: 'flex-start', backgroundColor: 'var(--info-color)', color: 'white' }}
+                >
+                  <i className="fas fa-hard-hat"></i>
+                  Using Subcontractors (1hr meeting time)
                 </button>
 
                 <button

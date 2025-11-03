@@ -498,6 +498,16 @@ const ManualMode = ({
             ...job,
             requiresTwoTechs: false
           };
+        } else if (assignment.type === 'subcontractor') {
+          // Using subcontractors - shorten to 1 hour and remove two-tech requirement
+          console.log(`  🏗️ Using subcontractors for ${job.customerName} - shortening to 1hr`);
+          updatedRouteJobs[jobIndex] = {
+            ...job,
+            duration: 1,
+            requiresTwoTechs: false,
+            usingSubcontractors: true,
+            notes: `${job.notes || ''}\n[Using Subcontractors - Meeting time only]`.trim()
+          };
         }
       });
 
