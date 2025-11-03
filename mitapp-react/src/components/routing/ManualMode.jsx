@@ -1564,11 +1564,17 @@ const ManualMode = ({
           </h4>
 
           <div style={{ flex: 1, overflow: 'auto' }}>
-            {/* Filter and sort techs by zone */}
+            {/* Filter and sort techs by zone, MIT Leads at end */}
             {[...techs]
               .filter(tech => !hideOffTechs || !isTechOff(tech.id))
               .sort((a, b) => {
-              // Extract zone number for sorting (Z1, Z2, 2nd, etc)
+              // MIT Leads always go to the end
+              const aIsLead = a.role === 'MIT Lead';
+              const bIsLead = b.role === 'MIT Lead';
+              if (aIsLead && !bIsLead) return 1;  // a goes after b
+              if (!aIsLead && bIsLead) return -1; // b goes after a
+
+              // For non-MIT-Leads, sort by zone (Z1, Z2, 2nd, etc)
               const getZoneOrder = (zone) => {
                 if (!zone) return 999;
                 const zoneStr = String(zone).toLowerCase();
