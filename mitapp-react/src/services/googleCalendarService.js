@@ -171,7 +171,10 @@ class GoogleCalendarService {
     // Desired format: "Z3 | Demo | 25-12369-hou-vip-williams-villageplumbing"
     let eventTitle;
     if (job.route_title) {
+      console.log(`📋 Parsing route_title: "${job.route_title}"`);
       const parts = job.route_title.split(' | ').map(p => p.trim());
+      console.log(`📋 Split into ${parts.length} parts:`, parts);
+
       if (parts.length >= 4) {
         // parts[0] = Customer Name (skip)
         // parts[1] = Full job string (25-12369-hou-vip-williams-villageplumbing)
@@ -181,14 +184,18 @@ class GoogleCalendarService {
         const jobType = parts[2];
         const zone = parts[3];
         eventTitle = `${zone} | ${jobType} | ${fullString}`;
+        console.log(`✅ Created formatted title: "${eventTitle}"`);
       } else {
         // Fallback if route_title format is unexpected
+        console.warn(`⚠️ Unexpected route_title format (${parts.length} parts), using as-is`);
         eventTitle = job.route_title;
       }
     } else {
       // Fallback to old format if route_title doesn't exist
+      console.warn('⚠️ No route_title found, using fallback format');
       const zonePrefix = job.zone ? `[${job.zone}] ` : '';
       eventTitle = `${zonePrefix}${job.jobType} - ${job.customerName}`;
+      console.log(`📋 Fallback title: "${eventTitle}"`);
     }
 
     const event = {

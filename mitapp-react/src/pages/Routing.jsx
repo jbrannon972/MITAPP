@@ -455,6 +455,7 @@ const Routing = () => {
         description: job.route_description || '',
         phone: cleanPhone,
         status: 'unassigned',
+        route_title: job.route_title, // Add route_title to top level for Google Calendar
         originalData: {
           next_visit_date: job.next_visit_date,
           route_title: job.route_title,
