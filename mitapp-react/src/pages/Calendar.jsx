@@ -3,7 +3,7 @@ import Layout from '../components/common/Layout';
 import { useAuth } from '../contexts/AuthContext';
 import { useData } from '../contexts/DataContext';
 import firebaseService from '../services/firebaseService';
-import { getCalculatedScheduleForDay, getHolidayName, formatNameCompact } from '../utils/calendarManager';
+import { getCalculatedScheduleForDay, getHolidayName, formatNameCompact, getDefaultStatusForPerson } from '../utils/calendarManager';
 import '../styles/calendar-styles.css';
 
 const Calendar = () => {
