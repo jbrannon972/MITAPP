@@ -1205,25 +1205,30 @@ const Routing = () => {
 
     return (
       <div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+        {/* Compact Header matching Manual Routing style */}
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: '8px',
+          padding: '8px 12px',
+          backgroundColor: 'var(--surface-secondary)',
+          borderRadius: '6px',
+          border: '1px solid #e5e7eb'
+        }}>
+          {/* Left: Title, View Selector, Stats */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <h3 style={{ margin: 0, fontSize: '14px', fontWeight: '600' }}>Daily Jobs - {selectedDate}</h3>
             <ViewSelector />
-            <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-secondary)' }}>
+            <p style={{ margin: 0, fontSize: '11px', color: 'var(--text-secondary)' }}>
               {jobs.length} total | {unassignedJobs.length} unassigned | {assignedJobs.length} assigned
             </p>
           </div>
-          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-            {/* Date Navigation */}
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              padding: '8px 12px',
-              backgroundColor: 'var(--surface-secondary)',
-              borderRadius: '6px',
-              border: '2px solid var(--primary-color)'
-            }}>
+
+          {/* Right: Date Picker & Action Buttons */}
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            {/* Compact Date Picker */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
               <button
                 className="btn btn-secondary btn-small"
                 onClick={() => {
@@ -1232,28 +1237,23 @@ const Routing = () => {
                   setSelectedDate(date.toISOString().split('T')[0]);
                 }}
                 title="Previous day"
-                style={{ padding: '4px 8px', minWidth: 'auto' }}
+                style={{ padding: '4px 8px', fontSize: '12px', minWidth: 'unset' }}
               >
                 <i className="fas fa-chevron-left"></i>
               </button>
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                <label style={{ fontSize: '10px', color: 'var(--text-secondary)', marginBottom: '2px', fontWeight: '600' }}>
-                  SELECT DATE
-                </label>
-                <input
-                  type="date"
-                  className="form-control"
-                  value={selectedDate}
-                  onChange={(e) => setSelectedDate(e.target.value)}
-                  style={{
-                    width: '150px',
-                    fontSize: '13px',
-                    padding: '6px 8px',
-                    fontWeight: '600',
-                    textAlign: 'center'
-                  }}
-                />
-              </div>
+              <input
+                type="date"
+                className="form-control"
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                style={{
+                  fontSize: '12px',
+                  padding: '4px 8px',
+                  fontWeight: '500',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '4px'
+                }}
+              />
               <button
                 className="btn btn-secondary btn-small"
                 onClick={() => {
@@ -1262,7 +1262,7 @@ const Routing = () => {
                   setSelectedDate(date.toISOString().split('T')[0]);
                 }}
                 title="Next day"
-                style={{ padding: '4px 8px', minWidth: 'auto' }}
+                style={{ padding: '4px 8px', fontSize: '12px', minWidth: 'unset' }}
               >
                 <i className="fas fa-chevron-right"></i>
               </button>
@@ -1270,38 +1270,46 @@ const Routing = () => {
                 className="btn btn-primary btn-small"
                 onClick={() => setSelectedDate(new Date().toISOString().split('T')[0])}
                 title="Go to today"
-                style={{ padding: '4px 12px', marginLeft: '4px' }}
+                style={{ padding: '4px 8px', fontSize: '12px' }}
               >
-                <i className="fas fa-calendar-day"></i> Today
+                Today
               </button>
             </div>
 
             <button
-              className="btn btn-success"
+              className="btn btn-success btn-small"
               onClick={() => setShowOptimizeModal(true)}
               disabled={optimizing || unassignedJobs.length === 0}
+              style={{ padding: '4px 12px', fontSize: '12px' }}
             >
               <i className="fas fa-magic"></i> {optimizing ? 'Optimizing...' : 'Auto-Optimize'}
             </button>
-            <button className="btn btn-primary" onClick={() => setShowImportModal(true)}>
+            <button
+              className="btn btn-primary btn-small"
+              onClick={() => setShowImportModal(true)}
+              style={{ padding: '4px 12px', fontSize: '12px' }}
+            >
               <i className="fas fa-upload"></i> Import CSV
             </button>
             <button
-              className={`btn ${companyMeetingMode ? 'btn-warning' : 'btn-secondary'}`}
+              className={`btn btn-small ${companyMeetingMode ? 'btn-warning' : 'btn-secondary'}`}
               onClick={toggleCompanyMeetingMode}
               title={companyMeetingMode ? 'Meeting Mode: All techs start at Conroe at 9:00 AM' : 'Normal Mode: Techs start at their offices at 8:15 AM'}
               style={{
+                padding: '4px 12px',
+                fontSize: '12px',
                 fontWeight: companyMeetingMode ? '600' : 'normal',
-                border: companyMeetingMode ? '2px solid var(--warning-color)' : 'none'
+                border: companyMeetingMode ? '2px solid var(--warning-color)' : undefined
               }}
             >
-              <i className={`fas ${companyMeetingMode ? 'fa-users' : 'fa-user-clock'}`}></i> {companyMeetingMode ? 'Meeting Mode ON' : 'Meeting Mode'}
+              <i className={`fas ${companyMeetingMode ? 'fa-users' : 'fa-user-clock'}`}></i> {companyMeetingMode ? 'Meeting ON' : 'Meeting'}
             </button>
             <button
-              className="btn btn-danger"
+              className="btn btn-danger btn-small"
               onClick={handleClearAllJobs}
               disabled={jobs.length === 0}
               title="Delete all jobs and routes for this date"
+              style={{ padding: '4px 12px', fontSize: '12px' }}
             >
               <i className="fas fa-trash-alt"></i> Clear All
             </button>

@@ -1707,19 +1707,21 @@ const KanbanCalendar = ({
           minHeight: `${timelineHeight + 100}px`,
           padding: '0 8px 8px 8px'
         }}>
-          {/* Unassigned Column - Sticky */}
+          {/* Unassigned Column - Sticky (Always stays left when scrolling) */}
           <div
             style={{
               width: '140px',
               flexShrink: 0,
               position: 'sticky',
               left: '8px',
-              zIndex: 9,
+              zIndex: 10,
               backgroundColor: dragOverTech === 'unassigned' ? 'var(--status-pending-bg)' : 'var(--surface-color)',
               border: dragOverTech === 'unassigned' ? '2px solid var(--warning-color)' : '1px solid #e5e7eb',
               borderRadius: '8px',
               transition: 'all 0.15s ease',
-              boxShadow: dragOverTech === 'unassigned' ? '0 4px 12px rgba(245, 158, 11, 0.2)' : 'none',
+              boxShadow: dragOverTech === 'unassigned'
+                ? '0 4px 12px rgba(245, 158, 11, 0.2)'
+                : '0 2px 8px rgba(0, 0, 0, 0.1)',
               height: 'fit-content'
             }}
             onDragOver={handleDragOver}
