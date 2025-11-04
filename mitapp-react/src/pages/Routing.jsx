@@ -1206,9 +1206,10 @@ const Routing = () => {
     return (
       <div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-          <div>
-            <h3 style={{ margin: 0, marginBottom: '8px' }}>Daily Jobs - {selectedDate}</h3>
-            <p style={{ margin: 0, color: 'var(--text-secondary)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <h3 style={{ margin: 0, fontSize: '14px', fontWeight: '600' }}>Daily Jobs - {selectedDate}</h3>
+            <ViewSelector />
+            <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-secondary)' }}>
               {jobs.length} total | {unassignedJobs.length} unassigned | {assignedJobs.length} assigned
             </p>
           </div>
@@ -1464,6 +1465,32 @@ const Routing = () => {
     showAlert('This page updates automatically! Changes from other users appear in real-time.', 'Real-time Updates', 'info');
   };
 
+  // View selector component for consistency across all views
+  const ViewSelector = () => (
+    <select
+      value={activeView}
+      onChange={(e) => setActiveView(e.target.value)}
+      style={{
+        padding: '4px 24px 4px 8px',
+        fontSize: '12px',
+        fontWeight: '500',
+        border: '1px solid #e5e7eb',
+        borderRadius: '4px',
+        backgroundColor: 'var(--surface-color)',
+        cursor: 'pointer',
+        appearance: 'none',
+        backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'10\' height=\'10\' viewBox=\'0 0 12 12\'%3E%3Cpath fill=\'%23666\' d=\'M6 9L1 4h10z\'/%3E%3C/svg%3E")',
+        backgroundRepeat: 'no-repeat',
+        backgroundPosition: 'right 6px center',
+        color: 'var(--text-secondary)'
+      }}
+    >
+      <option value="routing">Routing</option>
+      <option value="kanban">Kanban Calendar</option>
+      <option value="jobs">Jobs</option>
+    </select>
+  );
+
   const renderRoutingView = () => {
     // Using memoized getLeadTechs and getDemoTechs
     const allTechs = [...getLeadTechs, ...getDemoTechs];
@@ -1490,6 +1517,7 @@ const Routing = () => {
         companyMeetingMode={companyMeetingMode}
         isFullScreen={isFullScreen}
         onToggleFullScreen={() => setIsFullScreen(!isFullScreen)}
+        viewSelector={<ViewSelector />}
       />
     );
   };
@@ -1515,6 +1543,7 @@ const Routing = () => {
         techStartTimes={techStartTimes}
         setTechStartTimes={setTechStartTimes}
         companyMeetingMode={companyMeetingMode}
+        viewSelector={<ViewSelector />}
       />
     );
   };
@@ -1533,75 +1562,6 @@ const Routing = () => {
         overflow: 'auto',
         padding: '16px'
       }}>
-        <div className="tab-content active">
-        <div className="tab-controls" style={{ marginBottom: '12px' }}>
-          {/* Compact header with view dropdown */}
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            padding: '8px 12px',
-            backgroundColor: 'var(--surface-secondary)',
-            borderRadius: '6px',
-            border: '1px solid #e5e7eb'
-          }}>
-            {/* View Dropdown */}
-            <div style={{ position: 'relative' }}>
-              <select
-                value={activeView}
-                onChange={(e) => setActiveView(e.target.value)}
-                style={{
-                  padding: '6px 32px 6px 12px',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  border: '1px solid #e5e7eb',
-                  borderRadius: '4px',
-                  backgroundColor: 'var(--surface-color)',
-                  cursor: 'pointer',
-                  appearance: 'none',
-                  backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'12\' height=\'12\' viewBox=\'0 0 12 12\'%3E%3Cpath fill=\'%23666\' d=\'M6 9L1 4h10z\'/%3E%3C/svg%3E")',
-                  backgroundRepeat: 'no-repeat',
-                  backgroundPosition: 'right 8px center'
-                }}
-              >
-                <option value="routing">🗺️ Routing</option>
-                <option value="kanban">📋 Kanban Calendar</option>
-                <option value="jobs">📝 Jobs</option>
-              </select>
-            </div>
-
-            {/* Exit Full Screen Button */}
-            <button
-              onClick={() => setIsFullScreen(false)}
-              className="btn btn-secondary btn-small"
-              style={{
-                padding: '6px 12px',
-                fontSize: '12px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px'
-              }}
-            >
-              <i className="fas fa-compress"></i> Exit Full Screen
-            </button>
-
-            {/* Active Users */}
-            {activeUsers.length > 0 && (
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                fontSize: '11px'
-              }}>
-                <i className="fas fa-users" style={{ color: 'var(--success-color)' }}></i>
-                <span style={{ fontWeight: '600', color: 'var(--success-color)' }}>
-                  {activeUsers.length} {activeUsers.length === 1 ? 'person' : 'people'}
-                </span>
-              </div>
-            )}
-          </div>
-        </div>
-
         {loading ? (
           <p>Loading...</p>
         ) : (
@@ -1743,69 +1703,15 @@ const Routing = () => {
   // Normal mode: Render with Layout (original structure)
   return (
     <Layout>
-      <div className="tab-content active">
-        <div className="tab-controls" style={{ marginBottom: '12px' }}>
-          {/* Compact header with view dropdown */}
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            padding: '8px 12px',
-            backgroundColor: 'var(--surface-secondary)',
-            borderRadius: '6px',
-            border: '1px solid #e5e7eb'
-          }}>
-            {/* View Dropdown */}
-            <div style={{ position: 'relative' }}>
-              <select
-                value={activeView}
-                onChange={(e) => setActiveView(e.target.value)}
-                style={{
-                  padding: '6px 32px 6px 12px',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  border: '1px solid #e5e7eb',
-                  borderRadius: '4px',
-                  backgroundColor: 'var(--surface-color)',
-                  cursor: 'pointer',
-                  appearance: 'none',
-                  backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'12\' height=\'12\' viewBox=\'0 0 12 12\'%3E%3Cpath fill=\'%23666\' d=\'M6 9L1 4h10z\'/%3E%3C/svg%3E")',
-                  backgroundRepeat: 'no-repeat',
-                  backgroundPosition: 'right 8px center'
-                }}
-              >
-                <option value="routing">🗺️ Routing</option>
-                <option value="kanban">📋 Kanban Calendar</option>
-                <option value="jobs">📝 Jobs</option>
-              </select>
-            </div>
-
-            {/* Active Users */}
-            {activeUsers.length > 0 && (
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                fontSize: '11px'
-              }}>
-                <i className="fas fa-users" style={{ color: 'var(--success-color)' }}></i>
-                <span style={{ fontWeight: '600', color: 'var(--success-color)' }}>
-                  {activeUsers.length} {activeUsers.length === 1 ? 'person' : 'people'}
-                </span>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {loading ? (
-          <p>Loading...</p>
-        ) : (
-          <>
-            {activeView === 'routing' && renderRoutingView()}
-            {activeView === 'kanban' && renderKanbanView()}
-            {activeView === 'jobs' && renderJobsView()}
-          </>
-        )}
+      {loading ? (
+        <p>Loading...</p>
+      ) : (
+        <>
+          {activeView === 'routing' && renderRoutingView()}
+          {activeView === 'kanban' && renderKanbanView()}
+          {activeView === 'jobs' && renderJobsView()}
+        </>
+      )}
 
         {/* CSV Import Modal */}
         {showImportModal && (

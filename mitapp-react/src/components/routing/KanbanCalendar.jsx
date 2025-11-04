@@ -23,7 +23,8 @@ const KanbanCalendar = ({
   showConfirm,
   techStartTimes,
   setTechStartTimes,
-  companyMeetingMode
+  companyMeetingMode,
+  viewSelector
 }) => {
   // Local state for instant UI updates
   // Initialize once and NEVER sync from props again - child is authoritative
@@ -1576,10 +1577,11 @@ const KanbanCalendar = ({
         alignItems: 'center',
         flexShrink: 0
       }}>
-        <div>
-          <h3 style={{ margin: 0, marginBottom: '2px', fontSize: '14px', fontWeight: '600' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <h3 style={{ margin: 0, fontSize: '14px', fontWeight: '600' }}>
             <i className="fas fa-calendar-day"></i> Timeline - {selectedDate}
           </h3>
+          {viewSelector}
           <p style={{ margin: 0, fontSize: '11px', color: 'var(--text-secondary)' }}>
             Drop jobs to auto-schedule • Click job to edit • Click tech name for map
           </p>
