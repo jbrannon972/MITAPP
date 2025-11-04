@@ -618,31 +618,31 @@ const Routing = () => {
   };
 
   // Immediate save function (private)
-  const saveJobsImmediate = async (jobsData) => {
+  const saveJobsImmediate = async (jobsData, date, meetingMode, user) => {
     try {
       const stack = new Error().stack;
       console.log('📤 Saving jobs to Firebase...', jobsData.length, 'jobs');
       console.log('📍 Called from:', stack.split('\n')[2]);
 
-      if (currentUser) {
+      if (user) {
         await firebaseService.saveWithMetadata(
           'hou_routing',
-          `jobs_${selectedDate}`,
+          `jobs_${date}`,
           {
             jobs: jobsData,
-            date: selectedDate,
-            companyMeetingMode: companyMeetingMode
+            date: date,
+            companyMeetingMode: meetingMode
           },
           {
-            name: currentUser.displayName || currentUser.email,
-            id: currentUser.uid
+            name: user.displayName || user.email,
+            id: user.uid
           }
         );
       } else {
-        await firebaseService.saveDocument('hou_routing', `jobs_${selectedDate}`, {
+        await firebaseService.saveDocument('hou_routing', `jobs_${date}`, {
           jobs: jobsData,
-          date: selectedDate,
-          companyMeetingMode: companyMeetingMode,
+          date: date,
+          companyMeetingMode: meetingMode,
           lastUpdated: new Date().toISOString()
         });
       }
@@ -655,21 +655,21 @@ const Routing = () => {
 
   // Debounced save function (waits 1 second after last change)
   const saveJobsDebounced = useRef(
-    debounce((jobsData) => {
-      saveJobsImmediate(jobsData);
+    debounce((jobsData, date, meetingMode, user) => {
+      saveJobsImmediate(jobsData, date, meetingMode, user);
     }, 1000)
   ).current;
 
   // Public save function (uses debouncing for drag/drop operations)
   const saveJobs = (jobsData) => {
     console.log('⏳ Queuing jobs save (debounced)...');
-    saveJobsDebounced(jobsData);
+    saveJobsDebounced(jobsData, selectedDate, companyMeetingMode, currentUser);
   };
 
   // Immediate save (for operations that need confirmation like CSV import, optimization)
   const saveJobsNow = async (jobsData) => {
     console.log('💾 Saving jobs immediately (no debounce)...');
-    await saveJobsImmediate(jobsData);
+    await saveJobsImmediate(jobsData, selectedDate, companyMeetingMode, currentUser);
   };
 
   // Memoized tech list calculation (performance optimization)
@@ -751,10 +751,14 @@ const Routing = () => {
       if (!updatedRoutes[techId]) {
         updatedRoutes[techId] = {
           tech: tech,
-          jobs: []
+          jobs: [job]
+        };
+      } else {
+        updatedRoutes[techId] = {
+          ...updatedRoutes[techId],
+          jobs: [...updatedRoutes[techId].jobs, job]
         };
       }
-      updatedRoutes[techId].jobs.push(job);
 
       setRoutes(updatedRoutes);
 
@@ -787,29 +791,29 @@ const Routing = () => {
   };
 
   // Immediate save function (private)
-  const saveRoutesImmediate = async (routesData) => {
+  const saveRoutesImmediate = async (routesData, date, user) => {
     try {
       const stack = new Error().stack;
       console.log('📤 Saving routes to Firebase...', Object.keys(routesData).length, 'routes');
       console.log('📍 Called from:', stack.split('\n')[2]);
 
-      if (currentUser) {
+      if (user) {
         await firebaseService.saveWithMetadata(
           'hou_routing',
-          `routes_${selectedDate}`,
+          `routes_${date}`,
           {
             routes: routesData,
-            date: selectedDate
+            date: date
           },
           {
-            name: currentUser.displayName || currentUser.email,
-            id: currentUser.uid
+            name: user.displayName || user.email,
+            id: user.uid
           }
         );
       } else {
-        await firebaseService.saveDocument('hou_routing', `routes_${selectedDate}`, {
+        await firebaseService.saveDocument('hou_routing', `routes_${date}`, {
           routes: routesData,
-          date: selectedDate,
+          date: date,
           lastUpdated: new Date().toISOString()
         });
       }
@@ -821,21 +825,21 @@ const Routing = () => {
 
   // Debounced save function (waits 1 second after last change)
   const saveRoutesDebounced = useRef(
-    debounce((routesData) => {
-      saveRoutesImmediate(routesData);
+    debounce((routesData, date, user) => {
+      saveRoutesImmediate(routesData, date, user);
     }, 1000)
   ).current;
 
   // Public save function (uses debouncing for drag/drop operations)
   const saveRoutes = (routesData) => {
     console.log('⏳ Queuing routes save (debounced)...');
-    saveRoutesDebounced(routesData);
+    saveRoutesDebounced(routesData, selectedDate, currentUser);
   };
 
   // Immediate save (for operations that need confirmation like optimization, calendar push)
   const saveRoutesNow = async (routesData) => {
     console.log('💾 Saving routes immediately (no debounce)...');
-    await saveRoutesImmediate(routesData);
+    await saveRoutesImmediate(routesData, selectedDate, currentUser);
   };
 
   const unassignJob = async (jobId) => {
@@ -857,7 +861,10 @@ const Routing = () => {
       // Remove from routes optimistically
       const updatedRoutes = { ...routes };
       Object.keys(updatedRoutes).forEach(techId => {
-        updatedRoutes[techId].jobs = updatedRoutes[techId].jobs.filter(j => j.id !== jobId);
+        updatedRoutes[techId] = {
+          ...updatedRoutes[techId],
+          jobs: updatedRoutes[techId].jobs.filter(j => j.id !== jobId)
+        };
       });
 
       setRoutes(updatedRoutes);

@@ -208,15 +208,20 @@ export const autoFixConflicts = (conflicts, routes, jobs, techs) => {
           const targetTech = availableTechs[0];
 
           // Remove from current tech
-          updatedRoutes[conflict.techId].jobs = updatedRoutes[conflict.techId].jobs.filter(
-            j => j.id !== jobToMove.id
-          );
+          updatedRoutes[conflict.techId] = {
+            ...updatedRoutes[conflict.techId],
+            jobs: updatedRoutes[conflict.techId].jobs.filter(j => j.id !== jobToMove.id)
+          };
 
           // Add to target tech
           if (!updatedRoutes[targetTech.id]) {
-            updatedRoutes[targetTech.id] = { tech: targetTech, jobs: [] };
+            updatedRoutes[targetTech.id] = { tech: targetTech, jobs: [jobToMove] };
+          } else {
+            updatedRoutes[targetTech.id] = {
+              ...updatedRoutes[targetTech.id],
+              jobs: [...updatedRoutes[targetTech.id].jobs, jobToMove]
+            };
           }
-          updatedRoutes[targetTech.id].jobs.push(jobToMove);
 
           // Update job assignment
           updatedJobs = updatedJobs.map(j =>
@@ -257,10 +262,15 @@ export const autoFixConflicts = (conflicts, routes, jobs, techs) => {
         if (techRoute) {
           const jobIndex = techRoute.jobs.findIndex(j => j.id === conflict.jobId);
           if (jobIndex > 0) {
-            // Swap with previous job
-            const temp = techRoute.jobs[jobIndex];
-            techRoute.jobs[jobIndex] = techRoute.jobs[jobIndex - 1];
-            techRoute.jobs[jobIndex - 1] = temp;
+            // Swap with previous job (create new array to avoid mutation)
+            const newJobs = [...techRoute.jobs];
+            const temp = newJobs[jobIndex];
+            newJobs[jobIndex] = newJobs[jobIndex - 1];
+            newJobs[jobIndex - 1] = temp;
+            updatedRoutes[conflict.techId] = {
+              ...techRoute,
+              jobs: newJobs
+            };
             fixed = true;
           }
         }
@@ -271,9 +281,10 @@ export const autoFixConflicts = (conflicts, routes, jobs, techs) => {
         // Remove from the second tech (keep first assignment)
         for (const [techId, route] of Object.entries(updatedRoutes)) {
           if (route.tech.name === conflict.data.tech2) {
-            updatedRoutes[techId].jobs = route.jobs.filter(
-              j => j.id !== conflict.data.job.id
-            );
+            updatedRoutes[techId] = {
+              ...route,
+              jobs: route.jobs.filter(j => j.id !== conflict.data.job.id)
+            };
             fixed = true;
             break;
           }

@@ -1120,10 +1120,14 @@ const KanbanCalendar = ({
           if (!updatedRoutes[targetTechId]) {
             updatedRoutes[targetTechId] = {
               tech: targetTech,
-              jobs: []
+              jobs: [updatedJob]
+            };
+          } else {
+            updatedRoutes[targetTechId] = {
+              ...updatedRoutes[targetTechId],
+              jobs: [...updatedRoutes[targetTechId].jobs, updatedJob]
             };
           }
-          updatedRoutes[targetTechId].jobs.push(updatedJob);
         }
       } else {
         // Regular job being assigned
@@ -1132,10 +1136,14 @@ const KanbanCalendar = ({
           if (!updatedRoutes[targetTechId]) {
             updatedRoutes[targetTechId] = {
               tech: targetTech,
-              jobs: []
+              jobs: [updatedJob]
+            };
+          } else {
+            updatedRoutes[targetTechId] = {
+              ...updatedRoutes[targetTechId],
+              jobs: [...updatedRoutes[targetTechId].jobs, updatedJob]
             };
           }
-          updatedRoutes[targetTechId].jobs.push(updatedJob);
         }
       }
 
