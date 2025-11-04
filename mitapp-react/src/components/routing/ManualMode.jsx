@@ -957,37 +957,45 @@ const ManualMode = ({
           const forceAddSkippedJobs = async () => {
             console.log('🔧 Force-adding skipped jobs to route...');
 
-            // Add unassignable jobs to the end of the route
-            const updatedRoute = {
-              ...routes[targetTechId],
-              jobs: [
-                ...routes[targetTechId].jobs,
-                ...optimized.unassignableJobs.map(j => ({
-                  ...j,
-                  forcedAssignment: true, // Flag to indicate this was manually forced
-                  timingConflict: j.timingConflict // Preserve timing info
-                }))
-              ]
-            };
+            // Use functional setState to get CURRENT state (not closure state)
+            setRoutes(currentRoutes => {
+              const updatedRoute = {
+                ...currentRoutes[targetTechId],
+                jobs: [
+                  ...currentRoutes[targetTechId].jobs,
+                  ...optimized.unassignableJobs.map(j => ({
+                    ...j,
+                    forcedAssignment: true, // Flag to indicate this was manually forced
+                    timingConflict: j.timingConflict // Preserve timing info
+                  }))
+                ]
+              };
 
-            const updatedRoutes = {
-              ...routes,
-              [targetTechId]: updatedRoute
-            };
+              const updatedRoutes = {
+                ...currentRoutes,
+                [targetTechId]: updatedRoute
+              };
 
-            // Update job assignments
-            const updatedJobs = jobs.map(job => {
-              if (optimized.unassignableJobs.find(uj => uj.id === job.id)) {
-                return { ...job, assignedTech: targetTechId, status: 'assigned', forcedAssignment: true };
-              }
-              return job;
+              // Save to Firebase
+              onUpdateRoutes(updatedRoutes);
+
+              return updatedRoutes;
             });
 
-            setRoutes(updatedRoutes);
-            setJobs(updatedJobs);
+            // Update job assignments with functional setState
+            setJobs(currentJobs => {
+              const updatedJobs = currentJobs.map(job => {
+                if (optimized.unassignableJobs.find(uj => uj.id === job.id)) {
+                  return { ...job, assignedTech: targetTechId, status: 'assigned', forcedAssignment: true };
+                }
+                return job;
+              });
 
-            await onUpdateRoutes(updatedRoutes);
-            await onUpdateJobs(updatedJobs);
+              // Save to Firebase
+              onUpdateJobs(updatedJobs);
+
+              return updatedJobs;
+            });
 
             showAlert(
               `✅ Added ${optimized.unassignableJobs.length} job(s) to ${targetTech.name}'s route.\n\n` +
