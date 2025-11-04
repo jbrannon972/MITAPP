@@ -1669,26 +1669,6 @@ const KanbanCalendar = ({
               <i className="fas fa-spinner fa-spin"></i> Calculating...
             </span>
           )}
-          <label style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-            cursor: 'pointer',
-            padding: '4px 8px',
-            backgroundColor: 'var(--surface-color)',
-            borderRadius: '4px',
-            border: '1px solid #e5e7eb',
-            fontSize: '11px',
-            fontWeight: '500'
-          }}>
-            <input
-              type="checkbox"
-              checked={hideOffTechs}
-              onChange={(e) => setHideOffTechs(e.target.checked)}
-              style={{ width: '14px', height: '14px', cursor: 'pointer' }}
-            />
-            <span>Hide Off</span>
-          </label>
 
           {/* Options Menu Button */}
           <div style={{ position: 'relative' }}>
@@ -1735,6 +1715,29 @@ const KanbanCalendar = ({
                   zIndex: 999,
                   overflow: 'hidden'
                 }}>
+                  {/* Hide Off Techs */}
+                  <label style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    padding: '10px 12px',
+                    cursor: 'pointer',
+                    fontSize: '13px',
+                    borderBottom: '1px solid #e5e7eb',
+                    margin: 0
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--surface-secondary)'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={hideOffTechs}
+                      onChange={(e) => setHideOffTechs(e.target.checked)}
+                      style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                    />
+                    <span>Hide Off</span>
+                  </label>
+
                   {/* Meeting Mode Toggle */}
                   {onToggleCompanyMeetingMode && (
                     <label style={{
