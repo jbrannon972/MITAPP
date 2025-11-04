@@ -203,16 +203,19 @@ const Dashboard = () => {
             )}
           </div>
           <div className="tab-controls">
-            <div className="date-picker-container">
-              <label htmlFor="dashboardDate">Select Date:</label>
-              <input
-                type="date"
-                id="dashboardDate"
-                className="date-input"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-              />
-            </div>
+            {/* Only show date picker when NOT on Reports view */}
+            {activeView !== 'reports' && (
+              <div className="date-picker-container">
+                <label htmlFor="dashboardDate">Select Date:</label>
+                <input
+                  type="date"
+                  id="dashboardDate"
+                  className="date-input"
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                />
+              </div>
+            )}
             {(currentUser?.role === 'Manager' || currentUser?.role === 'Supervisor' || currentUser?.role === 'MIT Lead') && (
               <button
                 className="btn btn-primary"
@@ -630,9 +633,14 @@ const Dashboard = () => {
             style={{ display: activeView === 'reports' ? 'block' : 'none' }}
           >
             <div style={{ marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h2><i className="fas fa-clipboard-list"></i> Supervisor Reports</h2>
+              <div>
+                <h2><i className="fas fa-clipboard-list"></i> Supervisor Reports</h2>
+                <p style={{ fontSize: '14px', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                  Showing reports for: <strong>{new Date(reportsDate).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</strong>
+                </p>
+              </div>
               <div className="date-picker-container">
-                <label htmlFor="reportsDate">Report Date:</label>
+                <label htmlFor="reportsDate">Select Date:</label>
                 <input
                   type="date"
                   id="reportsDate"
@@ -650,7 +658,7 @@ const Dashboard = () => {
               </div>
             ) : allReports.length === 0 ? (
               <div className="card">
-                <p className="no-entries">No reports found for {new Date(reportsDate).toLocaleDateString()}.</p>
+                <p className="no-entries">No reports submitted on this date.</p>
               </div>
             ) : (
               <div style={{ display: 'grid', gap: '20px' }}>
