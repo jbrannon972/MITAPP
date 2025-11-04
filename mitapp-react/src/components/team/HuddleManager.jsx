@@ -791,16 +791,19 @@ const HuddleManager = () => {
                     <textarea
                       value={editingReminder.text}
                       onChange={(e) => setEditingReminder({ ...editingReminder, text: e.target.value })}
-                      placeholder="Enter the reminder text..."
+                      placeholder="Enter reminder text...\n\nMarkdown supported:\n- Bullet points\n- **Bold text**\n- [Link text](https://example.com)"
                       style={{
                         width: '100%',
                         padding: '8px',
                         border: '1px solid var(--border-color)',
                         borderRadius: '4px',
-                        minHeight: '80px',
+                        minHeight: '100px',
                         fontFamily: 'inherit'
                       }}
                     />
+                    <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                      💡 Tip: Use Markdown formatting - it will render nicely in the huddle reminders section
+                    </div>
                   </div>
 
                   <div style={{ marginBottom: '16px' }}>
