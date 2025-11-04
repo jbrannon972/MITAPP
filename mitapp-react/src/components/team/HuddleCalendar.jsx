@@ -80,6 +80,7 @@ const HuddleCalendar = () => {
 
     // Auto-populate weekend schedule for Thursdays
     if (getDay(day) === 4) { // Thursday
+      console.log('📅 Detected Thursday:', dateStr);
       const weekend = {
         saturday: nextSaturday(day),
         sunday: nextSunday(day)
@@ -87,14 +88,19 @@ const HuddleCalendar = () => {
 
       // Load weekend schedule from Firebase
       const saturdayStr = format(weekend.saturday, 'yyyy-MM-dd');
+      console.log('🔍 Loading weekend schedule for:', saturdayStr);
       const scheduleDoc = await firebaseService.getDocument('hou_weekend_schedule', saturdayStr);
+      console.log('📦 Weekend schedule data:', scheduleDoc);
 
       // If we have a weekend schedule, populate it
       if (scheduleDoc && scheduleDoc.schedule) {
+        console.log('✅ Found weekend schedule, formatting...');
         const formattedContent = formatWeekendSchedule(scheduleDoc.schedule, weekend);
+        console.log('📝 Formatted content:', formattedContent);
 
         // If there's no huddle content yet, create it with the weekend schedule
         if (!huddle) {
+          console.log('Creating new huddle with weekend schedule');
           huddle = {
             date: dateStr,
             categories: {
@@ -108,6 +114,7 @@ const HuddleCalendar = () => {
           };
         } else if (!huddle.categories?.weekendStaffing?.content || huddle.categories.weekendStaffing.content.trim() === '') {
           // If huddle exists but weekend staffing is empty, populate it
+          console.log('Populating existing huddle with weekend schedule');
           huddle = {
             ...huddle,
             categories: {
@@ -119,7 +126,11 @@ const HuddleCalendar = () => {
               }
             }
           };
+        } else {
+          console.log('Huddle already has weekend staffing content, skipping');
         }
+      } else {
+        console.log('⚠️ No weekend schedule found for', saturdayStr);
       }
     }
 
