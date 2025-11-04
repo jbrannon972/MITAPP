@@ -140,6 +140,7 @@ const HuddleManager = () => {
   const loadHuddleContent = async () => {
     setLoading(true);
     try {
+      console.log('🔄 Loading huddle content for date:', dateStr, 'Selected date object:', selectedDate);
       const content = await firebaseService.getDocument('hou_huddle_content', dateStr);
 
       if (content && content.categories) {
@@ -159,13 +160,29 @@ const HuddleManager = () => {
       }
 
       // RECURRING TOPIC: Auto-populate weekend schedule on Thursdays
-      if (isThursday()) {
+      const isThursdayCheck = isThursday();
+      console.log('📅 Is Thursday check:', isThursdayCheck, 'Day of week:', getDay(selectedDate));
+
+      if (isThursdayCheck) {
+        console.log('✅ Detected Thursday, loading weekend schedule...');
         const weekend = getUpcomingWeekend();
+        console.log('📆 Upcoming weekend:', {
+          saturday: format(weekend.saturday, 'yyyy-MM-dd'),
+          sunday: format(weekend.sunday, 'yyyy-MM-dd')
+        });
+
         const schedule = await loadWeekendSchedule(weekend);
+        console.log('📦 Loaded weekend schedule:', schedule);
 
         // Only auto-populate if there's no existing content or if the content is empty
-        if (!content || !content.categories?.weekendStaffing?.content || content.categories.weekendStaffing.content.trim() === '') {
+        const hasExistingContent = content?.categories?.weekendStaffing?.content && content.categories.weekendStaffing.content.trim() !== '';
+        console.log('📝 Has existing weekend content:', hasExistingContent);
+
+        if (!hasExistingContent) {
+          console.log('🎯 Auto-populating weekend schedule...');
           const formattedContent = formatWeekendSchedule(schedule, weekend);
+          console.log('✍️ Formatted content:', formattedContent);
+
           setHuddleContent(prev => ({
             ...prev,
             weekendStaffing: {
@@ -173,7 +190,12 @@ const HuddleManager = () => {
               content: formattedContent
             }
           }));
+          console.log('✅ Weekend schedule populated!');
+        } else {
+          console.log('⏭️ Skipping auto-populate - existing content found');
         }
+      } else {
+        console.log('⏭️ Not Thursday, skipping weekend schedule auto-populate');
       }
     } catch (error) {
       console.error('Error loading huddle content:', error);
