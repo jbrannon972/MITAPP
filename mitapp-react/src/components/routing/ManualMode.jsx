@@ -27,6 +27,7 @@ const ManualMode = ({
   techStartTimes,
   setTechStartTimes,
   companyMeetingMode,
+  onToggleCompanyMeetingMode,
   isFullScreen,
   onToggleFullScreen,
   viewSelector
@@ -1673,6 +1674,38 @@ const ManualMode = ({
                     />
                     <span>Hide Off</span>
                   </label>
+
+                  {/* Meeting Mode Toggle */}
+                  {onToggleCompanyMeetingMode && (
+                    <label style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      padding: '10px 12px',
+                      cursor: 'pointer',
+                      fontSize: '13px',
+                      borderBottom: '1px solid #e5e7eb',
+                      margin: 0,
+                      backgroundColor: companyMeetingMode ? 'var(--warning-bg)' : 'transparent'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = companyMeetingMode ? 'var(--warning-bg)' : 'var(--surface-secondary)'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = companyMeetingMode ? 'var(--warning-bg)' : 'transparent'}
+                    title={companyMeetingMode ? 'All techs start at Conroe at 9:00 AM' : 'Techs start at their offices at 8:15 AM'}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={companyMeetingMode}
+                        onChange={(e) => {
+                          setShowOptionsMenu(false);
+                          onToggleCompanyMeetingMode();
+                        }}
+                        style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                      />
+                      <span style={{ fontWeight: companyMeetingMode ? '600' : 'normal' }}>
+                        <i className={`fas ${companyMeetingMode ? 'fa-users' : 'fa-user-clock'}`}></i> Meeting Mode
+                      </span>
+                    </label>
+                  )}
 
                   {/* Clear All Routes */}
                   <button

@@ -42,6 +42,7 @@ const Routing = () => {
   const [activeUsers, setActiveUsers] = useState([]);
   const [scheduleForDay, setScheduleForDay] = useState(null);
   const [isFullScreen, setIsFullScreen] = useState(false);
+  const [showJobsOptionsMenu, setShowJobsOptionsMenu] = useState(false);
   const [modal, setModal] = useState({ show: false, title: '', message: '', type: 'info', onConfirm: null, onCancel: null });
   const [techStartTimes, setTechStartTimes] = useState({}); // Store custom start times for techs (for late starts)
   const [companyMeetingMode, setCompanyMeetingMode] = useState(false); // All techs start at Conroe office at 9am
@@ -1292,19 +1293,6 @@ const Routing = () => {
               <i className="fas fa-upload"></i> Import CSV
             </button>
             <button
-              className={`btn btn-small ${companyMeetingMode ? 'btn-warning' : 'btn-secondary'}`}
-              onClick={toggleCompanyMeetingMode}
-              title={companyMeetingMode ? 'Meeting Mode: All techs start at Conroe at 9:00 AM' : 'Normal Mode: Techs start at their offices at 8:15 AM'}
-              style={{
-                padding: '4px 12px',
-                fontSize: '12px',
-                fontWeight: companyMeetingMode ? '600' : 'normal',
-                border: companyMeetingMode ? '2px solid var(--warning-color)' : undefined
-              }}
-            >
-              <i className={`fas ${companyMeetingMode ? 'fa-users' : 'fa-user-clock'}`}></i> {companyMeetingMode ? 'Meeting ON' : 'Meeting'}
-            </button>
-            <button
               className="btn btn-danger btn-small"
               onClick={handleClearAllJobs}
               disabled={jobs.length === 0}
@@ -1313,6 +1301,110 @@ const Routing = () => {
             >
               <i className="fas fa-trash-alt"></i> Clear All
             </button>
+
+            {/* Options Menu Button */}
+            <div style={{ position: 'relative' }}>
+              <button
+                onClick={() => setShowJobsOptionsMenu(!showJobsOptionsMenu)}
+                className="btn btn-secondary btn-small"
+                style={{
+                  padding: '4px 8px',
+                  fontSize: '12px',
+                  minWidth: 'unset'
+                }}
+                title="More options"
+              >
+                <i className="fas fa-ellipsis-v"></i>
+              </button>
+
+              {/* Dropdown Menu */}
+              {showJobsOptionsMenu && (
+                <>
+                  {/* Backdrop to close menu */}
+                  <div
+                    style={{
+                      position: 'fixed',
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      zIndex: 998
+                    }}
+                    onClick={() => setShowJobsOptionsMenu(false)}
+                  />
+
+                  {/* Menu */}
+                  <div style={{
+                    position: 'absolute',
+                    right: 0,
+                    top: '100%',
+                    marginTop: '4px',
+                    backgroundColor: 'var(--surface-color)',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '6px',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                    minWidth: '200px',
+                    zIndex: 999,
+                    overflow: 'hidden'
+                  }}>
+                    {/* Meeting Mode Toggle */}
+                    <label style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      padding: '10px 12px',
+                      cursor: 'pointer',
+                      fontSize: '13px',
+                      borderBottom: '1px solid #e5e7eb',
+                      margin: 0,
+                      backgroundColor: companyMeetingMode ? 'var(--warning-bg)' : 'transparent'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = companyMeetingMode ? 'var(--warning-bg)' : 'var(--surface-secondary)'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = companyMeetingMode ? 'var(--warning-bg)' : 'transparent'}
+                    title={companyMeetingMode ? 'All techs start at Conroe at 9:00 AM' : 'Techs start at their offices at 8:15 AM'}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={companyMeetingMode}
+                        onChange={(e) => {
+                          setShowJobsOptionsMenu(false);
+                          toggleCompanyMeetingMode();
+                        }}
+                        style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                      />
+                      <span style={{ fontWeight: companyMeetingMode ? '600' : 'normal' }}>
+                        <i className={`fas ${companyMeetingMode ? 'fa-users' : 'fa-user-clock'}`}></i> Meeting Mode
+                      </span>
+                    </label>
+
+                    {/* Full Screen Toggle */}
+                    <button
+                      onClick={() => {
+                        setShowJobsOptionsMenu(false);
+                        setIsFullScreen(!isFullScreen);
+                      }}
+                      style={{
+                        width: '100%',
+                        textAlign: 'left',
+                        padding: '10px 12px',
+                        border: 'none',
+                        backgroundColor: 'transparent',
+                        cursor: 'pointer',
+                        fontSize: '13px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px'
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--surface-secondary)'}
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                    >
+                      <i className={`fas ${isFullScreen ? 'fa-compress' : 'fa-expand'}`}></i>
+                      <span>{isFullScreen ? 'Exit Full Screen' : 'Full Screen'}</span>
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         </div>
 
@@ -1523,6 +1615,7 @@ const Routing = () => {
         techStartTimes={techStartTimes}
         setTechStartTimes={setTechStartTimes}
         companyMeetingMode={companyMeetingMode}
+        onToggleCompanyMeetingMode={toggleCompanyMeetingMode}
         isFullScreen={isFullScreen}
         onToggleFullScreen={() => setIsFullScreen(!isFullScreen)}
         viewSelector={<ViewSelector />}
@@ -1551,6 +1644,9 @@ const Routing = () => {
         techStartTimes={techStartTimes}
         setTechStartTimes={setTechStartTimes}
         companyMeetingMode={companyMeetingMode}
+        onToggleCompanyMeetingMode={toggleCompanyMeetingMode}
+        isFullScreen={isFullScreen}
+        onToggleFullScreen={() => setIsFullScreen(!isFullScreen)}
         viewSelector={<ViewSelector />}
       />
     );

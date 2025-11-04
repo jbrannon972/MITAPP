@@ -24,6 +24,9 @@ const KanbanCalendar = ({
   techStartTimes,
   setTechStartTimes,
   companyMeetingMode,
+  onToggleCompanyMeetingMode,
+  isFullScreen,
+  onToggleFullScreen,
   viewSelector
 }) => {
   // Local state for instant UI updates
@@ -41,6 +44,7 @@ const KanbanCalendar = ({
   const [selectedJob, setSelectedJob] = useState(null);
   const [isCalculatingDrive, setIsCalculatingDrive] = useState(false);
   const [returnToOfficeTimes, setReturnToOfficeTimes] = useState({});
+  const [showOptionsMenu, setShowOptionsMenu] = useState(false);
   const scrollContainerRef = useRef(null);
   const columnRefs = useRef({});
   const mapContainerRef = useRef(null);
@@ -1685,6 +1689,116 @@ const KanbanCalendar = ({
             />
             <span>Hide Off</span>
           </label>
+
+          {/* Options Menu Button */}
+          <div style={{ position: 'relative' }}>
+            <button
+              onClick={() => setShowOptionsMenu(!showOptionsMenu)}
+              className="btn btn-secondary btn-small"
+              style={{
+                padding: '4px 8px',
+                fontSize: '12px',
+                minWidth: 'unset'
+              }}
+              title="More options"
+            >
+              <i className="fas fa-ellipsis-v"></i>
+            </button>
+
+            {/* Dropdown Menu */}
+            {showOptionsMenu && (
+              <>
+                {/* Backdrop to close menu */}
+                <div
+                  style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    zIndex: 998
+                  }}
+                  onClick={() => setShowOptionsMenu(false)}
+                />
+
+                {/* Menu */}
+                <div style={{
+                  position: 'absolute',
+                  right: 0,
+                  top: '100%',
+                  marginTop: '4px',
+                  backgroundColor: 'var(--surface-color)',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '6px',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                  minWidth: '200px',
+                  zIndex: 999,
+                  overflow: 'hidden'
+                }}>
+                  {/* Meeting Mode Toggle */}
+                  {onToggleCompanyMeetingMode && (
+                    <label style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      padding: '10px 12px',
+                      cursor: 'pointer',
+                      fontSize: '13px',
+                      borderBottom: '1px solid #e5e7eb',
+                      margin: 0,
+                      backgroundColor: companyMeetingMode ? 'var(--warning-bg)' : 'transparent'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = companyMeetingMode ? 'var(--warning-bg)' : 'var(--surface-secondary)'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = companyMeetingMode ? 'var(--warning-bg)' : 'transparent'}
+                    title={companyMeetingMode ? 'All techs start at Conroe at 9:00 AM' : 'Techs start at their offices at 8:15 AM'}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={companyMeetingMode}
+                        onChange={(e) => {
+                          setShowOptionsMenu(false);
+                          onToggleCompanyMeetingMode();
+                        }}
+                        style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                      />
+                      <span style={{ fontWeight: companyMeetingMode ? '600' : 'normal' }}>
+                        <i className={`fas ${companyMeetingMode ? 'fa-users' : 'fa-user-clock'}`}></i> Meeting Mode
+                      </span>
+                    </label>
+                  )}
+
+                  {/* Full Screen Toggle */}
+                  {onToggleFullScreen && (
+                    <button
+                      onClick={() => {
+                        setShowOptionsMenu(false);
+                        onToggleFullScreen();
+                      }}
+                      style={{
+                        width: '100%',
+                        textAlign: 'left',
+                        padding: '10px 12px',
+                        border: 'none',
+                        backgroundColor: 'transparent',
+                        cursor: 'pointer',
+                        fontSize: '13px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        borderTop: onToggleCompanyMeetingMode ? 'none' : '1px solid #e5e7eb'
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--surface-secondary)'}
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                    >
+                      <i className={`fas ${isFullScreen ? 'fa-compress' : 'fa-expand'}`}></i>
+                      <span>{isFullScreen ? 'Exit Full Screen' : 'Full Screen'}</span>
+                    </button>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+
           <div style={{ fontSize: '12px', fontWeight: '500', color: 'var(--info-color)' }}>
             {localJobs.filter(j => j.assignedTech).length} / {localJobs.length} assigned
           </div>
