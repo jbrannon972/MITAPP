@@ -953,57 +953,118 @@ const ManualMode = ({
           // Finalize route with only the jobs that fit
           await finalizeRouteAssignment();
 
-          // Function to force-add the skipped jobs
+          // Function to force-add the skipped jobs with re-optimization
           const forceAddSkippedJobs = async () => {
-            console.log('🔧 Force-adding skipped jobs to route...');
+            console.log('🔧 Force-adding skipped jobs and re-optimizing route...');
 
-            // Use functional setState to get CURRENT state (not closure state)
-            setRoutes(currentRoutes => {
-              const updatedRoute = {
-                ...currentRoutes[targetTechId],
-                jobs: [
-                  ...currentRoutes[targetTechId].jobs,
-                  ...optimized.unassignableJobs.map(j => ({
-                    ...j,
-                    forcedAssignment: true, // Flag to indicate this was manually forced
-                    timingConflict: j.timingConflict // Preserve timing info
-                  }))
-                ]
-              };
+            try {
+              // Combine ALL jobs (optimized + unassignable) for re-optimization
+              const allJobsIncludingSkipped = [...optimized.optimizedJobs, ...optimized.unassignableJobs];
 
-              const updatedRoutes = {
-                ...currentRoutes,
-                [targetTechId]: updatedRoute
-              };
+              console.log(`🔄 Re-optimizing route with ${allJobsIncludingSkipped.length} jobs (${optimized.optimizedJobs.length} + ${optimized.unassignableJobs.length} forced)`);
 
-              // Save to Firebase
-              onUpdateRoutes(updatedRoutes);
+              // Build distance matrix for ALL jobs
+              let distanceMatrix = null;
+              if (allJobsIncludingSkipped.length > 1) {
+                const addresses = [
+                  startLocation,
+                  ...allJobsIncludingSkipped.map(j => j.address)
+                ];
 
-              return updatedRoutes;
-            });
-
-            // Update job assignments with functional setState
-            setJobs(currentJobs => {
-              const updatedJobs = currentJobs.map(job => {
-                if (optimized.unassignableJobs.find(uj => uj.id === job.id)) {
-                  return { ...job, assignedTech: targetTechId, status: 'assigned', forcedAssignment: true };
+                try {
+                  distanceMatrix = await mapbox.calculateDistanceMatrix(addresses);
+                } catch (error) {
+                  console.error('Distance matrix error:', error);
                 }
-                return job;
+              }
+
+              // Re-optimize with ALL jobs
+              const reoptimized = await optimizeRoute(
+                allJobsIncludingSkipped,
+                startLocation,
+                distanceMatrix,
+                shift,
+                customStartTime
+              );
+
+              console.log('✅ Re-optimization complete:', {
+                totalJobs: reoptimized.optimizedJobs.length,
+                newUnassignable: reoptimized.unassignableJobs?.length || 0
               });
 
-              // Save to Firebase
-              onUpdateJobs(updatedJobs);
+              // Update routes with re-optimized jobs (include ALL jobs, even if late)
+              setRoutes(currentRoutes => {
+                const updatedRoutes = { ...currentRoutes };
 
-              return updatedJobs;
-            });
+                // Mark forced jobs
+                const finalJobs = reoptimized.optimizedJobs.map(job => {
+                  const wasUnassignable = optimized.unassignableJobs.find(uj => uj.id === job.id);
+                  if (wasUnassignable) {
+                    return { ...job, forcedAssignment: true, timingConflict: wasUnassignable.timingConflict };
+                  }
+                  return job;
+                });
 
-            showAlert(
-              `✅ Added ${optimized.unassignableJobs.length} job(s) to ${targetTech.name}'s route.\n\n` +
-              `⚠️ Note: These jobs may arrive outside their timeframe windows. ` +
-              `Please coordinate with the customer or adjust the schedule.`,
-              'Jobs Added',
-              'success'
-            );
+                // Add any jobs that STILL can't fit (shouldn't happen but be safe)
+                if (reoptimized.unassignableJobs && reoptimized.unassignableJobs.length > 0) {
+                  console.warn(`⚠️ ${reoptimized.unassignableJobs.length} jobs still unassignable after forcing, adding anyway`);
+                  reoptimized.unassignableJobs.forEach(uj => {
+                    finalJobs.push({ ...uj, forcedAssignment: true, timingConflict: uj.timingConflict });
+                  });
+                }
+
+                updatedRoutes[targetTechId] = {
+                  ...updatedRoutes[targetTechId],
+                  jobs: finalJobs,
+                  summary: {
+                    totalDuration: reoptimized.totalDuration,
+                    totalDistance: reoptimized.totalDistance
+                  }
+                };
+
+                // Save to Firebase
+                onUpdateRoutes(updatedRoutes);
+
+                return updatedRoutes;
+              });
+
+              // Update job assignments
+              setJobs(currentJobs => {
+                const updatedJobs = currentJobs.map(job => {
+                  // Check if this job is in the re-optimized route
+                  const reoptimizedJob = reoptimized.optimizedJobs.find(oj => oj.id === job.id);
+                  const unassignableJob = reoptimized.unassignableJobs?.find(uj => uj.id === job.id);
+
+                  if (reoptimizedJob || unassignableJob) {
+                    const jobData = reoptimizedJob || unassignableJob;
+                    return {
+                      ...job,
+                      ...jobData,
+                      assignedTech: targetTechId,
+                      status: 'assigned',
+                      forcedAssignment: true
+                    };
+                  }
+                  return job;
+                });
+
+                // Save to Firebase
+                onUpdateJobs(updatedJobs);
+
+                return updatedJobs;
+              });
+
+              showAlert(
+                `✅ Re-optimized route with all ${allJobsIncludingSkipped.length} job(s).\n\n` +
+                `⚠️ Note: ${optimized.unassignableJobs.length} job(s) were forced into the route and may arrive outside their timeframe windows. ` +
+                `Please coordinate with customers or adjust the schedule.`,
+                'Route Re-optimized',
+                'success'
+              );
+            } catch (error) {
+              console.error('❌ Error re-optimizing route:', error);
+              showAlert('Error re-optimizing route. Please try again.', 'Error', 'error');
+            }
           };
 
           // Show confirmation dialog with "Add Anyway" button
