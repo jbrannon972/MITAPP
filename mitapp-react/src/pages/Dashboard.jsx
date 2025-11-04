@@ -15,10 +15,7 @@ const Dashboard = () => {
   const [activeView, setActiveView] = useState('supervisor-dashboard');
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
 
-  // Reports view - default to yesterday
-  const yesterday = new Date();
-  yesterday.setDate(yesterday.getDate() - 1);
-  const [reportsDate, setReportsDate] = useState(yesterday.toISOString().split('T')[0]);
+  // Reports view uses the main selectedDate
   const [allReports, setAllReports] = useState([]);
   const [loadingReports, setLoadingReports] = useState(false);
 
@@ -42,12 +39,12 @@ const Dashboard = () => {
     }
   }, [selectedDate, staffingData, monthlyData, unifiedTechnicianData]);
 
-  // Load all reports when reportsDate or activeView changes
+  // Load all reports when selectedDate or activeView changes
   useEffect(() => {
     if (activeView === 'reports' && currentUser?.role === 'Manager') {
       loadAllReports();
     }
-  }, [reportsDate, activeView]);
+  }, [selectedDate, activeView]);
 
   const loadDashboardData = async () => {
     try {
@@ -136,7 +133,7 @@ const Dashboard = () => {
     try {
       setLoadingReports(true);
       // Load all reports for the selected date
-      const reports = await firebaseService.getAllSecondShiftReportsByDate(reportsDate);
+      const reports = await firebaseService.getAllSecondShiftReportsByDate(selectedDate);
       setAllReports(reports || []);
     } catch (error) {
       console.error('Error loading all reports:', error);
@@ -203,19 +200,16 @@ const Dashboard = () => {
             )}
           </div>
           <div className="tab-controls">
-            {/* Only show date picker when NOT on Reports view */}
-            {activeView !== 'reports' && (
-              <div className="date-picker-container">
-                <label htmlFor="dashboardDate">Select Date:</label>
-                <input
-                  type="date"
-                  id="dashboardDate"
-                  className="date-input"
-                  value={selectedDate}
-                  onChange={(e) => setSelectedDate(e.target.value)}
-                />
-              </div>
-            )}
+            <div className="date-picker-container">
+              <label htmlFor="dashboardDate">Select Date:</label>
+              <input
+                type="date"
+                id="dashboardDate"
+                className="date-input"
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+              />
+            </div>
             {(currentUser?.role === 'Manager' || currentUser?.role === 'Supervisor' || currentUser?.role === 'MIT Lead') && (
               <button
                 className="btn btn-primary"
@@ -632,23 +626,11 @@ const Dashboard = () => {
             className="dashboard-view"
             style={{ display: activeView === 'reports' ? 'block' : 'none' }}
           >
-            <div style={{ marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div>
-                <h2><i className="fas fa-clipboard-list"></i> Supervisor Reports</h2>
-                <p style={{ fontSize: '14px', color: 'var(--text-secondary)', marginTop: '4px' }}>
-                  Showing reports for: <strong>{new Date(reportsDate).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</strong>
-                </p>
-              </div>
-              <div className="date-picker-container">
-                <label htmlFor="reportsDate">Select Date:</label>
-                <input
-                  type="date"
-                  id="reportsDate"
-                  className="date-input"
-                  value={reportsDate}
-                  onChange={(e) => setReportsDate(e.target.value)}
-                />
-              </div>
+            <div style={{ marginBottom: '20px' }}>
+              <h2><i className="fas fa-clipboard-list"></i> Supervisor Reports</h2>
+              <p style={{ fontSize: '14px', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                Showing reports for: <strong>{new Date(selectedDate).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</strong>
+              </p>
             </div>
 
             {loadingReports ? (
