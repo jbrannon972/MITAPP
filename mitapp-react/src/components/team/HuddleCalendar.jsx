@@ -111,7 +111,12 @@ const HuddleCalendar = () => {
         const saturdaySchedule = getCalculatedScheduleForDay(weekend.saturday, saturdayMonthSchedules, unifiedTechnicianData);
         const saturdayWorking = saturdaySchedule.staff.filter(s =>
           s.status === 'on' || (s.hours && s.hours.trim() !== '')
-        ).map(s => s.name);
+        ).map(s => ({
+          name: s.name,
+          hours: s.hours || '',
+          zone: s.zone || '',
+          office: s.office || ''
+        }));
 
         console.log('🗓️ Saturday working:', saturdayWorking);
 
@@ -119,7 +124,12 @@ const HuddleCalendar = () => {
         const sundaySchedule = getCalculatedScheduleForDay(weekend.sunday, sundayMonthSchedules, unifiedTechnicianData);
         const sundayWorking = sundaySchedule.staff.filter(s =>
           s.status === 'on' || (s.hours && s.hours.trim() !== '')
-        ).map(s => s.name);
+        ).map(s => ({
+          name: s.name,
+          hours: s.hours || '',
+          zone: s.zone || '',
+          office: s.office || ''
+        }));
 
         console.log('🗓️ Sunday working:', sundayWorking);
 
@@ -200,7 +210,23 @@ const HuddleCalendar = () => {
     if (schedule.saturday.staff && schedule.saturday.staff.length > 0) {
       content += `**Staff on duty:**\n`;
       schedule.saturday.staff.forEach(person => {
-        content += `- ${person}\n`;
+        // Build the staff line with name, zone/office tags, and hours
+        let line = `- ${person.name}`;
+
+        // Add zone or office tag in parentheses
+        const tags = [];
+        if (person.zone) tags.push(person.zone);
+        if (person.office) tags.push(person.office);
+        if (tags.length > 0) {
+          line += ` (${tags.join(', ')})`;
+        }
+
+        // Add hours if available
+        if (person.hours) {
+          line += ` - ${person.hours}`;
+        }
+
+        content += `${line}\n`;
       });
     } else {
       content += `*No staff scheduled*\n`;
@@ -216,7 +242,23 @@ const HuddleCalendar = () => {
     if (schedule.sunday.staff && schedule.sunday.staff.length > 0) {
       content += `**Staff on duty:**\n`;
       schedule.sunday.staff.forEach(person => {
-        content += `- ${person}\n`;
+        // Build the staff line with name, zone/office tags, and hours
+        let line = `- ${person.name}`;
+
+        // Add zone or office tag in parentheses
+        const tags = [];
+        if (person.zone) tags.push(person.zone);
+        if (person.office) tags.push(person.office);
+        if (tags.length > 0) {
+          line += ` (${tags.join(', ')})`;
+        }
+
+        // Add hours if available
+        if (person.hours) {
+          line += ` - ${person.hours}`;
+        }
+
+        content += `${line}\n`;
       });
     } else {
       content += `*No staff scheduled*\n`;
