@@ -322,3 +322,64 @@ export const calculateRouteSummary = (jobs = []) => {
     return acc;
   }, { totalDuration: 0, totalJobs: 0, requiresTwoTechsCount: 0 });
 };
+
+/**
+ * Sanitize route data to ensure consistency between jobs and routes
+ * Removes orphaned jobs from routes and syncs assignedTech fields
+ * @param {Array} jobs - Array of job objects
+ * @param {object} routes - Routes object keyed by techId
+ * @returns {object} - { sanitizedJobs, sanitizedRoutes }
+ */
+export const sanitizeRouteData = (jobs, routes) => {
+  console.log('🧹 Sanitizing route data...');
+  const jobMap = new Map(jobs.map(j => [j.id, j]));
+  const sanitizedJobs = [...jobs];
+  const sanitizedRoutes = { ...routes };
+  const jobsInRoutes = new Set();
+
+  // First pass: collect all jobs that are actually in routes
+  for (const techId in sanitizedRoutes) {
+    const route = sanitizedRoutes[techId];
+    if (route?.jobs) {
+      route.jobs.forEach(job => jobsInRoutes.add(job.id));
+    }
+  }
+
+  // Second pass: update assignedTech on jobs and clean up routes
+  for (const techId in sanitizedRoutes) {
+    const route = sanitizedRoutes[techId];
+    if (!route?.jobs) continue;
+
+    // Filter out jobs that don't exist anymore and update assignedTech
+    const validJobs = route.jobs.filter(routeJob => {
+      const job = jobMap.get(routeJob.id);
+      if (!job) {
+        console.log(`⚠️ Removing orphaned job ${routeJob.id} from route ${techId}`);
+        return false;
+      }
+
+      // Update assignedTech on the job object
+      const jobIndex = sanitizedJobs.findIndex(j => j.id === job.id);
+      if (jobIndex !== -1 && sanitizedJobs[jobIndex].assignedTech !== techId) {
+        console.log(`✓ Syncing job ${job.id} assignment to tech ${techId}`);
+        sanitizedJobs[jobIndex] = { ...sanitizedJobs[jobIndex], assignedTech: techId };
+      }
+
+      return true;
+    });
+
+    sanitizedRoutes[techId] = { ...route, jobs: validJobs };
+  }
+
+  // Third pass: clear assignedTech from jobs not in any route
+  for (let i = 0; i < sanitizedJobs.length; i++) {
+    const job = sanitizedJobs[i];
+    if (job.assignedTech && !jobsInRoutes.has(job.id)) {
+      console.log(`⚠️ Clearing stale assignment for job ${job.id}`);
+      sanitizedJobs[i] = { ...job, assignedTech: null };
+    }
+  }
+
+  console.log('✅ Data sanitization complete');
+  return { sanitizedJobs, sanitizedRoutes };
+};

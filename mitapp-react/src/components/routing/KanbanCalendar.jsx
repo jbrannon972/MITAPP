@@ -2,8 +2,8 @@ import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { getMapboxService } from '../../services/mapboxService';
-import { debounce, safeAsync, formatTimeAMPM } from '../../utils/routingHelpers';
-import { DEFAULT_TRAVEL_TIME, OFF_STATUSES } from '../../utils/routingConstants';
+import { debounce, safeAsync, formatTimeAMPM, sanitizeRouteData } from '../../utils/routingHelpers';
+import { DEFAULT_TRAVEL_TIME, OFF_STATUSES, OFFICE_COORDINATES, HOUSTON_CENTER } from '../../utils/routingConstants';
 import { detectConflicts, autoFixConflicts } from '../../utils/conflictDetection';
 import { smartFillTechDay, optimizeJobSelection } from '../../utils/smartAssignment';
 import ConflictPanel from './ConflictPanel';
@@ -49,6 +49,7 @@ const KanbanCalendar = ({
   const columnRefs = useRef({});
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
+  const mapMarkersRef = useRef([]);
   const isUpdatingRef = useRef(false);
   const updateTimeoutRef = useRef(null);
 
@@ -90,60 +91,6 @@ const KanbanCalendar = ({
    * - Removes jobs from routes if they no longer exist
    * - Prevents duplicate jobs in unassigned and assigned
    */
-  const sanitizeRouteData = (jobs, routes) => {
-    console.log('🧹 Sanitizing route data...');
-    const jobMap = new Map(jobs.map(j => [j.id, j]));
-    const sanitizedJobs = [...jobs];
-    const sanitizedRoutes = { ...routes };
-    const jobsInRoutes = new Set();
-
-    // First pass: collect all jobs that are actually in routes
-    for (const techId in sanitizedRoutes) {
-      const route = sanitizedRoutes[techId];
-      if (route?.jobs) {
-        route.jobs.forEach(job => jobsInRoutes.add(job.id));
-      }
-    }
-
-    // Second pass: update assignedTech on jobs and clean up routes
-    for (const techId in sanitizedRoutes) {
-      const route = sanitizedRoutes[techId];
-      if (!route?.jobs) continue;
-
-      // Filter out jobs that don't exist anymore and update assignedTech
-      const validJobs = route.jobs.filter(routeJob => {
-        const job = jobMap.get(routeJob.id);
-        if (!job) {
-          console.log(`⚠️ Removing orphaned job ${routeJob.id} from route ${techId}`);
-          return false;
-        }
-
-        // Update assignedTech on the job object
-        const jobIndex = sanitizedJobs.findIndex(j => j.id === job.id);
-        if (jobIndex !== -1 && sanitizedJobs[jobIndex].assignedTech !== techId) {
-          console.log(`✓ Syncing job ${job.id} assignment to tech ${techId}`);
-          sanitizedJobs[jobIndex] = { ...sanitizedJobs[jobIndex], assignedTech: techId };
-        }
-
-        return true;
-      });
-
-      sanitizedRoutes[techId] = { ...route, jobs: validJobs };
-    }
-
-    // Third pass: clear assignedTech from jobs not in any route
-    for (let i = 0; i < sanitizedJobs.length; i++) {
-      const job = sanitizedJobs[i];
-      if (job.assignedTech && !jobsInRoutes.has(job.id)) {
-        console.log(`⚠️ Clearing stale assignment for job ${job.id}`);
-        sanitizedJobs[i] = { ...job, assignedTech: null };
-      }
-    }
-
-    console.log('✅ Data sanitization complete');
-    return { sanitizedJobs, sanitizedRoutes };
-  };
-
   // Initialize from props ONLY on first mount or when date changes
   // Child component is the authoritative source of truth during a session
   useEffect(() => {
@@ -178,10 +125,15 @@ const KanbanCalendar = ({
 
   // Calculate return to office times - debounced to avoid excessive API calls
   useEffect(() => {
+    let isMounted = true;
+    let debounceTimeoutId = null;
+
     const calculateReturnTimes = async () => {
       const newReturnTimes = {};
 
       for (const tech of techs) {
+        if (!isMounted) return; // Check if still mounted
+
         const techRoute = localRoutes[tech.id];
         const techJobs = techRoute?.jobs || [];
 
@@ -239,6 +191,8 @@ const KanbanCalendar = ({
           () => null // Return null on error
         );
 
+        if (!isMounted) return; // Check again after async operation
+
         const driveMinutes = result?.durationMinutes || DEFAULT_TRAVEL_TIME;
         const endMinutes = timeToMinutes(lastJobEndTime);
         const returnTime = minutesToTime(endMinutes + driveMinutes);
@@ -254,17 +208,22 @@ const KanbanCalendar = ({
         };
       }
 
-      setReturnToOfficeTimes(newReturnTimes);
+      if (isMounted) {
+        setReturnToOfficeTimes(newReturnTimes);
+      }
     };
 
     // Debounce the calculation to avoid hammering the API
     const debouncedCalculate = debounce(calculateReturnTimes, 500);
-    debouncedCalculate();
+    debounceTimeoutId = debouncedCalculate();
 
     return () => {
-      // Cleanup function if needed
+      isMounted = false;
+      if (debounceTimeoutId) {
+        clearTimeout(debounceTimeoutId);
+      }
     };
-  }, [localRoutes, techs, offices]);
+  }, [localRoutes, techs, offices, selectedDate, companyMeetingMode]);
 
   // Recalculate drive times on initial load to fix any default/estimated times
   // This ensures routes from auto-optimizer get real Mapbox drive times
@@ -318,7 +277,7 @@ const KanbanCalendar = ({
     const map = new mapboxgl.Map({
       container: mapContainerRef.current,
       style: 'mapbox://styles/mapbox/streets-v12',
-      center: [-95.5698, 30.1945],
+      center: HOUSTON_CENTER,
       zoom: 10
     });
 
@@ -331,6 +290,11 @@ const KanbanCalendar = ({
     });
 
     return () => {
+      // Clean up markers first
+      mapMarkersRef.current.forEach(marker => marker.remove());
+      mapMarkersRef.current = [];
+
+      // Then clean up map instance
       if (mapInstanceRef.current) {
         mapInstanceRef.current.remove();
         mapInstanceRef.current = null;
@@ -529,37 +493,32 @@ const KanbanCalendar = ({
       return;
     }
 
-    // Clear existing markers and layers
-    const markers = document.getElementsByClassName('mapboxgl-marker');
-    while(markers[0]) {
-      markers[0].remove();
-    }
+    // Clear existing markers and layers properly
+    mapMarkersRef.current.forEach(marker => marker.remove());
+    mapMarkersRef.current = [];
 
     if (map.getLayer('route')) map.removeLayer('route');
     if (map.getSource('route')) map.removeSource('route');
 
     // Get START office coordinates - use Conroe during Company Meeting Mode
     const startOfficeKey = companyMeetingMode ? 'office_1' : techRoute.tech.office;
-    const startOfficeCoords = startOfficeKey === 'office_1'
-      ? { lng: -95.4559, lat: 30.3119 } // Conroe
-      : { lng: -95.6508, lat: 29.7858 }; // Katy
+    const startOfficeCoords = OFFICE_COORDINATES[startOfficeKey] || OFFICE_COORDINATES.office_1;
 
     // Get RETURN office coordinates - always use tech's home office
     const returnOfficeKey = techRoute.tech.office;
-    const returnOfficeCoords = returnOfficeKey === 'office_1'
-      ? { lng: -95.4559, lat: 30.3119 } // Conroe
-      : { lng: -95.6508, lat: 29.7858 }; // Katy
+    const returnOfficeCoords = OFFICE_COORDINATES[returnOfficeKey] || OFFICE_COORDINATES.office_1;
 
     const coordinates = [[startOfficeCoords.lng, startOfficeCoords.lat]];
 
     // Add START office marker
     const startOfficeEl = document.createElement('div');
     startOfficeEl.innerHTML = `<div style="background-color: var(--success-color); color: var(--surface-color); width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 16px; border: 3px solid var(--surface-color); box-shadow: 0 2px 8px rgba(0,0,0,0.3);"><i class="fas fa-home"></i></div>`;
-    new mapboxgl.Marker(startOfficeEl)
+    const startMarker = new mapboxgl.Marker(startOfficeEl)
       .setLngLat([startOfficeCoords.lng, startOfficeCoords.lat])
       .setPopup(new mapboxgl.Popup({ offset: 25 })
         .setHTML(`<div style="padding: 8px;"><strong>${offices[startOfficeKey]?.name}</strong><br/>Start Point</div>`))
       .addTo(map);
+    mapMarkersRef.current.push(startMarker);
 
     // Add job markers and build route
     techRoute.jobs.forEach((job, idx) => {
@@ -569,11 +528,12 @@ const KanbanCalendar = ({
         const el = document.createElement('div');
         el.innerHTML = `<div style="background-color: var(--info-color); color: var(--surface-color); width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 14px; border: 3px solid var(--surface-color); box-shadow: 0 2px 8px rgba(0,0,0,0.3); cursor: pointer;">${idx + 1}</div>`;
 
-        new mapboxgl.Marker(el)
+        const jobMarker = new mapboxgl.Marker(el)
           .setLngLat([job.coordinates.lng, job.coordinates.lat])
           .setPopup(new mapboxgl.Popup({ offset: 25 })
             .setHTML(`<div style="padding: 8px;"><strong>${idx + 1}. ${job.customerName}</strong><br/>${job.address}<br/>${formatTimeAMPM(job.startTime || job.timeframeStart)} - ${formatTimeAMPM(job.endTime || job.timeframeEnd)}<br/>${job.duration}h</div>`))
           .addTo(map);
+        mapMarkersRef.current.push(jobMarker);
       }
     });
 
@@ -584,11 +544,12 @@ const KanbanCalendar = ({
     if (startOfficeKey !== returnOfficeKey) {
       const returnOfficeEl = document.createElement('div');
       returnOfficeEl.innerHTML = `<div style="background-color: var(--warning-color); color: var(--surface-color); width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 16px; border: 3px solid var(--surface-color); box-shadow: 0 2px 8px rgba(0,0,0,0.3);"><i class="fas fa-flag-checkered"></i></div>`;
-      new mapboxgl.Marker(returnOfficeEl)
+      const returnMarker = new mapboxgl.Marker(returnOfficeEl)
         .setLngLat([returnOfficeCoords.lng, returnOfficeCoords.lat])
         .setPopup(new mapboxgl.Popup({ offset: 25 })
           .setHTML(`<div style="padding: 8px;"><strong>${offices[returnOfficeKey]?.name}</strong><br/>End Point</div>`))
         .addTo(map);
+      mapMarkersRef.current.push(returnMarker);
     }
 
     // Fetch actual driving routes from Mapbox Directions API

@@ -7,7 +7,7 @@ import googleCalendarService from '../../services/googleCalendarService';
 import TwoTechAssignmentModal from './TwoTechAssignmentModal';
 import LoadingModal from './LoadingModal';
 import { GOOGLE_CLIENT_ID } from '../../config/firebase';
-import { formatTimeAMPM } from '../../utils/routingHelpers';
+import { formatTimeAMPM, sanitizeRouteData } from '../../utils/routingHelpers';
 
 const ManualMode = ({
   jobs: initialJobs,
@@ -82,60 +82,6 @@ const ManualMode = ({
    * - Removes jobs from routes if they no longer exist
    * - Prevents duplicate jobs in unassigned and assigned
    */
-  const sanitizeRouteData = (jobs, routes) => {
-    console.log('🧹 [ManualMode] Sanitizing route data...');
-    const jobMap = new Map(jobs.map(j => [j.id, j]));
-    const sanitizedJobs = [...jobs];
-    const sanitizedRoutes = { ...routes };
-    const jobsInRoutes = new Set();
-
-    // First pass: collect all jobs that are actually in routes
-    for (const techId in sanitizedRoutes) {
-      const route = sanitizedRoutes[techId];
-      if (route?.jobs) {
-        route.jobs.forEach(job => jobsInRoutes.add(job.id));
-      }
-    }
-
-    // Second pass: update assignedTech on jobs and clean up routes
-    for (const techId in sanitizedRoutes) {
-      const route = sanitizedRoutes[techId];
-      if (!route?.jobs) continue;
-
-      // Filter out jobs that don't exist anymore and update assignedTech
-      const validJobs = route.jobs.filter(routeJob => {
-        const job = jobMap.get(routeJob.id);
-        if (!job) {
-          console.log(`⚠️ Removing orphaned job ${routeJob.id} from route ${techId}`);
-          return false;
-        }
-
-        // Update assignedTech on the job object
-        const jobIndex = sanitizedJobs.findIndex(j => j.id === job.id);
-        if (jobIndex !== -1 && sanitizedJobs[jobIndex].assignedTech !== techId) {
-          console.log(`✓ Syncing job ${job.id} assignment to tech ${techId}`);
-          sanitizedJobs[jobIndex] = { ...sanitizedJobs[jobIndex], assignedTech: techId };
-        }
-
-        return true;
-      });
-
-      sanitizedRoutes[techId] = { ...route, jobs: validJobs };
-    }
-
-    // Third pass: clear assignedTech from jobs not in any route
-    for (let i = 0; i < sanitizedJobs.length; i++) {
-      const job = sanitizedJobs[i];
-      if (job.assignedTech && !jobsInRoutes.has(job.id)) {
-        console.log(`⚠️ Clearing stale assignment for job ${job.id}`);
-        sanitizedJobs[i] = { ...job, assignedTech: null };
-      }
-    }
-
-    console.log('✅ [ManualMode] Data sanitization complete');
-    return { sanitizedJobs, sanitizedRoutes };
-  };
-
   // Geocode office addresses once on mount
   useEffect(() => {
     const geocodeOffices = async () => {
@@ -447,8 +393,18 @@ const ManualMode = ({
           const coordinatesString = coordinates.map(coord => `${coord[0]},${coord[1]}`).join(';');
           const directionsUrl = `https://api.mapbox.com/directions/v5/mapbox/driving/${coordinatesString}?geometries=geojson&overview=full&access_token=${mapboxToken}`;
 
-          fetch(directionsUrl)
-            .then(response => response.json())
+          // Create AbortController for timeout
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+
+          fetch(directionsUrl, { signal: controller.signal })
+            .then(response => {
+              clearTimeout(timeoutId);
+              if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+              }
+              return response.json();
+            })
             .then(data => {
               if (data.routes && data.routes.length > 0) {
                 const route = data.routes[0];
@@ -491,7 +447,12 @@ const ManualMode = ({
               }
             })
             .catch(error => {
-              console.error('Error fetching directions:', error);
+              clearTimeout(timeoutId);
+              if (error.name === 'AbortError') {
+                console.warn('Directions API request timed out, using straight lines');
+              } else {
+                console.error('Error fetching directions:', error);
+              }
               drawStraightLineRoute(map, coordinates);
             });
         } else if (coordinates.length > 2) {

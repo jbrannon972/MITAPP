@@ -127,9 +127,23 @@ const Routing = () => {
       listenerErrorCount.current += 1;
       console.error(`⚠️ Firestore listener error #${listenerErrorCount.current}:`, error.code);
 
-      // If we get multiple errors quickly, suggest refresh
+      // Show error toast to user on first error
+      if (listenerErrorCount.current === 1) {
+        showAlert(
+          'Real-time sync encountered an error. Data may be out of sync.',
+          'Connection Warning',
+          'warning'
+        );
+      }
+
+      // Suggest refresh after multiple errors
       if (listenerErrorCount.current >= 3) {
         console.warn('🔄 Multiple Firestore errors detected. Connection may be stale.');
+        showAlert(
+          'Multiple sync errors detected. Please save your work and refresh the page.',
+          'Refresh Recommended',
+          'error'
+        );
       }
     };
 
