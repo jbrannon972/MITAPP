@@ -538,30 +538,34 @@ const Routing = () => {
         // Try TF: followed by flexible time formats
         // Match "TF:" or "TF :" followed by timeframe
         const tfFlexMatch = description.match(/TF\s*:\s*(\d{1,2})(?::(\d{2}))?(?:am?|a)?-(\d{1,2})(?::(\d{2}))?(?:pm?|p)?/i);
-        if (tfFlexMatch) {
-          let startHour = parseInt(tfFlexMatch[1]);
+        if (tfFlexMatch && tfFlexMatch[1] && tfFlexMatch[3]) {
+          // Validate regex captured required groups before parsing
+          let startHour = parseInt(tfFlexMatch[1], 10);
           const startMin = tfFlexMatch[2] || '00';
-          let endHour = parseInt(tfFlexMatch[3]);
+          let endHour = parseInt(tfFlexMatch[3], 10);
           const endMin = tfFlexMatch[4] || '00';
 
-          // Check for explicit AM/PM markers
-          const matchedText = tfFlexMatch[0].toLowerCase();
-          const hasStartAM = matchedText.includes(`${startHour}a`) || matchedText.includes(`${startHour}am`);
-          const hasEndPM = matchedText.includes(`-${endHour}p`) || matchedText.includes(`-${endHour}pm`);
-          const hasEndAM = matchedText.includes(`-${endHour}a`) || matchedText.includes(`-${endHour}am`);
+          // Validate parsing didn't result in NaN
+          if (!isNaN(startHour) && !isNaN(endHour)) {
+            // Check for explicit AM/PM markers
+            const matchedText = tfFlexMatch[0].toLowerCase();
+            const hasStartAM = matchedText.includes(`${startHour}a`) || matchedText.includes(`${startHour}am`);
+            const hasEndPM = matchedText.includes(`-${endHour}p`) || matchedText.includes(`-${endHour}pm`);
+            const hasEndAM = matchedText.includes(`-${endHour}a`) || matchedText.includes(`-${endHour}am`);
 
-          // If no explicit AM/PM markers, assume single digit hours are: start=AM, end=PM
-          if (!hasStartAM && !hasEndPM && !hasEndAM && startHour < 12 && endHour < 12) {
-            // "TF: 9-1" -> assume 9 AM to 1 PM
-            if (endHour < 12) endHour += 12;
-          } else {
-            // Handle explicit markers
-            if (hasStartAM && startHour === 12) startHour = 0;
-            if (hasEndPM && endHour < 12) endHour += 12;
+            // If no explicit AM/PM markers, assume single digit hours are: start=AM, end=PM
+            if (!hasStartAM && !hasEndPM && !hasEndAM && startHour < 12 && endHour < 12) {
+              // "TF: 9-1" -> assume 9 AM to 1 PM
+              if (endHour < 12) endHour += 12;
+            } else {
+              // Handle explicit markers
+              if (hasStartAM && startHour === 12) startHour = 0;
+              if (hasEndPM && endHour < 12) endHour += 12;
+            }
+
+            timeframeStart = `${String(startHour).padStart(2, '0')}:${startMin}`;
+            timeframeEnd = `${String(endHour).padStart(2, '0')}:${endMin}`;
           }
-
-          timeframeStart = `${String(startHour).padStart(2, '0')}:${startMin}`;
-          timeframeEnd = `${String(endHour).padStart(2, '0')}:${endMin}`;
         }
       }
 
@@ -674,7 +678,8 @@ const Routing = () => {
         });
       }
 
-      zone.members.forEach(member => {
+      // Safely iterate over zone members (could be undefined)
+      zone.members?.forEach(member => {
         allTechs.push({
           id: member.id,
           name: member.name,
@@ -1105,54 +1110,58 @@ const Routing = () => {
   };
 
   const handleClearAllJobs = async () => {
-    const confirmed = window.confirm(
+    // First confirmation
+    showConfirm(
       `⚠️ WARNING: This will DELETE ALL jobs and routes for ${selectedDate}.\n\n` +
       `This action cannot be undone.\n\n` +
-      `Are you sure you want to continue?`
+      `Are you sure you want to continue?`,
+      'Confirm Delete',
+      () => {
+        // Second confirmation (double-check)
+        showConfirm(
+          `🚨 FINAL CONFIRMATION\n\n` +
+          `You are about to permanently delete:\n` +
+          `• ${jobs.length} jobs\n` +
+          `• ${Object.keys(routes).length} routes\n\n` +
+          `Click "Confirm" to proceed with deletion.`,
+          'Final Confirmation',
+          async () => {
+            try {
+              console.log('🗑️ Clearing all jobs and routes for', selectedDate);
+
+              // Clear local state immediately
+              setJobs([]);
+              setRoutes({});
+
+              // Clear in Firebase
+              await firebaseService.saveDocument('hou_routing', `jobs_${selectedDate}`, {
+                jobs: [],
+                date: selectedDate,
+                lastUpdated: new Date().toISOString(),
+                clearedBy: currentUser?.displayName || currentUser?.email,
+                clearedAt: new Date().toISOString()
+              });
+
+              await firebaseService.saveDocument('hou_routing', `routes_${selectedDate}`, {
+                routes: {},
+                date: selectedDate,
+                lastUpdated: new Date().toISOString(),
+                clearedBy: currentUser?.displayName || currentUser?.email,
+                clearedAt: new Date().toISOString()
+              });
+
+              console.log('✅ All jobs and routes cleared successfully');
+              showAlert(`All jobs and routes for ${selectedDate} have been deleted.\n\nYou can now import a fresh CSV file.`, 'Data Cleared', 'success');
+            } catch (error) {
+              console.error('❌ Error clearing jobs and routes:', error);
+              showAlert('Error clearing data. Please try again.', 'Error', 'error');
+            }
+          },
+          'warning'
+        );
+      },
+      'warning'
     );
-
-    if (!confirmed) return;
-
-    const doubleConfirm = window.confirm(
-      `🚨 FINAL CONFIRMATION\n\n` +
-      `You are about to permanently delete:\n` +
-      `• ${jobs.length} jobs\n` +
-      `• ${Object.keys(routes).length} routes\n\n` +
-      `Type OK in the next dialog to proceed.`
-    );
-
-    if (!doubleConfirm) return;
-
-    try {
-      console.log('🗑️ Clearing all jobs and routes for', selectedDate);
-
-      // Clear local state immediately
-      setJobs([]);
-      setRoutes({});
-
-      // Clear in Firebase
-      await firebaseService.saveDocument('hou_routing', `jobs_${selectedDate}`, {
-        jobs: [],
-        date: selectedDate,
-        lastUpdated: new Date().toISOString(),
-        clearedBy: currentUser?.displayName || currentUser?.email,
-        clearedAt: new Date().toISOString()
-      });
-
-      await firebaseService.saveDocument('hou_routing', `routes_${selectedDate}`, {
-        routes: {},
-        date: selectedDate,
-        lastUpdated: new Date().toISOString(),
-        clearedBy: currentUser?.displayName || currentUser?.email,
-        clearedAt: new Date().toISOString()
-      });
-
-      console.log('✅ All jobs and routes cleared successfully');
-      showAlert(`All jobs and routes for ${selectedDate} have been deleted.\n\nYou can now import a fresh CSV file.`, 'Data Cleared', 'success');
-    } catch (error) {
-      console.error('❌ Error clearing jobs and routes:', error);
-      showAlert('Error clearing data. Please try again.', 'Error', 'error');
-    }
   };
 
   const toggleCompanyMeetingMode = async () => {
