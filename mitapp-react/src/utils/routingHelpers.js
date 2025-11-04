@@ -335,17 +335,8 @@ export const sanitizeRouteData = (jobs, routes) => {
   const jobMap = new Map(jobs.map(j => [j.id, j]));
   const sanitizedJobs = [...jobs];
   const sanitizedRoutes = { ...routes };
-  const jobsInRoutes = new Set();
 
-  // First pass: collect all jobs that are actually in routes
-  for (const techId in sanitizedRoutes) {
-    const route = sanitizedRoutes[techId];
-    if (route?.jobs) {
-      route.jobs.forEach(job => jobsInRoutes.add(job.id));
-    }
-  }
-
-  // Second pass: update assignedTech on jobs and clean up routes
+  // First pass: update assignedTech on jobs and clean up routes
   for (const techId in sanitizedRoutes) {
     const route = sanitizedRoutes[techId];
     if (!route?.jobs) continue;
@@ -371,7 +362,17 @@ export const sanitizeRouteData = (jobs, routes) => {
     sanitizedRoutes[techId] = { ...route, jobs: validJobs };
   }
 
-  // Third pass: clear assignedTech from jobs not in any route
+  // CRITICAL FIX: Build jobsInRoutes Set AFTER filtering orphaned jobs
+  // This ensures deleted jobs are not considered "in routes"
+  const jobsInRoutes = new Set();
+  for (const techId in sanitizedRoutes) {
+    const route = sanitizedRoutes[techId];
+    if (route?.jobs) {
+      route.jobs.forEach(job => jobsInRoutes.add(job.id));
+    }
+  }
+
+  // Second pass: clear assignedTech from jobs not in any route
   for (let i = 0; i < sanitizedJobs.length; i++) {
     const job = sanitizedJobs[i];
     if (job.assignedTech && !jobsInRoutes.has(job.id)) {

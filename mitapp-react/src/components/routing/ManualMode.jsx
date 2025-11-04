@@ -1041,9 +1041,12 @@ const ManualMode = ({
       const shift = isSecondShift ? 'second' : 'first';
 
       // Company Meeting Mode: All techs start at Conroe office
-      const startLocation = companyMeetingMode
-        ? offices.office_1.address
-        : offices[targetTech.office].address;
+      const officeKey = companyMeetingMode ? 'office_1' : (targetTech?.office || 'office_1');
+      const office = offices[officeKey];
+      if (!office && !companyMeetingMode) {
+        console.warn(`⚠️ Office ${officeKey} not found for tech ${targetTech?.name}, falling back to office_1`);
+      }
+      const startLocation = office?.address || offices.office_1.address;
 
       // Check if route has two-tech jobs
       const twoTechJobs = routeJobs.filter(j => j.requiresTwoTechs);

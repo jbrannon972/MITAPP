@@ -728,11 +728,30 @@ const Routing = () => {
   }, [jobs]);
 
   const assignJobToTech = async (jobId, techId) => {
+    // Validate parameters
+    if (!jobId || !techId) {
+      console.error('❌ Invalid parameters: jobId and techId are required');
+      showAlert('Invalid job or technician ID', 'Assignment Failed', 'error');
+      return;
+    }
+
     // Store original state for potential rollback (optimistic UI)
     const originalJobs = jobs;
     const originalRoutes = routes;
 
     try {
+      // Validate tech exists
+      const tech = getTechList.find(t => t.id === techId);
+      if (!tech) {
+        throw new Error(`Technician with ID ${techId} not found. The tech may have been removed or the data is stale.`);
+      }
+
+      // Validate job exists
+      const existingJob = jobs.find(j => j.id === jobId);
+      if (!existingJob) {
+        throw new Error(`Job with ID ${jobId} not found. The job may have been deleted.`);
+      }
+
       // Step 1: Update UI immediately (optimistic)
       const updatedJobs = jobs.map(job => {
         if (job.id === jobId) {
@@ -744,20 +763,35 @@ const Routing = () => {
       setJobs(updatedJobs);
 
       // Update routes optimistically
-      const tech = getTechList.find(t => t.id === techId);
       const job = updatedJobs.find(j => j.id === jobId);
 
       const updatedRoutes = { ...routes };
+
+      // CRITICAL FIX: Remove job from ALL other tech routes first (prevents duplication)
+      Object.keys(updatedRoutes).forEach(existingTechId => {
+        if (existingTechId !== techId && updatedRoutes[existingTechId]?.jobs) {
+          updatedRoutes[existingTechId] = {
+            ...updatedRoutes[existingTechId],
+            jobs: updatedRoutes[existingTechId].jobs.filter(j => j.id !== jobId)
+          };
+        }
+      });
+
+      // Now add job to new tech's route
       if (!updatedRoutes[techId]) {
         updatedRoutes[techId] = {
           tech: tech,
           jobs: [job]
         };
       } else {
-        updatedRoutes[techId] = {
-          ...updatedRoutes[techId],
-          jobs: [...updatedRoutes[techId].jobs, job]
-        };
+        // Check if job already exists in this tech's route (shouldn't happen, but safe guard)
+        const jobAlreadyExists = updatedRoutes[techId].jobs.some(j => j.id === jobId);
+        if (!jobAlreadyExists) {
+          updatedRoutes[techId] = {
+            ...updatedRoutes[techId],
+            jobs: [...updatedRoutes[techId].jobs, job]
+          };
+        }
       }
 
       setRoutes(updatedRoutes);
@@ -999,8 +1033,13 @@ const Routing = () => {
           message: `Optimizing route for ${assignment.tech.name} (${assignment.jobs.length} jobs)`
         }));
 
-        // Get start location for this tech
-        const startLocation = offices[assignment.tech.office].address;
+        // Get start location for this tech (with safe fallback)
+        const officeKey = assignment.tech?.office || 'office_1';
+        const office = offices[officeKey];
+        if (!office) {
+          console.warn(`⚠️ Office ${officeKey} not found for tech ${assignment.tech.name}, falling back to office_1`);
+        }
+        const startLocation = office?.address || offices.office_1.address;
 
         // Build distance matrix (if we have Mapbox token)
         let distanceMatrix = null;
