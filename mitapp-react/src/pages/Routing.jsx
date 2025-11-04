@@ -1488,6 +1488,8 @@ const Routing = () => {
         techStartTimes={techStartTimes}
         setTechStartTimes={setTechStartTimes}
         companyMeetingMode={companyMeetingMode}
+        isFullScreen={isFullScreen}
+        onToggleFullScreen={() => setIsFullScreen(!isFullScreen)}
       />
     );
   };
@@ -1532,73 +1534,72 @@ const Routing = () => {
         padding: '16px'
       }}>
         <div className="tab-content active">
-        <div className="tab-controls" style={{ marginBottom: '16px' }}>
-          <div className="sub-nav">
-            <button
-              className={`sub-nav-btn ${activeView === 'routing' ? 'active' : ''}`}
-              onClick={() => setActiveView('routing')}
-            >
-              <i className="fas fa-route"></i> Routing
-            </button>
-            <button
-              className={`sub-nav-btn ${activeView === 'kanban' ? 'active' : ''}`}
-              onClick={() => setActiveView('kanban')}
-            >
-              <i className="fas fa-columns"></i> Kanban Calendar
-            </button>
-            <button
-              className={`sub-nav-btn ${activeView === 'jobs' ? 'active' : ''}`}
-              onClick={() => setActiveView('jobs')}
-            >
-              <i className="fas fa-clipboard-list"></i> Jobs
-            </button>
-            <button
-              className="sub-nav-btn"
-              onClick={() => setIsFullScreen(!isFullScreen)}
-              style={{
-                marginLeft: 'auto',
-                backgroundColor: isFullScreen ? 'var(--info-color)' : undefined,
-                color: isFullScreen ? 'white' : undefined
-              }}
-              title={isFullScreen ? 'Exit Full Screen' : 'Enter Full Screen'}
-            >
-              <i className={`fas ${isFullScreen ? 'fa-compress' : 'fa-expand'}`}></i> {isFullScreen ? 'Exit' : 'Full Screen'}
-            </button>
-          </div>
-
-          {/* Active Users Indicator */}
-          {activeUsers.length > 0 && (
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              padding: '8px 12px',
-              backgroundColor: 'var(--status-in-progress-bg)',
-              borderRadius: '6px',
-              fontSize: '12px',
-              marginBottom: '12px'
-            }}>
-              <i className="fas fa-users" style={{ color: 'var(--success-color)' }}></i>
-              <span style={{ fontWeight: '600', color: 'var(--success-color)' }}>
-                {activeUsers.length} {activeUsers.length === 1 ? 'person' : 'people'} viewing:
-              </span>
-              {activeUsers.map((user, idx) => (
-                <span key={idx} style={{
-                  padding: '2px 8px',
-                  backgroundColor: 'var(--success-color)',
-                  color: 'white',
-                  borderRadius: '12px',
-                  fontSize: '11px',
-                  fontWeight: '600'
-                }}>
-                  {user.userName}
-                </span>
-              ))}
-              <span style={{ fontSize: '10px', color: 'var(--text-secondary)', fontStyle: 'italic', marginLeft: 'auto' }}>
-                Live updates enabled
-              </span>
+        <div className="tab-controls" style={{ marginBottom: '12px' }}>
+          {/* Compact header with view dropdown */}
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            padding: '8px 12px',
+            backgroundColor: 'var(--surface-secondary)',
+            borderRadius: '6px',
+            border: '1px solid #e5e7eb'
+          }}>
+            {/* View Dropdown */}
+            <div style={{ position: 'relative' }}>
+              <select
+                value={activeView}
+                onChange={(e) => setActiveView(e.target.value)}
+                style={{
+                  padding: '6px 32px 6px 12px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '4px',
+                  backgroundColor: 'var(--surface-color)',
+                  cursor: 'pointer',
+                  appearance: 'none',
+                  backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'12\' height=\'12\' viewBox=\'0 0 12 12\'%3E%3Cpath fill=\'%23666\' d=\'M6 9L1 4h10z\'/%3E%3C/svg%3E")',
+                  backgroundRepeat: 'no-repeat',
+                  backgroundPosition: 'right 8px center'
+                }}
+              >
+                <option value="routing">🗺️ Routing</option>
+                <option value="kanban">📋 Kanban Calendar</option>
+                <option value="jobs">📝 Jobs</option>
+              </select>
             </div>
-          )}
+
+            {/* Exit Full Screen Button */}
+            <button
+              onClick={() => setIsFullScreen(false)}
+              className="btn btn-secondary btn-small"
+              style={{
+                padding: '6px 12px',
+                fontSize: '12px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}
+            >
+              <i className="fas fa-compress"></i> Exit Full Screen
+            </button>
+
+            {/* Active Users */}
+            {activeUsers.length > 0 && (
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                fontSize: '11px'
+              }}>
+                <i className="fas fa-users" style={{ color: 'var(--success-color)' }}></i>
+                <span style={{ fontWeight: '600', color: 'var(--success-color)' }}>
+                  {activeUsers.length} {activeUsers.length === 1 ? 'person' : 'people'}
+                </span>
+              </div>
+            )}
+          </div>
         </div>
 
         {loading ? (
@@ -1743,71 +1744,57 @@ const Routing = () => {
   return (
     <Layout>
       <div className="tab-content active">
-        <div className="tab-controls" style={{ marginBottom: '16px' }}>
-          <div className="sub-nav">
-            <button
-              className={`sub-nav-btn ${activeView === 'routing' ? 'active' : ''}`}
-              onClick={() => setActiveView('routing')}
-            >
-              <i className="fas fa-route"></i> Routing
-            </button>
-            <button
-              className={`sub-nav-btn ${activeView === 'kanban' ? 'active' : ''}`}
-              onClick={() => setActiveView('kanban')}
-            >
-              <i className="fas fa-columns"></i> Kanban Calendar
-            </button>
-            <button
-              className={`sub-nav-btn ${activeView === 'jobs' ? 'active' : ''}`}
-              onClick={() => setActiveView('jobs')}
-            >
-              <i className="fas fa-clipboard-list"></i> Jobs
-            </button>
-            <button
-              className="sub-nav-btn"
-              onClick={() => setIsFullScreen(!isFullScreen)}
-              style={{
-                marginLeft: 'auto'
-              }}
-              title="Enter Full Screen"
-            >
-              <i className="fas fa-expand"></i> Full Screen
-            </button>
-          </div>
-
-          {/* Active Users Indicator */}
-          {activeUsers.length > 0 && (
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              padding: '8px 12px',
-              backgroundColor: 'var(--status-in-progress-bg)',
-              borderRadius: '6px',
-              fontSize: '12px',
-              marginBottom: '12px'
-            }}>
-              <i className="fas fa-users" style={{ color: 'var(--success-color)' }}></i>
-              <span style={{ fontWeight: '600', color: 'var(--success-color)' }}>
-                {activeUsers.length} {activeUsers.length === 1 ? 'person' : 'people'} viewing:
-              </span>
-              {activeUsers.map((user, idx) => (
-                <span key={idx} style={{
-                  padding: '2px 8px',
-                  backgroundColor: 'var(--success-color)',
-                  color: 'white',
-                  borderRadius: '12px',
-                  fontSize: '11px',
-                  fontWeight: '600'
-                }}>
-                  {user.userName}
-                </span>
-              ))}
-              <span style={{ fontSize: '10px', color: 'var(--text-secondary)', fontStyle: 'italic', marginLeft: 'auto' }}>
-                Live updates enabled
-              </span>
+        <div className="tab-controls" style={{ marginBottom: '12px' }}>
+          {/* Compact header with view dropdown */}
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            padding: '8px 12px',
+            backgroundColor: 'var(--surface-secondary)',
+            borderRadius: '6px',
+            border: '1px solid #e5e7eb'
+          }}>
+            {/* View Dropdown */}
+            <div style={{ position: 'relative' }}>
+              <select
+                value={activeView}
+                onChange={(e) => setActiveView(e.target.value)}
+                style={{
+                  padding: '6px 32px 6px 12px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '4px',
+                  backgroundColor: 'var(--surface-color)',
+                  cursor: 'pointer',
+                  appearance: 'none',
+                  backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'12\' height=\'12\' viewBox=\'0 0 12 12\'%3E%3Cpath fill=\'%23666\' d=\'M6 9L1 4h10z\'/%3E%3C/svg%3E")',
+                  backgroundRepeat: 'no-repeat',
+                  backgroundPosition: 'right 8px center'
+                }}
+              >
+                <option value="routing">🗺️ Routing</option>
+                <option value="kanban">📋 Kanban Calendar</option>
+                <option value="jobs">📝 Jobs</option>
+              </select>
             </div>
-          )}
+
+            {/* Active Users */}
+            {activeUsers.length > 0 && (
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                fontSize: '11px'
+              }}>
+                <i className="fas fa-users" style={{ color: 'var(--success-color)' }}></i>
+                <span style={{ fontWeight: '600', color: 'var(--success-color)' }}>
+                  {activeUsers.length} {activeUsers.length === 1 ? 'person' : 'people'}
+                </span>
+              </div>
+            )}
+          </div>
         </div>
 
         {loading ? (

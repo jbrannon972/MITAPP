@@ -26,7 +26,9 @@ const ManualMode = ({
   showConfirm,
   techStartTimes,
   setTechStartTimes,
-  companyMeetingMode
+  companyMeetingMode,
+  isFullScreen,
+  onToggleFullScreen
 }) => {
   const [jobs, setJobs] = useState(initialJobs);
   const [routes, setRoutes] = useState(initialRoutes);
@@ -1701,6 +1703,34 @@ const ManualMode = ({
                     <i className="fas fa-trash-alt"></i>
                     <span>Clear All Routes</span>
                   </button>
+
+                  {/* Full Screen Toggle */}
+                  {onToggleFullScreen && (
+                    <button
+                      onClick={() => {
+                        setShowOptionsMenu(false);
+                        onToggleFullScreen();
+                      }}
+                      style={{
+                        width: '100%',
+                        textAlign: 'left',
+                        padding: '10px 12px',
+                        border: 'none',
+                        backgroundColor: 'transparent',
+                        cursor: 'pointer',
+                        fontSize: '13px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        borderTop: '1px solid #e5e7eb'
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--surface-secondary)'}
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                    >
+                      <i className={`fas ${isFullScreen ? 'fa-compress' : 'fa-expand'}`}></i>
+                      <span>{isFullScreen ? 'Exit Full Screen' : 'Full Screen'}</span>
+                    </button>
+                  )}
                 </div>
               </>
             )}
