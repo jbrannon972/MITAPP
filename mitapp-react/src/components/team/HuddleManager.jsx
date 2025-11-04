@@ -26,11 +26,9 @@ const HuddleManager = () => {
   const [saving, setSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState(null);
   const [importing, setImporting] = useState(false);
-  const [showWeekendScheduleModal, setShowWeekendScheduleModal] = useState(false);
-  const [weekendSchedule, setWeekendSchedule] = useState({
-    saturday: { staff: [], notes: '' },
-    sunday: { staff: [], notes: '' }
-  });
+  const [showRecurringRemindersModal, setShowRecurringRemindersModal] = useState(false);
+  const [recurringReminders, setRecurringReminders] = useState([]);
+  const [editingReminder, setEditingReminder] = useState(null);
   const fileInputRef = useRef(null);
 
   const dateStr = format(selectedDate, 'yyyy-MM-dd');
@@ -168,7 +166,6 @@ const HuddleManager = () => {
         }
       };
 
-      setWeekendSchedule(schedule);
       return schedule;
     } catch (error) {
       console.error('Error loading weekend schedule:', error);
@@ -176,32 +173,6 @@ const HuddleManager = () => {
         saturday: { staff: [], notes: '' },
         sunday: { staff: [], notes: '' }
       };
-    }
-  };
-
-  // Save weekend schedule to Firebase
-  const saveWeekendSchedule = async () => {
-    try {
-      const weekend = getUpcomingWeekend();
-      const saturdayStr = format(weekend.saturday, 'yyyy-MM-dd');
-
-      await firebaseService.saveDocument('hou_weekend_schedule', saturdayStr, {
-        weekendStart: saturdayStr,
-        schedule: weekendSchedule,
-        updatedBy: currentUser.userId,
-        updatedByName: currentUser.username,
-        updatedAt: new Date().toISOString()
-      });
-
-      // Auto-populate the weekend staffing content
-      const formattedContent = formatWeekendSchedule(weekendSchedule, weekend);
-      updateContent('weekendStaffing', formattedContent);
-
-      setShowWeekendScheduleModal(false);
-      alert('Weekend schedule saved successfully!');
-    } catch (error) {
-      console.error('Error saving weekend schedule:', error);
-      alert('Error saving weekend schedule. Please try again.');
     }
   };
 
@@ -214,6 +185,12 @@ const HuddleManager = () => {
     setLoading(true);
     try {
       console.log('🔄 Loading huddle content for date:', dateStr, 'Selected date object:', selectedDate);
+
+      // Load recurring reminders first and get them
+      const remindersDoc = await firebaseService.getDocument('hou_recurring_reminders', 'config');
+      const loadedReminders = remindersDoc?.reminders || [];
+      setRecurringReminders(loadedReminders);
+
       const content = await firebaseService.getDocument('hou_huddle_content', dateStr);
 
       if (content && content.categories) {
@@ -230,6 +207,22 @@ const HuddleManager = () => {
           weekendStaffing: { content: '', visible: true }
         });
         setReferenceLinks([]);
+      }
+
+      // Auto-populate recurring reminders if not already set
+      const applicableReminders = loadedReminders
+        .filter(reminder => shouldShowReminder(reminder, selectedDate))
+        .map(reminder => reminder.text)
+        .join('\n\n');
+
+      if (applicableReminders && (!content || !content.categories?.reminders?.content)) {
+        setHuddleContent(prev => ({
+          ...prev,
+          reminders: {
+            ...prev.reminders,
+            content: applicableReminders
+          }
+        }));
       }
 
       // RECURRING TOPIC: Auto-populate weekend schedule on Thursdays
@@ -372,51 +365,88 @@ const HuddleManager = () => {
     setReferenceLinks(referenceLinks.filter((_, i) => i !== index));
   };
 
-  // Weekend Schedule Management Functions
-  const addStaffMember = (day) => {
-    setWeekendSchedule(prev => ({
-      ...prev,
-      [day]: {
-        ...prev[day],
-        staff: [...prev[day].staff, '']
+  // Recurring Reminders Management Functions
+  const loadRecurringReminders = async () => {
+    try {
+      const reminders = await firebaseService.getDocument('hou_recurring_reminders', 'config');
+      if (reminders && reminders.reminders) {
+        setRecurringReminders(reminders.reminders);
       }
-    }));
+    } catch (error) {
+      console.error('Error loading recurring reminders:', error);
+    }
   };
 
-  const updateStaffMember = (day, index, value) => {
-    setWeekendSchedule(prev => ({
-      ...prev,
-      [day]: {
-        ...prev[day],
-        staff: prev[day].staff.map((s, i) => i === index ? value : s)
-      }
-    }));
+  const saveRecurringReminders = async () => {
+    try {
+      await firebaseService.saveDocument('hou_recurring_reminders', 'config', {
+        reminders: recurringReminders,
+        updatedBy: currentUser.userId,
+        updatedByName: currentUser.username,
+        updatedAt: new Date().toISOString()
+      });
+      alert('Recurring reminders saved successfully!');
+      setShowRecurringRemindersModal(false);
+      setEditingReminder(null);
+      // Reload huddle content to apply new reminders
+      loadHuddleContent();
+    } catch (error) {
+      console.error('Error saving recurring reminders:', error);
+      alert('Error saving recurring reminders. Please try again.');
+    }
   };
 
-  const removeStaffMember = (day, index) => {
-    setWeekendSchedule(prev => ({
-      ...prev,
-      [day]: {
-        ...prev[day],
-        staff: prev[day].staff.filter((_, i) => i !== index)
-      }
-    }));
+  const addRecurringReminder = () => {
+    setEditingReminder({
+      id: Date.now().toString(),
+      text: '',
+      dayOfWeek: 1, // Monday
+      frequency: 'weekly', // weekly or monthly
+      dayOfMonth: 1, // For monthly reminders
+      active: true
+    });
   };
 
-  const updateNotes = (day, value) => {
-    setWeekendSchedule(prev => ({
-      ...prev,
-      [day]: {
-        ...prev[day],
-        notes: value
-      }
-    }));
+  const saveEditingReminder = () => {
+    if (!editingReminder.text.trim()) {
+      alert('Please enter reminder text');
+      return;
+    }
+
+    const existingIndex = recurringReminders.findIndex(r => r.id === editingReminder.id);
+    if (existingIndex >= 0) {
+      // Update existing
+      setRecurringReminders(prev =>
+        prev.map(r => r.id === editingReminder.id ? editingReminder : r)
+      );
+    } else {
+      // Add new
+      setRecurringReminders(prev => [...prev, editingReminder]);
+    }
+    setEditingReminder(null);
   };
 
-  const openWeekendScheduleModal = async () => {
-    const weekend = getUpcomingWeekend();
-    await loadWeekendSchedule(weekend);
-    setShowWeekendScheduleModal(true);
+  const deleteRecurringReminder = async (reminderId) => {
+    if (!confirm('This will remove this reminder from all future huddles. Are you sure?')) {
+      return;
+    }
+
+    setRecurringReminders(prev => prev.filter(r => r.id !== reminderId));
+  };
+
+  const shouldShowReminder = (reminder, date) => {
+    if (!reminder.active) return false;
+
+    const dayOfWeek = getDay(date);
+
+    if (reminder.frequency === 'weekly') {
+      return dayOfWeek === reminder.dayOfWeek;
+    } else if (reminder.frequency === 'monthly') {
+      const dayOfMonth = date.getDate();
+      return dayOfMonth === reminder.dayOfMonth;
+    }
+
+    return false;
   };
 
   // CSV Import Functions
@@ -492,10 +522,10 @@ const HuddleManager = () => {
         <div className="header-actions">
           <button
             className="btn btn-primary"
-            onClick={openWeekendScheduleModal}
-            title="Manage weekend staffing schedule"
+            onClick={() => setShowRecurringRemindersModal(true)}
+            title="Manage recurring reminders"
           >
-            <i className="fas fa-calendar-week"></i> Manage Weekend Schedule
+            <i className="fas fa-bell"></i> Recurring Reminders
           </button>
           <button
             className="btn btn-secondary"
@@ -668,142 +698,208 @@ const HuddleManager = () => {
         </>
       )}
 
-      {/* Weekend Schedule Modal */}
-      {showWeekendScheduleModal && (
-        <div className="modal-overlay" onClick={() => setShowWeekendScheduleModal(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '700px', maxHeight: '90vh', overflowY: 'auto' }}>
+      {/* Recurring Reminders Modal */}
+      {showRecurringRemindersModal && (
+        <div className="modal-overlay" onClick={() => setShowRecurringRemindersModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '800px', maxHeight: '90vh', overflowY: 'auto' }}>
             <div className="modal-header">
-              <h2><i className="fas fa-calendar-week"></i> Manage Weekend Schedule</h2>
-              <button className="modal-close" onClick={() => setShowWeekendScheduleModal(false)}>×</button>
+              <h2><i className="fas fa-bell"></i> Manage Recurring Reminders</h2>
+              <button className="modal-close" onClick={() => setShowRecurringRemindersModal(false)}>×</button>
             </div>
 
             <div className="modal-body">
               <p style={{ marginBottom: '20px', color: 'var(--text-secondary)' }}>
-                Set the staff schedule for the upcoming weekend. This will automatically populate the "Weekend Staffing" section in Thursday huddles.
+                Create reminders that automatically appear in huddles on specific days. Reminders can be set to repeat weekly or monthly.
               </p>
 
-              {(() => {
-                const weekend = getUpcomingWeekend();
-                return (
-                  <div style={{ fontSize: '14px', fontWeight: '600', marginBottom: '20px', padding: '12px', backgroundColor: 'var(--background-secondary)', borderRadius: '8px' }}>
-                    <i className="fas fa-info-circle"></i> Upcoming Weekend: {format(weekend.saturday, 'MMM d')} - {format(weekend.sunday, 'MMM d, yyyy')}
+              {/* List of Recurring Reminders */}
+              <div style={{ marginBottom: '20px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                  <h3 style={{ margin: 0 }}>Active Reminders</h3>
+                  <button
+                    className="btn btn-primary btn-sm"
+                    onClick={addRecurringReminder}
+                  >
+                    <i className="fas fa-plus"></i> Add Reminder
+                  </button>
+                </div>
+
+                {recurringReminders.length === 0 ? (
+                  <div style={{ padding: '40px 20px', textAlign: 'center', background: 'var(--surface-secondary)', borderRadius: '8px' }}>
+                    <i className="fas fa-bell-slash" style={{ fontSize: '48px', color: 'var(--text-secondary)', marginBottom: '16px' }}></i>
+                    <p style={{ color: 'var(--text-secondary)' }}>No recurring reminders set up yet. Click "Add Reminder" to create one.</p>
                   </div>
-                );
-              })()}
-
-              {/* Saturday Schedule */}
-              <div style={{ marginBottom: '30px', padding: '20px', border: '2px solid var(--border-color)', borderRadius: '8px' }}>
-                <h3 style={{ marginBottom: '15px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <i className="fas fa-calendar-day" style={{ color: 'var(--primary-color)' }}></i>
-                  Saturday - {format(getUpcomingWeekend().saturday, 'MMMM d, yyyy')}
-                </h3>
-
-                <div style={{ marginBottom: '15px' }}>
-                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600' }}>
-                    Staff on Duty:
-                  </label>
-                  {weekendSchedule.saturday.staff.map((staff, index) => (
-                    <div key={index} style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
-                      <input
-                        type="text"
-                        value={staff}
-                        onChange={(e) => updateStaffMember('saturday', index, e.target.value)}
-                        placeholder="Enter staff name"
-                        style={{ flex: 1, padding: '8px', border: '1px solid var(--border-color)', borderRadius: '4px' }}
-                      />
-                      <button
-                        className="btn btn-danger btn-sm"
-                        onClick={() => removeStaffMember('saturday', index)}
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    {recurringReminders.map((reminder) => (
+                      <div
+                        key={reminder.id}
+                        style={{
+                          padding: '16px',
+                          background: 'white',
+                          border: '1px solid var(--border-color)',
+                          borderRadius: '8px',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'flex-start'
+                        }}
                       >
-                        <i className="fas fa-trash"></i>
-                      </button>
-                    </div>
-                  ))}
-                  <button
-                    className="btn btn-secondary btn-sm"
-                    onClick={() => addStaffMember('saturday')}
-                    style={{ marginTop: '8px' }}
-                  >
-                    <i className="fas fa-plus"></i> Add Staff Member
-                  </button>
-                </div>
-
-                <div>
-                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600' }}>
-                    Notes:
-                  </label>
-                  <textarea
-                    value={weekendSchedule.saturday.notes}
-                    onChange={(e) => updateNotes('saturday', e.target.value)}
-                    placeholder="Add any notes or special instructions for Saturday..."
-                    style={{ width: '100%', padding: '8px', border: '1px solid var(--border-color)', borderRadius: '4px', minHeight: '60px' }}
-                  />
-                </div>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: '600', marginBottom: '8px' }}>{reminder.text}</div>
+                          <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
+                            <i className="fas fa-calendar"></i>{' '}
+                            {reminder.frequency === 'weekly' ? (
+                              <>Every {['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][reminder.dayOfWeek]}</>
+                            ) : (
+                              <>Monthly on day {reminder.dayOfMonth}</>
+                            )}
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          <button
+                            className="btn btn-secondary btn-sm"
+                            onClick={() => setEditingReminder(reminder)}
+                            title="Edit reminder"
+                          >
+                            <i className="fas fa-edit"></i>
+                          </button>
+                          <button
+                            className="btn btn-danger btn-sm"
+                            onClick={() => deleteRecurringReminder(reminder.id)}
+                            title="Delete reminder"
+                          >
+                            <i className="fas fa-trash"></i>
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
-              {/* Sunday Schedule */}
-              <div style={{ marginBottom: '20px', padding: '20px', border: '2px solid var(--border-color)', borderRadius: '8px' }}>
-                <h3 style={{ marginBottom: '15px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <i className="fas fa-calendar-day" style={{ color: 'var(--primary-color)' }}></i>
-                  Sunday - {format(getUpcomingWeekend().sunday, 'MMMM d, yyyy')}
-                </h3>
+              {/* Edit/Add Reminder Form */}
+              {editingReminder && (
+                <div style={{ padding: '20px', background: 'var(--surface-secondary)', borderRadius: '8px', border: '2px solid var(--primary-color)' }}>
+                  <h3 style={{ marginBottom: '16px' }}>
+                    {recurringReminders.find(r => r.id === editingReminder.id) ? 'Edit' : 'Add'} Reminder
+                  </h3>
 
-                <div style={{ marginBottom: '15px' }}>
-                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600' }}>
-                    Staff on Duty:
-                  </label>
-                  {weekendSchedule.sunday.staff.map((staff, index) => (
-                    <div key={index} style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
-                      <input
-                        type="text"
-                        value={staff}
-                        onChange={(e) => updateStaffMember('sunday', index, e.target.value)}
-                        placeholder="Enter staff name"
-                        style={{ flex: 1, padding: '8px', border: '1px solid var(--border-color)', borderRadius: '4px' }}
-                      />
-                      <button
-                        className="btn btn-danger btn-sm"
-                        onClick={() => removeStaffMember('sunday', index)}
+                  <div style={{ marginBottom: '16px' }}>
+                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600' }}>
+                      Reminder Text:
+                    </label>
+                    <textarea
+                      value={editingReminder.text}
+                      onChange={(e) => setEditingReminder({ ...editingReminder, text: e.target.value })}
+                      placeholder="Enter the reminder text..."
+                      style={{
+                        width: '100%',
+                        padding: '8px',
+                        border: '1px solid var(--border-color)',
+                        borderRadius: '4px',
+                        minHeight: '80px',
+                        fontFamily: 'inherit'
+                      }}
+                    />
+                  </div>
+
+                  <div style={{ marginBottom: '16px' }}>
+                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600' }}>
+                      Frequency:
+                    </label>
+                    <select
+                      value={editingReminder.frequency}
+                      onChange={(e) => setEditingReminder({ ...editingReminder, frequency: e.target.value })}
+                      style={{
+                        width: '100%',
+                        padding: '8px',
+                        border: '1px solid var(--border-color)',
+                        borderRadius: '4px'
+                      }}
+                    >
+                      <option value="weekly">Weekly</option>
+                      <option value="monthly">Monthly</option>
+                    </select>
+                  </div>
+
+                  {editingReminder.frequency === 'weekly' ? (
+                    <div style={{ marginBottom: '16px' }}>
+                      <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600' }}>
+                        Day of Week:
+                      </label>
+                      <select
+                        value={editingReminder.dayOfWeek}
+                        onChange={(e) => setEditingReminder({ ...editingReminder, dayOfWeek: parseInt(e.target.value) })}
+                        style={{
+                          width: '100%',
+                          padding: '8px',
+                          border: '1px solid var(--border-color)',
+                          borderRadius: '4px'
+                        }}
                       >
-                        <i className="fas fa-trash"></i>
-                      </button>
+                        <option value={0}>Sunday</option>
+                        <option value={1}>Monday</option>
+                        <option value={2}>Tuesday</option>
+                        <option value={3}>Wednesday</option>
+                        <option value={4}>Thursday</option>
+                        <option value={5}>Friday</option>
+                        <option value={6}>Saturday</option>
+                      </select>
                     </div>
-                  ))}
-                  <button
-                    className="btn btn-secondary btn-sm"
-                    onClick={() => addStaffMember('sunday')}
-                    style={{ marginTop: '8px' }}
-                  >
-                    <i className="fas fa-plus"></i> Add Staff Member
-                  </button>
-                </div>
+                  ) : (
+                    <div style={{ marginBottom: '16px' }}>
+                      <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600' }}>
+                        Day of Month (1-31):
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="31"
+                        value={editingReminder.dayOfMonth}
+                        onChange={(e) => setEditingReminder({ ...editingReminder, dayOfMonth: parseInt(e.target.value) })}
+                        style={{
+                          width: '100%',
+                          padding: '8px',
+                          border: '1px solid var(--border-color)',
+                          borderRadius: '4px'
+                        }}
+                      />
+                    </div>
+                  )}
 
-                <div>
-                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600' }}>
-                    Notes:
-                  </label>
-                  <textarea
-                    value={weekendSchedule.sunday.notes}
-                    onChange={(e) => updateNotes('sunday', e.target.value)}
-                    placeholder="Add any notes or special instructions for Sunday..."
-                    style={{ width: '100%', padding: '8px', border: '1px solid var(--border-color)', borderRadius: '4px', minHeight: '60px' }}
-                  />
+                  <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                    <button
+                      className="btn btn-secondary"
+                      onClick={() => setEditingReminder(null)}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      className="btn btn-primary"
+                      onClick={saveEditingReminder}
+                    >
+                      <i className="fas fa-check"></i> Save Reminder
+                    </button>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
 
             <div className="modal-footer">
               <button
                 className="btn btn-secondary"
-                onClick={() => setShowWeekendScheduleModal(false)}
+                onClick={() => {
+                  setShowRecurringRemindersModal(false);
+                  setEditingReminder(null);
+                }}
               >
                 Cancel
               </button>
               <button
                 className="btn btn-primary"
-                onClick={saveWeekendSchedule}
+                onClick={saveRecurringReminders}
               >
-                <i className="fas fa-save"></i> Save Weekend Schedule
+                <i className="fas fa-save"></i> Save All Changes
               </button>
             </div>
           </div>
