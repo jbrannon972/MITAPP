@@ -1005,11 +1005,50 @@ const ManualMode = ({
                   return job;
                 });
 
-                // Add any jobs that STILL can't fit (shouldn't happen but be safe)
+                // Add any jobs that STILL can't fit with proper sequential times
                 if (reoptimized.unassignableJobs && reoptimized.unassignableJobs.length > 0) {
-                  console.warn(`⚠️ ${reoptimized.unassignableJobs.length} jobs still unassignable after forcing, adding anyway`);
+                  console.warn(`⚠️ ${reoptimized.unassignableJobs.length} jobs still unassignable after forcing, calculating sequential times`);
+
+                  // Calculate sequential times for still-unassignable jobs
+                  let currentTime = finalJobs.length > 0
+                    ? finalJobs[finalJobs.length - 1].endTime
+                    : customStartTime || (shift === 'second' ? '13:15' : '08:15');
+
+                  // Convert HH:MM to minutes
+                  const timeToMinutes = (timeStr) => {
+                    const [hours, minutes] = timeStr.split(':').map(Number);
+                    return hours * 60 + minutes;
+                  };
+
+                  // Convert minutes to HH:MM
+                  const minutesToTime = (minutes) => {
+                    const hours = Math.floor(minutes / 60);
+                    const mins = minutes % 60;
+                    return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
+                  };
+
+                  let currentTimeMinutes = timeToMinutes(currentTime);
+
                   reoptimized.unassignableJobs.forEach(uj => {
-                    finalJobs.push({ ...uj, forcedAssignment: true, timingConflict: uj.timingConflict });
+                    // Use timingConflict travel time if available, otherwise default
+                    const travelTime = uj.timingConflict?.travelTime || 20;
+                    const arrivalTimeMinutes = currentTimeMinutes + travelTime;
+                    const startTimeMinutes = arrivalTimeMinutes;
+                    const endTimeMinutes = startTimeMinutes + (uj.duration * 60);
+
+                    finalJobs.push({
+                      ...uj,
+                      arrivalTime: minutesToTime(arrivalTimeMinutes),
+                      startTime: minutesToTime(startTimeMinutes),
+                      endTime: minutesToTime(endTimeMinutes),
+                      travelTime: travelTime,
+                      waitTime: 0,
+                      forcedAssignment: true,
+                      timingConflict: uj.timingConflict
+                    });
+
+                    // Update current time for next job
+                    currentTimeMinutes = endTimeMinutes;
                   });
                 }
 

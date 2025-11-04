@@ -151,7 +151,8 @@ const greedyOptimize = (jobs, shiftStartTime, distanceMatrix, jobToIndex, strate
             windowEnd: job.timeframeEnd,
             windowEndMinutes: windowEnd,
             minutesLate: Math.round(minutesLate),
-            wouldArriveLate: estimatedArrival > windowEnd
+            wouldArriveLate: estimatedArrival > windowEnd,
+            travelTime: travelTime
           }
         };
       });
