@@ -92,9 +92,12 @@ const ConfirmModal = ({ show, onClose, onConfirm, onCancel, title, message, type
           <button
             onClick={() => {
               if (isConfirm && onConfirm) {
+                // Let onConfirm control what happens next (close modal or show another)
                 onConfirm();
+              } else {
+                // For simple alerts, just close
+                onClose();
               }
-              onClose();
             }}
             className={`btn ${type === 'error' ? 'btn-danger' : type === 'warning' ? 'btn-warning' : 'btn-primary'}`}
             style={{ minWidth: '80px' }}

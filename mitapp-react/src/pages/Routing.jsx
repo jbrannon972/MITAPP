@@ -1225,7 +1225,7 @@ const Routing = () => {
           `You are about to permanently delete:\n` +
           `• ${jobs.length} jobs\n` +
           `• ${Object.keys(routes).length} routes\n\n` +
-          `Click "Confirm" to proceed with deletion.`,
+          `Click "Delete" to proceed with deletion.`,
           'Final Confirmation',
           async () => {
             try {
@@ -1259,10 +1259,16 @@ const Routing = () => {
               showAlert('Error clearing data. Please try again.', 'Error', 'error');
             }
           },
-          'warning'
+          'error', // Red danger color for destructive action
+          null,
+          'Delete', // Confirm button text
+          'Cancel' // Cancel button text
         );
       },
-      'warning'
+      'warning', // Orange warning for first confirmation
+      null,
+      'Continue', // Confirm button text
+      'Cancel' // Cancel button text
     );
   };
 
