@@ -185,6 +185,62 @@ const HuddleInfoModal = ({ isOpen, onClose, selectedDate = new Date() }) => {
         }
       }
 
+      // Auto-populate recurring reminders
+      try {
+        const remindersDoc = await firebaseService.getDocument('hou_recurring_reminders', 'config');
+        const recurringReminders = remindersDoc?.reminders || [];
+
+        // Check which reminders apply to this date
+        const applicableReminders = recurringReminders
+          .filter(reminder => {
+            if (!reminder.active) return false;
+            const dayOfWeek = getDay(selectedDate);
+            if (reminder.frequency === 'weekly') {
+              return dayOfWeek === reminder.dayOfWeek;
+            } else if (reminder.frequency === 'monthly') {
+              const dayOfMonth = selectedDate.getDate();
+              return dayOfMonth === reminder.dayOfMonth;
+            }
+            return false;
+          })
+          .map(reminder => reminder.text)
+          .join('\n\n');
+
+        // If we have applicable reminders and no existing reminder content, add them
+        if (applicableReminders) {
+          if (!content) {
+            console.log('Creating new huddle with recurring reminders');
+            content = {
+              date: dateStr,
+              categories: {
+                announcements: { content: '', visible: true },
+                reminders: { content: applicableReminders, visible: true },
+                trainingTopic: { content: '', visible: true },
+                safetyTopic: { content: '', visible: true },
+                huddleTopic: { content: '', visible: true },
+                weekendStaffing: { content: '', visible: true }
+              }
+            };
+          } else if (!content.categories?.reminders?.content || content.categories.reminders.content.trim() === '') {
+            // If huddle exists but reminders are empty, populate them
+            console.log('Populating existing huddle with recurring reminders');
+            content = {
+              ...content,
+              categories: {
+                ...content.categories,
+                reminders: {
+                  ...content.categories?.reminders,
+                  content: applicableReminders,
+                  visible: true
+                }
+              }
+            };
+          }
+        }
+      } catch (error) {
+        console.error('Error loading recurring reminders:', error);
+      }
+
       setHuddleContent(content);
     } catch (error) {
       console.error('Error loading huddle data:', error);
