@@ -1846,7 +1846,6 @@ const Routing = () => {
           currentStepNumber={loadingState.currentStepNumber}
           showSteps={loadingState.showSteps}
         />
-      </div>
     </Layout>
   );
 };
