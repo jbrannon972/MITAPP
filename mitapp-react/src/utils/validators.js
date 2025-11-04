@@ -4,15 +4,45 @@
  */
 
 /**
- * Validate time format (HH:MM)
+ * Normalize time format from h:mm or hh:mm to HH:MM
+ * @param {string} timeStr - Time string (e.g., "9:00" or "09:00")
+ * @returns {string} - Normalized time in HH:MM format (e.g., "09:00")
+ */
+export const normalizeTimeFormat = (timeStr) => {
+  if (!timeStr || typeof timeStr !== 'string') return timeStr;
+
+  // Accept both h:mm and hh:mm formats
+  const timeRegex = /^(\d{1,2}):([0-5]\d)$/;
+  const match = timeStr.trim().match(timeRegex);
+
+  if (!match) return timeStr; // Return as-is if invalid format
+
+  const hours = parseInt(match[1], 10);
+  const minutes = match[2];
+
+  // Validate hour range
+  if (hours < 0 || hours > 23) return timeStr;
+
+  // Pad hours to 2 digits
+  return `${String(hours).padStart(2, '0')}:${minutes}`;
+};
+
+/**
+ * Validate time format (HH:MM or H:MM)
  * @param {string} timeStr - Time string to validate
  * @returns {boolean} - True if valid
  */
 export const isValidTimeFormat = (timeStr) => {
   if (!timeStr || typeof timeStr !== 'string') return false;
 
-  const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
-  return timeRegex.test(timeStr);
+  // Accept both h:mm (e.g., "9:00") and hh:mm (e.g., "09:00")
+  const timeRegex = /^(\d{1,2}):([0-5]\d)$/;
+  const match = timeStr.trim().match(timeRegex);
+
+  if (!match) return false;
+
+  const hours = parseInt(match[1], 10);
+  return hours >= 0 && hours <= 23;
 };
 
 /**
@@ -183,8 +213,8 @@ export const sanitizeJob = (job) => {
     id: job.id?.toString().trim() || '',
     customerName: job.customerName?.toString().trim() || '',
     address: job.address?.toString().trim() || '',
-    timeframeStart: job.timeframeStart?.toString().trim() || '',
-    timeframeEnd: job.timeframeEnd?.toString().trim() || '',
+    timeframeStart: normalizeTimeFormat(job.timeframeStart?.toString().trim() || ''),
+    timeframeEnd: normalizeTimeFormat(job.timeframeEnd?.toString().trim() || ''),
     duration: Number(job.duration) || 1,
     jobType: job.jobType?.toString().trim() || 'Other',
     zone: job.zone?.toString().trim() || '',
@@ -264,6 +294,7 @@ export default {
   validateRoute,
   sanitizeJob,
   isValidTimeFormat,
+  normalizeTimeFormat,
   isStartBeforeEnd,
   formatValidationErrors,
   checkJobSafety
