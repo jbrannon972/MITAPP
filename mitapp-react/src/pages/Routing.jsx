@@ -44,7 +44,7 @@ const Routing = () => {
   const [scheduleForDay, setScheduleForDay] = useState(null);
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [showJobsOptionsMenu, setShowJobsOptionsMenu] = useState(false);
-  const [modal, setModal] = useState({ show: false, title: '', message: '', type: 'info', onConfirm: null, onCancel: null });
+  const [modal, setModal] = useState({ show: false, title: '', message: '', type: 'info', onConfirm: null, onCancel: null, confirmText: 'OK', cancelText: 'Cancel' });
   const [techStartTimes, setTechStartTimes] = useState({}); // Store custom start times for techs (for late starts)
   const [companyMeetingMode, setCompanyMeetingMode] = useState(false); // All techs start at Conroe office at 9am
   const [loadingState, setLoadingState] = useState({
@@ -79,15 +79,15 @@ const Routing = () => {
 
   // Modal helper functions to replace alert/confirm
   const showAlert = (message, title = 'Notification', type = 'info') => {
-    setModal({ show: true, title, message, type, onConfirm: null, onCancel: null });
+    setModal({ show: true, title, message, type, onConfirm: null, onCancel: null, confirmText: 'OK', cancelText: 'Cancel' });
   };
 
-  const showConfirm = (message, title, onConfirm, type = 'question', onCancel = null) => {
-    setModal({ show: true, title, message, type, onConfirm, onCancel });
+  const showConfirm = (message, title, onConfirm, type = 'question', onCancel = null, confirmText = 'OK', cancelText = 'Cancel') => {
+    setModal({ show: true, title, message, type, onConfirm, onCancel, confirmText, cancelText });
   };
 
   const closeModal = () => {
-    setModal({ show: false, title: '', message: '', type: 'info', onConfirm: null, onCancel: null });
+    setModal({ show: false, title: '', message: '', type: 'info', onConfirm: null, onCancel: null, confirmText: 'OK', cancelText: 'Cancel' });
   };
 
   // Session health monitoring - detect stale connections
@@ -2048,6 +2048,8 @@ const Routing = () => {
           title={modal.title}
           message={modal.message}
           type={modal.type}
+          confirmText={modal.confirmText}
+          cancelText={modal.cancelText}
         />
 
         {/* Loading Modal with Progress */}

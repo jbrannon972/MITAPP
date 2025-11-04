@@ -1003,15 +1003,16 @@ const ManualMode = ({
             `${optimized.unassignableJobs.length} job(s) couldn't fit in their timeframe windows and were left unassigned:\n\n` +
             unassignableDetails +
             `\n\n` +
-            `These jobs remain on the map. You can:\n` +
+            `These jobs remain unassigned. What would you like to do?\n\n` +
             `• Click "Add Anyway" to force-add them to this route (they'll be late)\n` +
-            `• Try assigning them to a different tech\n` +
-            `• Adjust their timeframes\n` +
-            `• Manually drag them to this route later`,
+            `• Click "Skip" to leave them unassigned\n\n` +
+            `You can also manually drag them to routes later or assign to a different tech.`,
             'Some Jobs Skipped',
             forceAddSkippedJobs, // onConfirm callback
             'question',
-            null // onCancel
+            null, // onCancel
+            'Add Anyway', // confirmText
+            'Skip' // cancelText
           );
 
           return; // Already finalized, don't proceed to the next finalizeRouteAssignment
