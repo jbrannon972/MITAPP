@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, isPast, isFuture, isToday } from 'date-fns';
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, isPast, isFuture, isToday, getDay, nextSaturday, nextSunday } from 'date-fns';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import firebaseService from '../../services/firebaseService';
 import { useData } from '../../contexts/DataContext';
 
@@ -71,10 +73,55 @@ const HuddleCalendar = () => {
     }
   };
 
-  const handleDayClick = (day) => {
+  const handleDayClick = async (day) => {
     const dateStr = format(day, 'yyyy-MM-dd');
-    const huddle = huddleData[dateStr];
+    let huddle = huddleData[dateStr];
     const attendance = attendanceData[dateStr] || [];
+
+    // Auto-populate weekend schedule for Thursdays
+    if (getDay(day) === 4) { // Thursday
+      const weekend = {
+        saturday: nextSaturday(day),
+        sunday: nextSunday(day)
+      };
+
+      // Load weekend schedule from Firebase
+      const saturdayStr = format(weekend.saturday, 'yyyy-MM-dd');
+      const scheduleDoc = await firebaseService.getDocument('hou_weekend_schedule', saturdayStr);
+
+      // If we have a weekend schedule, populate it
+      if (scheduleDoc && scheduleDoc.schedule) {
+        const formattedContent = formatWeekendSchedule(scheduleDoc.schedule, weekend);
+
+        // If there's no huddle content yet, create it with the weekend schedule
+        if (!huddle) {
+          huddle = {
+            date: dateStr,
+            categories: {
+              announcements: { content: '', visible: true },
+              reminders: { content: '', visible: true },
+              trainingTopic: { content: '', visible: true },
+              safetyTopic: { content: '', visible: true },
+              huddleTopic: { content: '', visible: true },
+              weekendStaffing: { content: formattedContent, visible: true }
+            }
+          };
+        } else if (!huddle.categories?.weekendStaffing?.content || huddle.categories.weekendStaffing.content.trim() === '') {
+          // If huddle exists but weekend staffing is empty, populate it
+          huddle = {
+            ...huddle,
+            categories: {
+              ...huddle.categories,
+              weekendStaffing: {
+                ...huddle.categories?.weekendStaffing,
+                content: formattedContent,
+                visible: true
+              }
+            }
+          };
+        }
+      }
+    }
 
     setSelectedHuddle({
       date: day,
@@ -85,6 +132,43 @@ const HuddleCalendar = () => {
       isFuture: isFuture(day) || isToday(day)
     });
     setShowModal(true);
+  };
+
+  // Format weekend schedule as markdown (same as HuddleManager)
+  const formatWeekendSchedule = (schedule, weekend) => {
+    let content = `## Weekend Schedule\n\n`;
+    content += `📅 ${format(weekend.saturday, 'EEEE, MMMM d, yyyy')}\n\n`;
+
+    if (schedule.saturday.staff && schedule.saturday.staff.length > 0) {
+      content += `**Staff on duty:**\n`;
+      schedule.saturday.staff.forEach(person => {
+        content += `- ${person}\n`;
+      });
+    } else {
+      content += `*No staff scheduled*\n`;
+    }
+
+    if (schedule.saturday.notes) {
+      content += `\n**Notes:** ${schedule.saturday.notes}\n`;
+    }
+
+    content += `\n---\n\n`;
+    content += `📅 ${format(weekend.sunday, 'EEEE, MMMM d, yyyy')}\n\n`;
+
+    if (schedule.sunday.staff && schedule.sunday.staff.length > 0) {
+      content += `**Staff on duty:**\n`;
+      schedule.sunday.staff.forEach(person => {
+        content += `- ${person}\n`;
+      });
+    } else {
+      content += `*No staff scheduled*\n`;
+    }
+
+    if (schedule.sunday.notes) {
+      content += `\n**Notes:** ${schedule.sunday.notes}\n`;
+    }
+
+    return content;
   };
 
   const closeModal = () => {
@@ -190,16 +274,51 @@ const HuddleDetailModal = ({ huddle, onClose, onRefresh, staffingData }) => {
 
   const renderContent = () => {
     if (isFuture) {
-      // Future huddle - show content for editing or indicate no content
+      // Future huddle - show preview of content
       return (
         <div className="huddle-detail-content">
-          <h3>Huddle Content</h3>
-          {huddleContent ? (
-            <div className="content-summary">
-              <p><strong>Status:</strong> <span className="status-badge success">Content Ready</span></p>
-              <p className="hint">
-                <i className="fas fa-info-circle"></i> Go to "Huddle Info" tab to edit this huddle's content
-              </p>
+          <div style={{ marginBottom: '20px', padding: '12px', backgroundColor: 'var(--background-secondary)', borderRadius: '8px' }}>
+            <p style={{ margin: 0, fontSize: '14px' }}>
+              <i className="fas fa-info-circle"></i> Preview of huddle content. Go to "Huddle Info" tab to edit.
+            </p>
+          </div>
+
+          {huddleContent && huddleContent.categories ? (
+            <div className="huddle-content-preview">
+              {Object.entries(huddleContent.categories).map(([key, category]) => {
+                if (category.visible && category.content && category.content.trim()) {
+                  return (
+                    <div key={key} style={{ marginBottom: '24px', padding: '16px', border: '1px solid var(--border-color)', borderRadius: '8px' }}>
+                      <h4 style={{ marginTop: 0, marginBottom: '12px', color: 'var(--primary-color)' }}>
+                        {getCategoryIcon(key)} {getCategoryTitle(key)}
+                      </h4>
+                      <div className="markdown-content" style={{ fontSize: '14px', lineHeight: '1.6' }}>
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                          {category.content}
+                        </ReactMarkdown>
+                      </div>
+                    </div>
+                  );
+                }
+                return null;
+              })}
+
+              {huddleContent.referenceLinks && huddleContent.referenceLinks.length > 0 && (
+                <div style={{ marginBottom: '16px', padding: '16px', border: '1px solid var(--border-color)', borderRadius: '8px' }}>
+                  <h4 style={{ marginTop: 0, marginBottom: '12px', color: 'var(--primary-color)' }}>
+                    <i className="fas fa-link"></i> Reference Links
+                  </h4>
+                  <ul style={{ margin: 0, paddingLeft: '20px' }}>
+                    {huddleContent.referenceLinks.map((link, idx) => (
+                      <li key={idx}>
+                        <a href={link.url} target="_blank" rel="noopener noreferrer">
+                          {link.title}
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
           ) : (
             <div className="content-summary">
@@ -347,6 +466,19 @@ const HuddleDetailModal = ({ huddle, onClose, onRefresh, staffingData }) => {
       </div>
     </div>
   );
+};
+
+// Helper function to get category icons
+const getCategoryIcon = (key) => {
+  const icons = {
+    announcements: '📢',
+    reminders: '🔔',
+    trainingTopic: '📚',
+    safetyTopic: '⚠️',
+    huddleTopic: '💬',
+    weekendStaffing: '📅'
+  };
+  return icons[key] || '📋';
 };
 
 // Helper function to get readable category titles
