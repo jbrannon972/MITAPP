@@ -171,6 +171,16 @@ const Routing = () => {
       handleListenerError
     );
 
+    // Subscribe to real-time techStartTimes updates with error handling
+    const techStartTimesUnsubscribe = firebaseService.subscribeToDocument(
+      'hou_routing',
+      `techStartTimes_${selectedDate}`,
+      (data) => {
+        setTechStartTimes(data?.techStartTimes || {});
+      },
+      handleListenerError
+    );
+
     // Set presence to show this user is viewing routes
     const user = {
       id: currentUser.uid,
@@ -195,6 +205,7 @@ const Routing = () => {
     return () => {
       jobsUnsubscribe();
       routesUnsubscribe();
+      techStartTimesUnsubscribe();
       presenceUnsubscribe();
       firebaseService.removePresence('routing', selectedDate, currentUser.uid);
 
@@ -670,6 +681,36 @@ const Routing = () => {
   const saveJobsNow = async (jobsData) => {
     console.log('💾 Saving jobs immediately (no debounce)...');
     await saveJobsImmediate(jobsData, selectedDate, companyMeetingMode, currentUser);
+  };
+
+  // TechStartTimes save functions
+  const saveTechStartTimesImmediate = async (startTimesData, date) => {
+    try {
+      console.log('📤 Saving tech start times to Firebase...');
+      await firebaseService.saveDocument('hou_routing', `techStartTimes_${date}`, {
+        techStartTimes: startTimesData,
+        date: date,
+        lastUpdated: new Date().toISOString()
+      });
+      console.log('✅ Tech start times saved to Firebase');
+    } catch (error) {
+      console.error('Error saving tech start times:', error);
+      showAlert('Error saving tech start times. Please try again.', 'Error', 'error');
+    }
+  };
+
+  // Debounced save for tech start times
+  const saveTechStartTimesDebounced = useRef(
+    debounce((startTimesData, date) => {
+      saveTechStartTimesImmediate(startTimesData, date);
+    }, 1000)
+  ).current;
+
+  // Wrapper for setTechStartTimes that also saves to Firestore
+  const updateTechStartTimes = (newStartTimes) => {
+    setTechStartTimes(newStartTimes);
+    console.log('⏳ Queuing tech start times save (debounced)...');
+    saveTechStartTimesDebounced(newStartTimes, selectedDate);
   };
 
   // Memoized tech list calculation (performance optimization)
@@ -1682,7 +1723,7 @@ const Routing = () => {
         showAlert={showAlert}
         showConfirm={showConfirm}
         techStartTimes={techStartTimes}
-        setTechStartTimes={setTechStartTimes}
+        setTechStartTimes={updateTechStartTimes}
         companyMeetingMode={companyMeetingMode}
         onToggleCompanyMeetingMode={toggleCompanyMeetingMode}
         isFullScreen={isFullScreen}
@@ -1711,7 +1752,7 @@ const Routing = () => {
         showAlert={showAlert}
         showConfirm={showConfirm}
         techStartTimes={techStartTimes}
-        setTechStartTimes={setTechStartTimes}
+        setTechStartTimes={updateTechStartTimes}
         companyMeetingMode={companyMeetingMode}
         onToggleCompanyMeetingMode={toggleCompanyMeetingMode}
         isFullScreen={isFullScreen}

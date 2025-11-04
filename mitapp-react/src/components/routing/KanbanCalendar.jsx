@@ -18,6 +18,7 @@ const KanbanCalendar = ({
   onUpdateRoutes,
   onUpdateJobs,
   selectedDate,
+  activeUsers = [],
   scheduleForDay,
   showAlert,
   showConfirm,
@@ -1637,6 +1638,70 @@ const KanbanCalendar = ({
             <span style={{ fontSize: '11px', color: 'var(--warning-color)' }}>
               <i className="fas fa-spinner fa-spin"></i> Calculating...
             </span>
+          )}
+
+          {/* Active Users - Presence Indicators */}
+          {activeUsers && activeUsers.length > 0 && (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '3px 8px',
+              backgroundColor: 'var(--info-bg)',
+              borderRadius: '4px',
+              fontSize: '11px',
+              border: '1px solid var(--info-color)',
+              color: 'var(--text-primary)'
+            }}>
+              <i className="fas fa-users" style={{ color: 'var(--info-color)', fontSize: '10px' }}></i>
+              <span style={{ fontWeight: '500' }}>
+                {activeUsers.length} {activeUsers.length === 1 ? 'other user' : 'others'} viewing
+              </span>
+              <div style={{ display: 'flex', gap: '4px', marginLeft: '4px' }}>
+                {activeUsers.slice(0, 3).map((user, idx) => (
+                  <div
+                    key={idx}
+                    title={user.userName || 'Anonymous'}
+                    style={{
+                      width: '20px',
+                      height: '20px',
+                      borderRadius: '50%',
+                      backgroundColor: 'var(--info-color)',
+                      color: 'white',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '9px',
+                      fontWeight: '600',
+                      textTransform: 'uppercase',
+                      border: '2px solid white'
+                    }}
+                  >
+                    {(user.userName || 'A').charAt(0)}
+                  </div>
+                ))}
+                {activeUsers.length > 3 && (
+                  <div
+                    style={{
+                      width: '20px',
+                      height: '20px',
+                      borderRadius: '50%',
+                      backgroundColor: '#6b7280',
+                      color: 'white',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '8px',
+                      fontWeight: '600',
+                      border: '2px solid white'
+                    }}
+                    title={`${activeUsers.length - 3} more users`}
+                  >
+                    +{activeUsers.length - 3}
+                  </div>
+                )}
+              </div>
+            </div>
           )}
 
           {/* Options Menu Button */}
