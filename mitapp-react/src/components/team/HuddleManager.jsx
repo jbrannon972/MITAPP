@@ -522,7 +522,10 @@ const HuddleManager = () => {
         <div className="header-actions">
           <button
             className="btn btn-primary"
-            onClick={() => setShowRecurringRemindersModal(true)}
+            onClick={() => {
+              console.log('Recurring Reminders button clicked!');
+              setShowRecurringRemindersModal(true);
+            }}
             title="Manage recurring reminders"
           >
             <i className="fas fa-bell"></i> Recurring Reminders
@@ -699,6 +702,10 @@ const HuddleManager = () => {
       )}
 
       {/* Recurring Reminders Modal */}
+      {(() => {
+        console.log('Modal render check - showRecurringRemindersModal:', showRecurringRemindersModal);
+        return null;
+      })()}
       {showRecurringRemindersModal && (
         <div className="modal-overlay" onClick={() => setShowRecurringRemindersModal(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '800px', maxHeight: '90vh', overflowY: 'auto' }}>
