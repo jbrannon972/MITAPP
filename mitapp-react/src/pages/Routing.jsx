@@ -1,6 +1,7 @@
 /**
  * Routing Page - Main routing and job assignment interface
  * Features: Company Meeting Mode for all-staff meetings at Conroe office
+ * Updated: 2025-11-04 - Added presence indicators and persisted tech start times
  */
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import Layout from '../components/common/Layout';
