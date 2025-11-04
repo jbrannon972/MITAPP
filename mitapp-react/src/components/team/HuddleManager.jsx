@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { format, addDays } from 'date-fns';
+import { format, addDays, getDay, nextSaturday, nextSunday } from 'date-fns';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import firebaseService from '../../services/firebaseService';
@@ -23,9 +23,114 @@ const HuddleManager = () => {
   const [saving, setSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState(null);
   const [importing, setImporting] = useState(false);
+  const [showWeekendScheduleModal, setShowWeekendScheduleModal] = useState(false);
+  const [weekendSchedule, setWeekendSchedule] = useState({
+    saturday: { staff: [], notes: '' },
+    sunday: { staff: [], notes: '' }
+  });
   const fileInputRef = useRef(null);
 
   const dateStr = format(selectedDate, 'yyyy-MM-dd');
+
+  // Check if the selected date is Thursday
+  const isThursday = () => {
+    return getDay(selectedDate) === 4; // 4 = Thursday
+  };
+
+  // Get the upcoming weekend dates (Saturday and Sunday)
+  const getUpcomingWeekend = () => {
+    const saturday = nextSaturday(selectedDate);
+    const sunday = nextSunday(selectedDate);
+    return { saturday, sunday };
+  };
+
+  // Format weekend schedule as markdown
+  const formatWeekendSchedule = (schedule, weekend) => {
+    let content = `## Weekend Schedule\n\n`;
+    content += `📅 ${format(weekend.saturday, 'EEEE, MMMM d, yyyy')}\n\n`;
+
+    if (schedule.saturday.staff && schedule.saturday.staff.length > 0) {
+      content += `**Staff on duty:**\n`;
+      schedule.saturday.staff.forEach(person => {
+        content += `- ${person}\n`;
+      });
+    } else {
+      content += `*No staff scheduled*\n`;
+    }
+
+    if (schedule.saturday.notes) {
+      content += `\n**Notes:** ${schedule.saturday.notes}\n`;
+    }
+
+    content += `\n---\n\n`;
+    content += `📅 ${format(weekend.sunday, 'EEEE, MMMM d, yyyy')}\n\n`;
+
+    if (schedule.sunday.staff && schedule.sunday.staff.length > 0) {
+      content += `**Staff on duty:**\n`;
+      schedule.sunday.staff.forEach(person => {
+        content += `- ${person}\n`;
+      });
+    } else {
+      content += `*No staff scheduled*\n`;
+    }
+
+    if (schedule.sunday.notes) {
+      content += `\n**Notes:** ${schedule.sunday.notes}\n`;
+    }
+
+    return content;
+  };
+
+  // Load weekend schedule from Firebase
+  const loadWeekendSchedule = async (weekend) => {
+    try {
+      const saturdayStr = format(weekend.saturday, 'yyyy-MM-dd');
+      const scheduleDoc = await firebaseService.getDocument('hou_weekend_schedule', saturdayStr);
+
+      if (scheduleDoc) {
+        setWeekendSchedule(scheduleDoc.schedule);
+        return scheduleDoc.schedule;
+      } else {
+        // Return empty schedule
+        return {
+          saturday: { staff: [], notes: '' },
+          sunday: { staff: [], notes: '' }
+        };
+      }
+    } catch (error) {
+      console.error('Error loading weekend schedule:', error);
+      return {
+        saturday: { staff: [], notes: '' },
+        sunday: { staff: [], notes: '' }
+      };
+    }
+  };
+
+  // Save weekend schedule to Firebase
+  const saveWeekendSchedule = async () => {
+    try {
+      const weekend = getUpcomingWeekend();
+      const saturdayStr = format(weekend.saturday, 'yyyy-MM-dd');
+
+      await firebaseService.saveDocument('hou_weekend_schedule', saturdayStr, {
+        weekendStart: saturdayStr,
+        schedule: weekendSchedule,
+        updatedBy: currentUser.userId,
+        updatedByName: currentUser.username,
+        updatedAt: new Date().toISOString()
+      });
+
+      // Auto-populate the weekend staffing content
+      const formattedContent = formatWeekendSchedule(weekendSchedule, weekend);
+      updateContent('weekendStaffing', formattedContent);
+
+      setShowWeekendScheduleModal(false);
+      alert('Weekend schedule saved successfully!');
+    } catch (error) {
+      console.error('Error saving weekend schedule:', error);
+      alert('Error saving weekend schedule. Please try again.');
+    }
+  };
 
   // Load huddle content when date changes
   useEffect(() => {
@@ -51,6 +156,24 @@ const HuddleManager = () => {
           weekendStaffing: { content: '', visible: true }
         });
         setReferenceLinks([]);
+      }
+
+      // RECURRING TOPIC: Auto-populate weekend schedule on Thursdays
+      if (isThursday()) {
+        const weekend = getUpcomingWeekend();
+        const schedule = await loadWeekendSchedule(weekend);
+
+        // Only auto-populate if there's no existing content or if the content is empty
+        if (!content || !content.categories?.weekendStaffing?.content || content.categories.weekendStaffing.content.trim() === '') {
+          const formattedContent = formatWeekendSchedule(schedule, weekend);
+          setHuddleContent(prev => ({
+            ...prev,
+            weekendStaffing: {
+              ...prev.weekendStaffing,
+              content: formattedContent
+            }
+          }));
+        }
       }
     } catch (error) {
       console.error('Error loading huddle content:', error);
@@ -154,6 +277,53 @@ const HuddleManager = () => {
     setReferenceLinks(referenceLinks.filter((_, i) => i !== index));
   };
 
+  // Weekend Schedule Management Functions
+  const addStaffMember = (day) => {
+    setWeekendSchedule(prev => ({
+      ...prev,
+      [day]: {
+        ...prev[day],
+        staff: [...prev[day].staff, '']
+      }
+    }));
+  };
+
+  const updateStaffMember = (day, index, value) => {
+    setWeekendSchedule(prev => ({
+      ...prev,
+      [day]: {
+        ...prev[day],
+        staff: prev[day].staff.map((s, i) => i === index ? value : s)
+      }
+    }));
+  };
+
+  const removeStaffMember = (day, index) => {
+    setWeekendSchedule(prev => ({
+      ...prev,
+      [day]: {
+        ...prev[day],
+        staff: prev[day].staff.filter((_, i) => i !== index)
+      }
+    }));
+  };
+
+  const updateNotes = (day, value) => {
+    setWeekendSchedule(prev => ({
+      ...prev,
+      [day]: {
+        ...prev[day],
+        notes: value
+      }
+    }));
+  };
+
+  const openWeekendScheduleModal = async () => {
+    const weekend = getUpcomingWeekend();
+    await loadWeekendSchedule(weekend);
+    setShowWeekendScheduleModal(true);
+  };
+
   // CSV Import Functions
   const handleCsvImport = async (event) => {
     const file = event.target.files[0];
@@ -225,6 +395,13 @@ const HuddleManager = () => {
           </p>
         </div>
         <div className="header-actions">
+          <button
+            className="btn btn-primary"
+            onClick={openWeekendScheduleModal}
+            title="Manage weekend staffing schedule"
+          >
+            <i className="fas fa-calendar-week"></i> Manage Weekend Schedule
+          </button>
           <button
             className="btn btn-secondary"
             onClick={downloadCsvTemplate}
@@ -394,6 +571,148 @@ const HuddleManager = () => {
             </button>
           </div>
         </>
+      )}
+
+      {/* Weekend Schedule Modal */}
+      {showWeekendScheduleModal && (
+        <div className="modal-overlay" onClick={() => setShowWeekendScheduleModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '700px', maxHeight: '90vh', overflowY: 'auto' }}>
+            <div className="modal-header">
+              <h2><i className="fas fa-calendar-week"></i> Manage Weekend Schedule</h2>
+              <button className="modal-close" onClick={() => setShowWeekendScheduleModal(false)}>×</button>
+            </div>
+
+            <div className="modal-body">
+              <p style={{ marginBottom: '20px', color: 'var(--text-secondary)' }}>
+                Set the staff schedule for the upcoming weekend. This will automatically populate the "Weekend Staffing" section in Thursday huddles.
+              </p>
+
+              {(() => {
+                const weekend = getUpcomingWeekend();
+                return (
+                  <div style={{ fontSize: '14px', fontWeight: '600', marginBottom: '20px', padding: '12px', backgroundColor: 'var(--background-secondary)', borderRadius: '8px' }}>
+                    <i className="fas fa-info-circle"></i> Upcoming Weekend: {format(weekend.saturday, 'MMM d')} - {format(weekend.sunday, 'MMM d, yyyy')}
+                  </div>
+                );
+              })()}
+
+              {/* Saturday Schedule */}
+              <div style={{ marginBottom: '30px', padding: '20px', border: '2px solid var(--border-color)', borderRadius: '8px' }}>
+                <h3 style={{ marginBottom: '15px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <i className="fas fa-calendar-day" style={{ color: 'var(--primary-color)' }}></i>
+                  Saturday - {format(getUpcomingWeekend().saturday, 'MMMM d, yyyy')}
+                </h3>
+
+                <div style={{ marginBottom: '15px' }}>
+                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600' }}>
+                    Staff on Duty:
+                  </label>
+                  {weekendSchedule.saturday.staff.map((staff, index) => (
+                    <div key={index} style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+                      <input
+                        type="text"
+                        value={staff}
+                        onChange={(e) => updateStaffMember('saturday', index, e.target.value)}
+                        placeholder="Enter staff name"
+                        style={{ flex: 1, padding: '8px', border: '1px solid var(--border-color)', borderRadius: '4px' }}
+                      />
+                      <button
+                        className="btn btn-danger btn-sm"
+                        onClick={() => removeStaffMember('saturday', index)}
+                      >
+                        <i className="fas fa-trash"></i>
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    className="btn btn-secondary btn-sm"
+                    onClick={() => addStaffMember('saturday')}
+                    style={{ marginTop: '8px' }}
+                  >
+                    <i className="fas fa-plus"></i> Add Staff Member
+                  </button>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600' }}>
+                    Notes:
+                  </label>
+                  <textarea
+                    value={weekendSchedule.saturday.notes}
+                    onChange={(e) => updateNotes('saturday', e.target.value)}
+                    placeholder="Add any notes or special instructions for Saturday..."
+                    style={{ width: '100%', padding: '8px', border: '1px solid var(--border-color)', borderRadius: '4px', minHeight: '60px' }}
+                  />
+                </div>
+              </div>
+
+              {/* Sunday Schedule */}
+              <div style={{ marginBottom: '20px', padding: '20px', border: '2px solid var(--border-color)', borderRadius: '8px' }}>
+                <h3 style={{ marginBottom: '15px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <i className="fas fa-calendar-day" style={{ color: 'var(--primary-color)' }}></i>
+                  Sunday - {format(getUpcomingWeekend().sunday, 'MMMM d, yyyy')}
+                </h3>
+
+                <div style={{ marginBottom: '15px' }}>
+                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600' }}>
+                    Staff on Duty:
+                  </label>
+                  {weekendSchedule.sunday.staff.map((staff, index) => (
+                    <div key={index} style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+                      <input
+                        type="text"
+                        value={staff}
+                        onChange={(e) => updateStaffMember('sunday', index, e.target.value)}
+                        placeholder="Enter staff name"
+                        style={{ flex: 1, padding: '8px', border: '1px solid var(--border-color)', borderRadius: '4px' }}
+                      />
+                      <button
+                        className="btn btn-danger btn-sm"
+                        onClick={() => removeStaffMember('sunday', index)}
+                      >
+                        <i className="fas fa-trash"></i>
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    className="btn btn-secondary btn-sm"
+                    onClick={() => addStaffMember('sunday')}
+                    style={{ marginTop: '8px' }}
+                  >
+                    <i className="fas fa-plus"></i> Add Staff Member
+                  </button>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600' }}>
+                    Notes:
+                  </label>
+                  <textarea
+                    value={weekendSchedule.sunday.notes}
+                    onChange={(e) => updateNotes('sunday', e.target.value)}
+                    placeholder="Add any notes or special instructions for Sunday..."
+                    style={{ width: '100%', padding: '8px', border: '1px solid var(--border-color)', borderRadius: '4px', minHeight: '60px' }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="modal-footer">
+              <button
+                className="btn btn-secondary"
+                onClick={() => setShowWeekendScheduleModal(false)}
+              >
+                Cancel
+              </button>
+              <button
+                className="btn btn-primary"
+                onClick={saveWeekendSchedule}
+              >
+                <i className="fas fa-save"></i> Save Weekend Schedule
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
