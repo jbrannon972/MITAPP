@@ -210,15 +210,12 @@ const HuddleCalendar = () => {
     if (schedule.saturday.staff && schedule.saturday.staff.length > 0) {
       content += `**Staff on duty:**\n`;
       schedule.saturday.staff.forEach(person => {
-        // Build the staff line with name, zone/office tags, and hours
+        // Build the staff line with name, zone tag, and hours
         let line = `- ${person.name}`;
 
-        // Add zone or office tag in parentheses
-        const tags = [];
-        if (person.zone) tags.push(person.zone);
-        if (person.office) tags.push(person.office);
-        if (tags.length > 0) {
-          line += ` (${tags.join(', ')})`;
+        // Add zone tag in parentheses
+        if (person.zone) {
+          line += ` (${person.zone})`;
         }
 
         // Add hours if available
@@ -242,15 +239,12 @@ const HuddleCalendar = () => {
     if (schedule.sunday.staff && schedule.sunday.staff.length > 0) {
       content += `**Staff on duty:**\n`;
       schedule.sunday.staff.forEach(person => {
-        // Build the staff line with name, zone/office tags, and hours
+        // Build the staff line with name, zone tag, and hours
         let line = `- ${person.name}`;
 
-        // Add zone or office tag in parentheses
-        const tags = [];
-        if (person.zone) tags.push(person.zone);
-        if (person.office) tags.push(person.office);
-        if (tags.length > 0) {
-          line += ` (${tags.join(', ')})`;
+        // Add zone tag in parentheses
+        if (person.zone) {
+          line += ` (${person.zone})`;
         }
 
         // Add hours if available

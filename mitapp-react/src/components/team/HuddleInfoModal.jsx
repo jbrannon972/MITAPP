@@ -1,15 +1,16 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useData } from '../../contexts/DataContext';
-import { format } from 'date-fns';
+import { format, getDay, nextSaturday, nextSunday } from 'date-fns';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import firebaseService from '../../services/firebaseService';
 import { getMissedHuddlesForZone } from '../../services/huddleTrackingService';
+import { getCalculatedScheduleForDay } from '../../utils/calendarManager';
 
 const HuddleInfoModal = ({ isOpen, onClose, selectedDate = new Date() }) => {
   const { currentUser } = useAuth();
-  const { staffingData } = useData();
+  const { staffingData, unifiedTechnicianData } = useData();
 
   // Workflow states: 'content', 'attendance', 'coverage'
   const [workflowStep, setWorkflowStep] = useState('content');
@@ -70,13 +71,189 @@ const HuddleInfoModal = ({ isOpen, onClose, selectedDate = new Date() }) => {
   const loadHuddleData = async () => {
     setLoading(true);
     try {
-      const content = await firebaseService.getDocument('hou_huddle_content', dateStr);
+      let content = await firebaseService.getDocument('hou_huddle_content', dateStr);
+
+      // Auto-populate weekend schedule for Thursdays
+      if (getDay(selectedDate) === 4) { // Thursday
+        console.log('📅 Detected Thursday:', dateStr);
+        const weekend = {
+          saturday: nextSaturday(selectedDate),
+          sunday: nextSunday(selectedDate)
+        };
+
+        try {
+          // Load weekend schedule from calendar data
+          console.log('🔍 Loading weekend schedule from calendar...');
+
+          // Get month/year for Saturday
+          const saturdayMonth = weekend.saturday.getMonth();
+          const saturdayYear = weekend.saturday.getFullYear();
+
+          // Get month/year for Sunday (might be different month)
+          const sundayMonth = weekend.sunday.getMonth();
+          const sundayYear = weekend.sunday.getFullYear();
+
+          // Load schedule data for both months
+          const saturdayMonthSchedules = await firebaseService.getScheduleDataForMonth(saturdayYear, saturdayMonth);
+          const sundayMonthSchedules = saturdayMonth === sundayMonth
+            ? saturdayMonthSchedules
+            : await firebaseService.getScheduleDataForMonth(sundayYear, sundayMonth);
+
+          console.log('📅 Loaded schedule data for months');
+
+          // Get calculated schedule for Saturday
+          const saturdaySchedule = getCalculatedScheduleForDay(weekend.saturday, saturdayMonthSchedules, unifiedTechnicianData);
+          const saturdayWorking = saturdaySchedule.staff.filter(s =>
+            s.status === 'on' || (s.hours && s.hours.trim() !== '')
+          ).map(s => ({
+            name: s.name,
+            hours: s.hours || '',
+            zone: s.zone || '',
+            office: s.office || ''
+          }));
+
+          console.log('🗓️ Saturday working:', saturdayWorking);
+
+          // Get calculated schedule for Sunday
+          const sundaySchedule = getCalculatedScheduleForDay(weekend.sunday, sundayMonthSchedules, unifiedTechnicianData);
+          const sundayWorking = sundaySchedule.staff.filter(s =>
+            s.status === 'on' || (s.hours && s.hours.trim() !== '')
+          ).map(s => ({
+            name: s.name,
+            hours: s.hours || '',
+            zone: s.zone || '',
+            office: s.office || ''
+          }));
+
+          console.log('🗓️ Sunday working:', sundayWorking);
+
+          const schedule = {
+            saturday: {
+              staff: saturdayWorking,
+              notes: saturdaySchedule.notes || ''
+            },
+            sunday: {
+              staff: sundayWorking,
+              notes: sundaySchedule.notes || ''
+            }
+          };
+
+          console.log('📦 Weekend schedule data:', schedule);
+
+          // If we have staff scheduled, populate it
+          if (schedule.saturday.staff.length > 0 || schedule.sunday.staff.length > 0) {
+            console.log('✅ Found weekend schedule, formatting...');
+            const formattedContent = formatWeekendSchedule(schedule, weekend);
+            console.log('📝 Formatted content:', formattedContent);
+
+            // If there's no huddle content yet, create it with the weekend schedule
+            if (!content) {
+              console.log('Creating new huddle with weekend schedule');
+              content = {
+                date: dateStr,
+                categories: {
+                  announcements: { content: '', visible: true },
+                  reminders: { content: '', visible: true },
+                  trainingTopic: { content: '', visible: true },
+                  safetyTopic: { content: '', visible: true },
+                  huddleTopic: { content: '', visible: true },
+                  weekendStaffing: { content: formattedContent, visible: true }
+                }
+              };
+            } else if (!content.categories?.weekendStaffing?.content || content.categories.weekendStaffing.content.trim() === '') {
+              // If huddle exists but weekend staffing is empty, populate it
+              console.log('Populating existing huddle with weekend schedule');
+              content = {
+                ...content,
+                categories: {
+                  ...content.categories,
+                  weekendStaffing: {
+                    ...content.categories?.weekendStaffing,
+                    content: formattedContent,
+                    visible: true
+                  }
+                }
+              };
+            } else {
+              console.log('Huddle already has weekend staffing content, skipping');
+            }
+          } else {
+            console.log('⚠️ No staff scheduled for weekend');
+          }
+        } catch (error) {
+          console.error('Error loading weekend schedule from calendar:', error);
+        }
+      }
+
       setHuddleContent(content);
     } catch (error) {
       console.error('Error loading huddle data:', error);
     } finally {
       setLoading(false);
     }
+  };
+
+  // Format weekend schedule as markdown
+  const formatWeekendSchedule = (schedule, weekend) => {
+    let content = `## Weekend Schedule\n\n`;
+    content += `📅 ${format(weekend.saturday, 'EEEE, MMMM d, yyyy')}\n\n`;
+
+    if (schedule.saturday.staff && schedule.saturday.staff.length > 0) {
+      content += `**Staff on duty:**\n`;
+      schedule.saturday.staff.forEach(person => {
+        // Build the staff line with name, zone tag, and hours
+        let line = `- ${person.name}`;
+
+        // Add zone tag in parentheses
+        if (person.zone) {
+          line += ` (${person.zone})`;
+        }
+
+        // Add hours if available
+        if (person.hours) {
+          line += ` - ${person.hours}`;
+        }
+
+        content += `${line}\n`;
+      });
+    } else {
+      content += `*No staff scheduled*\n`;
+    }
+
+    if (schedule.saturday.notes) {
+      content += `\n**Notes:** ${schedule.saturday.notes}\n`;
+    }
+
+    content += `\n---\n\n`;
+    content += `📅 ${format(weekend.sunday, 'EEEE, MMMM d, yyyy')}\n\n`;
+
+    if (schedule.sunday.staff && schedule.sunday.staff.length > 0) {
+      content += `**Staff on duty:**\n`;
+      schedule.sunday.staff.forEach(person => {
+        // Build the staff line with name, zone tag, and hours
+        let line = `- ${person.name}`;
+
+        // Add zone tag in parentheses
+        if (person.zone) {
+          line += ` (${person.zone})`;
+        }
+
+        // Add hours if available
+        if (person.hours) {
+          line += ` - ${person.hours}`;
+        }
+
+        content += `${line}\n`;
+      });
+    } else {
+      content += `*No staff scheduled*\n`;
+    }
+
+    if (schedule.sunday.notes) {
+      content += `\n**Notes:** ${schedule.sunday.notes}\n`;
+    }
+
+    return content;
   };
 
   const handleHuddleComplete = () => {
