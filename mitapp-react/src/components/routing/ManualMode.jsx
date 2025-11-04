@@ -1068,69 +1068,14 @@ const ManualMode = ({
         return;  // Wait for modal completion
       }
 
-      // OPTIMISTIC UI UPDATE: Show jobs immediately on tech's route
-      const tempJobsWithPlaceholderTimes = routeJobs.map((job, idx) => ({
-        ...job,
-        startTime: job.startTime || job.timeframeStart || '09:00',
-        endTime: job.endTime || job.timeframeEnd || '17:00',
-        assignedTech: targetTechId,
-        status: 'assigned'
-      }));
-
-      // Get existing jobs for this tech
-      const existingJobs = routes[targetTechId]?.jobs?.filter(
-        j => !routeJobs.some(rj => rj.id === j.id)
-      ) || [];
-
-      // Update routes immediately
-      const tempUpdatedRoutes = { ...routes };
-
-      // Remove from source tech
-      if (fromTechId && tempUpdatedRoutes[fromTechId]) {
-        tempUpdatedRoutes[fromTechId] = {
-          ...tempUpdatedRoutes[fromTechId],
-          jobs: tempUpdatedRoutes[fromTechId].jobs.filter(
-            j => !routeJobs.some(rj => rj.id === j.id)
-          )
-        };
-      }
-
-      // Add to target tech
-      if (!tempUpdatedRoutes[targetTechId]) {
-        tempUpdatedRoutes[targetTechId] = {
-          tech: targetTech,
-          jobs: tempJobsWithPlaceholderTimes
-        };
-      } else {
-        tempUpdatedRoutes[targetTechId] = {
-          ...tempUpdatedRoutes[targetTechId],
-          jobs: [...existingJobs, ...tempJobsWithPlaceholderTimes]
-        };
-      }
-
-      // Update jobs state
-      const tempUpdatedJobs = jobs.map(job => {
-        const matchingRouteJob = routeJobs.find(rj => rj.id === job.id);
-        if (matchingRouteJob) {
-          return {
-            ...job,
-            assignedTech: targetTechId,
-            status: 'assigned'
-          };
-        }
-        return job;
-      });
-
-      // INSTANT UI UPDATE
-      setRoutes(tempUpdatedRoutes);
-      setJobs(tempUpdatedJobs);
+      // Clear dragged route and show loading indicator
       setDraggedRoute(null);
 
-      // Mark tech as optimizing
+      // Mark tech as optimizing (shows spinner)
       setOptimizingTechs(prev => new Set(prev).add(targetTechId));
 
-      // ASYNC OPTIMIZATION: Run in background
-      await continueRouteAssignment(routeJobs, [], targetTechId, targetTech, shift, startLocation, fromTechId, true);
+      // Run route assignment (this will update state when complete)
+      await continueRouteAssignment(routeJobs, [], targetTechId, targetTech, shift, startLocation, fromTechId);
 
       // Remove from optimizing set
       setOptimizingTechs(prev => {
