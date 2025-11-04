@@ -1,13 +1,16 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useData } from '../../contexts/DataContext';
 import { format, addDays, getDay, nextSaturday, nextSunday } from 'date-fns';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import firebaseService from '../../services/firebaseService';
+import { getCalculatedScheduleForDay } from '../../utils/calendarManager';
 import { downloadCsvTemplate, parseCsvFile } from '../../utils/huddleCsvUtils';
 
 const HuddleManager = () => {
   const { currentUser } = useAuth();
+  const { unifiedTechnicianData } = useData();
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [huddleContent, setHuddleContent] = useState({
     announcements: { content: '', visible: true },
@@ -81,22 +84,56 @@ const HuddleManager = () => {
     return content;
   };
 
-  // Load weekend schedule from Firebase
+  // Load weekend schedule from calendar data
   const loadWeekendSchedule = async (weekend) => {
     try {
-      const saturdayStr = format(weekend.saturday, 'yyyy-MM-dd');
-      const scheduleDoc = await firebaseService.getDocument('hou_weekend_schedule', saturdayStr);
+      console.log('🔍 Loading weekend schedule from calendar...');
 
-      if (scheduleDoc) {
-        setWeekendSchedule(scheduleDoc.schedule);
-        return scheduleDoc.schedule;
-      } else {
-        // Return empty schedule
-        return {
-          saturday: { staff: [], notes: '' },
-          sunday: { staff: [], notes: '' }
-        };
-      }
+      // Get month/year for Saturday
+      const saturdayMonth = weekend.saturday.getMonth();
+      const saturdayYear = weekend.saturday.getFullYear();
+
+      // Get month/year for Sunday (might be different month)
+      const sundayMonth = weekend.sunday.getMonth();
+      const sundayYear = weekend.sunday.getFullYear();
+
+      // Load schedule data for both months
+      const saturdayMonthSchedules = await firebaseService.getScheduleDataForMonth(saturdayYear, saturdayMonth);
+      const sundayMonthSchedules = saturdayMonth === sundayMonth
+        ? saturdayMonthSchedules
+        : await firebaseService.getScheduleDataForMonth(sundayYear, sundayMonth);
+
+      console.log('📅 Loaded schedule data for months');
+
+      // Get calculated schedule for Saturday
+      const saturdaySchedule = getCalculatedScheduleForDay(weekend.saturday, saturdayMonthSchedules, unifiedTechnicianData);
+      const saturdayWorking = saturdaySchedule.staff.filter(s =>
+        s.status === 'on' || (s.hours && s.hours.trim() !== '')
+      ).map(s => s.name);
+
+      console.log('🗓️ Saturday working:', saturdayWorking);
+
+      // Get calculated schedule for Sunday
+      const sundaySchedule = getCalculatedScheduleForDay(weekend.sunday, sundayMonthSchedules, unifiedTechnicianData);
+      const sundayWorking = sundaySchedule.staff.filter(s =>
+        s.status === 'on' || (s.hours && s.hours.trim() !== '')
+      ).map(s => s.name);
+
+      console.log('🗓️ Sunday working:', sundayWorking);
+
+      const schedule = {
+        saturday: {
+          staff: saturdayWorking,
+          notes: saturdaySchedule.notes || ''
+        },
+        sunday: {
+          staff: sundayWorking,
+          notes: sundaySchedule.notes || ''
+        }
+      };
+
+      setWeekendSchedule(schedule);
+      return schedule;
     } catch (error) {
       console.error('Error loading weekend schedule:', error);
       return {

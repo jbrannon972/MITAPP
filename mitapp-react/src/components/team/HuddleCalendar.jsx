@@ -3,10 +3,11 @@ import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSam
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import firebaseService from '../../services/firebaseService';
+import { getCalculatedScheduleForDay } from '../../utils/calendarManager';
 import { useData } from '../../contexts/DataContext';
 
 const HuddleCalendar = () => {
-  const { staffingData } = useData();
+  const { staffingData, unifiedTechnicianData } = useData();
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [huddleData, setHuddleData] = useState({});
   const [attendanceData, setAttendanceData] = useState({});
@@ -86,16 +87,59 @@ const HuddleCalendar = () => {
         sunday: nextSunday(day)
       };
 
-      // Load weekend schedule from Firebase
-      const saturdayStr = format(weekend.saturday, 'yyyy-MM-dd');
-      console.log('🔍 Loading weekend schedule for:', saturdayStr);
-      const scheduleDoc = await firebaseService.getDocument('hou_weekend_schedule', saturdayStr);
-      console.log('📦 Weekend schedule data:', scheduleDoc);
+      // Load weekend schedule from calendar data
+      console.log('🔍 Loading weekend schedule from calendar...');
 
-      // If we have a weekend schedule, populate it
-      if (scheduleDoc && scheduleDoc.schedule) {
+      try {
+        // Get month/year for Saturday
+        const saturdayMonth = weekend.saturday.getMonth();
+        const saturdayYear = weekend.saturday.getFullYear();
+
+        // Get month/year for Sunday (might be different month)
+        const sundayMonth = weekend.sunday.getMonth();
+        const sundayYear = weekend.sunday.getFullYear();
+
+        // Load schedule data for both months
+        const saturdayMonthSchedules = await firebaseService.getScheduleDataForMonth(saturdayYear, saturdayMonth);
+        const sundayMonthSchedules = saturdayMonth === sundayMonth
+          ? saturdayMonthSchedules
+          : await firebaseService.getScheduleDataForMonth(sundayYear, sundayMonth);
+
+        console.log('📅 Loaded schedule data for months');
+
+        // Get calculated schedule for Saturday
+        const saturdaySchedule = getCalculatedScheduleForDay(weekend.saturday, saturdayMonthSchedules, unifiedTechnicianData);
+        const saturdayWorking = saturdaySchedule.staff.filter(s =>
+          s.status === 'on' || (s.hours && s.hours.trim() !== '')
+        ).map(s => s.name);
+
+        console.log('🗓️ Saturday working:', saturdayWorking);
+
+        // Get calculated schedule for Sunday
+        const sundaySchedule = getCalculatedScheduleForDay(weekend.sunday, sundayMonthSchedules, unifiedTechnicianData);
+        const sundayWorking = sundaySchedule.staff.filter(s =>
+          s.status === 'on' || (s.hours && s.hours.trim() !== '')
+        ).map(s => s.name);
+
+        console.log('🗓️ Sunday working:', sundayWorking);
+
+        const schedule = {
+          saturday: {
+            staff: saturdayWorking,
+            notes: saturdaySchedule.notes || ''
+          },
+          sunday: {
+            staff: sundayWorking,
+            notes: sundaySchedule.notes || ''
+          }
+        };
+
+        console.log('📦 Weekend schedule data:', schedule);
+
+      // If we have staff scheduled, populate it
+      if (schedule.saturday.staff.length > 0 || schedule.sunday.staff.length > 0) {
         console.log('✅ Found weekend schedule, formatting...');
-        const formattedContent = formatWeekendSchedule(scheduleDoc.schedule, weekend);
+        const formattedContent = formatWeekendSchedule(schedule, weekend);
         console.log('📝 Formatted content:', formattedContent);
 
         // If there's no huddle content yet, create it with the weekend schedule
@@ -130,7 +174,10 @@ const HuddleCalendar = () => {
           console.log('Huddle already has weekend staffing content, skipping');
         }
       } else {
-        console.log('⚠️ No weekend schedule found for', saturdayStr);
+        console.log('⚠️ No staff scheduled for weekend');
+      }
+      } catch (error) {
+        console.error('Error loading weekend schedule from calendar:', error);
       }
     }
 
