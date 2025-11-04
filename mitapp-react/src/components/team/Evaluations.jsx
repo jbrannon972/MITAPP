@@ -99,15 +99,10 @@ const Evaluations = () => {
     let allStaff = getAllTechnicians();
 
     // Filter based on user role
-    if (userRole === 'Supervisor') {
-      // Supervisors can see all techs AND themselves, but NOT other Supervisors or MIT Leads
+    if (userRole === 'Supervisor' || userRole === 'MIT Lead') {
+      // Supervisors and MIT Leads can see all techs AND themselves, but NOT other Supervisors/MIT Leads (they are peers)
       allStaff = allStaff.filter(tech =>
         (tech.role !== 'Supervisor' && tech.role !== 'MIT Lead') || tech.id === userId
-      );
-    } else if (userRole === 'MIT Lead') {
-      // MIT Leads can see all techs, themselves, AND other MIT Leads, but NOT Supervisors
-      allStaff = allStaff.filter(tech =>
-        tech.role !== 'Supervisor'
       );
     }
 
