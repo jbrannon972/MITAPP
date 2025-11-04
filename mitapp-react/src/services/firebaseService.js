@@ -245,11 +245,25 @@ class FirebaseService {
 
   async saveSecondShiftReport(dateString, data) {
     try {
-      const docRef = doc(db, 'second_shift_reports', dateString);
+      // Use composite key: date_submittedBy to allow multiple reports per date
+      const reportId = `${dateString}_${data.submittedBy.replace(/\s+/g, '_')}`;
+      const docRef = doc(db, 'second_shift_reports', reportId);
       await setDoc(docRef, data);
     } catch (error) {
       console.error('Error saving second shift report:', error);
       throw error;
+    }
+  }
+
+  async getAllSecondShiftReportsByDate(dateString) {
+    try {
+      const reportsRef = collection(db, 'second_shift_reports');
+      const q = query(reportsRef, where('date', '==', dateString));
+      const querySnapshot = await getDocs(q);
+      return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    } catch (error) {
+      console.error('Error getting all second shift reports:', error);
+      return [];
     }
   }
 

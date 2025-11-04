@@ -14,6 +14,14 @@ const Dashboard = () => {
   const { staffingData, monthlyData, unifiedTechnicianData } = useData();
   const [activeView, setActiveView] = useState('supervisor-dashboard');
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+
+  // Reports view - default to yesterday
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  const [reportsDate, setReportsDate] = useState(yesterday.toISOString().split('T')[0]);
+  const [allReports, setAllReports] = useState([]);
+  const [loadingReports, setLoadingReports] = useState(false);
+
   const [loading, setLoading] = useState(true);
   const [showReportForm, setShowReportForm] = useState(false);
   const [reportType, setReportType] = useState('supervisor'); // 'supervisor' or 'secondShift'
@@ -33,6 +41,13 @@ const Dashboard = () => {
       loadDashboardData();
     }
   }, [selectedDate, staffingData, monthlyData, unifiedTechnicianData]);
+
+  // Load all reports when reportsDate or activeView changes
+  useEffect(() => {
+    if (activeView === 'reports' && currentUser?.role === 'Manager') {
+      loadAllReports();
+    }
+  }, [reportsDate, activeView]);
 
   const loadDashboardData = async () => {
     try {
@@ -117,6 +132,20 @@ const Dashboard = () => {
     }
   };
 
+  const loadAllReports = async () => {
+    try {
+      setLoadingReports(true);
+      // Load all reports for the selected date
+      const reports = await firebaseService.getAllSecondShiftReportsByDate(reportsDate);
+      setAllReports(reports || []);
+    } catch (error) {
+      console.error('Error loading all reports:', error);
+      setAllReports([]);
+    } finally {
+      setLoadingReports(false);
+    }
+  };
+
   const getWarehouseData = async (schedule) => {
     try {
       // Get fleet data
@@ -163,6 +192,15 @@ const Dashboard = () => {
             >
               <i className="fas fa-warehouse"></i> Warehouse
             </button>
+            {/* Reports tab - Only visible to Managers */}
+            {currentUser?.role === 'Manager' && (
+              <button
+                className={`sub-nav-btn ${activeView === 'reports' ? 'active' : ''}`}
+                onClick={() => switchView('reports')}
+              >
+                <i className="fas fa-clipboard-list"></i> Reports
+              </button>
+            )}
           </div>
           <div className="tab-controls">
             <div className="date-picker-container">
@@ -583,6 +621,177 @@ const Dashboard = () => {
             </div>
           </div>
         </div>
+
+        {/* Reports View - Only accessible to Managers */}
+        {currentUser?.role === 'Manager' && (
+          <div
+            id="reports-view"
+            className="dashboard-view"
+            style={{ display: activeView === 'reports' ? 'block' : 'none' }}
+          >
+            <div style={{ marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h2><i className="fas fa-clipboard-list"></i> Supervisor Reports</h2>
+              <div className="date-picker-container">
+                <label htmlFor="reportsDate">Report Date:</label>
+                <input
+                  type="date"
+                  id="reportsDate"
+                  className="date-input"
+                  value={reportsDate}
+                  onChange={(e) => setReportsDate(e.target.value)}
+                />
+              </div>
+            </div>
+
+            {loadingReports ? (
+              <div className="loading-container">
+                <div className="spinner"></div>
+                <p>Loading reports...</p>
+              </div>
+            ) : allReports.length === 0 ? (
+              <div className="card">
+                <p className="no-entries">No reports found for {new Date(reportsDate).toLocaleDateString()}.</p>
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gap: '20px' }}>
+                {allReports.map((report, idx) => (
+                  <div key={idx} className="card">
+                    <div className="card-header">
+                      <h3>
+                        <i className={report.reportType === 'secondShift' ? 'fas fa-moon' : 'fas fa-clipboard-check'}></i>{' '}
+                        {report.reportType === 'secondShift' ? 'Second Shift Report' : 'Supervisor Report'}
+                      </h3>
+                      <span>By: {report.submittedBy} ({report.submittedByRole})</span>
+                    </div>
+
+                    {report.reportType === 'secondShift' ? (
+                      <>
+                        {/* Second Shift Report Display */}
+                        {report.installWindowsLeft && report.installWindows && (
+                          <div style={{ padding: '12px', borderBottom: '1px solid var(--border-color)' }}>
+                            <h4><i className="fas fa-calendar-alt"></i> Install Windows Left</h4>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', marginTop: '8px' }}>
+                              <div style={{ padding: '8px', backgroundColor: 'var(--background-color)', borderRadius: 'var(--radius-md)', textAlign: 'center' }}>
+                                <div style={{ fontSize: '20px', fontWeight: 'bold', color: 'var(--primary-color)' }}>{report.installWindows['2-5'] || 0}</div>
+                                <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>2-5 PM</div>
+                              </div>
+                              <div style={{ padding: '8px', backgroundColor: 'var(--background-color)', borderRadius: 'var(--radius-md)', textAlign: 'center' }}>
+                                <div style={{ fontSize: '20px', fontWeight: 'bold', color: 'var(--primary-color)' }}>{report.installWindows['5-8'] || 0}</div>
+                                <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>5-8 PM</div>
+                              </div>
+                              <div style={{ padding: '8px', backgroundColor: 'var(--background-color)', borderRadius: 'var(--radius-md)', textAlign: 'center' }}>
+                                <div style={{ fontSize: '20px', fontWeight: 'bold', color: 'var(--primary-color)' }}>{report.installWindows['6-9'] || 0}</div>
+                                <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>6-9 PM</div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {report.demoRequested && report.demoJobs && report.demoJobs.length > 0 && (
+                          <div style={{ padding: '12px', borderBottom: '1px solid var(--border-color)' }}>
+                            <h4><i className="fas fa-hammer"></i> Demo Requested</h4>
+                            <ul style={{ marginTop: '6px', fontSize: '12px' }}>
+                              {report.demoJobs.map((job, jdx) => (
+                                <li key={jdx}>
+                                  <strong>{job.jobName}:</strong> {job.notes}
+                                  {job.damageReported && <span style={{ color: 'var(--danger-color)', marginLeft: '6px' }}>(Damage Reported)</span>}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+
+                        {report.jobsPushed && (
+                          <div style={{ padding: '12px', borderBottom: '1px solid var(--border-color)' }}>
+                            <h4><i className="fas fa-arrow-right"></i> Jobs Pushed to Next Day</h4>
+                            <p style={{ fontSize: '16px', fontWeight: 'bold', marginTop: '6px' }}>{report.pushedJobsCount || 0} job(s)</p>
+                          </div>
+                        )}
+
+                        <div className="summary-grid">
+                          <div>
+                            <h4>Jobs to Know About</h4>
+                            <ul>
+                              {report.nuances && report.nuances.length > 0 ? report.nuances.map((job, jdx) => (
+                                <li key={jdx}><strong>{job.jobName}:</strong> {job.notes}</li>
+                              )) : <li>None</li>}
+                            </ul>
+                          </div>
+                          <div>
+                            <h4>Cancelled/Rescheduled</h4>
+                            <ul>
+                              {report.cancelledJobs && report.cancelledJobs.length > 0 ? report.cancelledJobs.map((job, jdx) => (
+                                <li key={jdx}><strong>{job.jobName}:</strong> {job.notes}</li>
+                              )) : <li>None</li>}
+                            </ul>
+                          </div>
+                          <div>
+                            <h4>After Hours Jobs</h4>
+                            <ul>
+                              {report.afterHoursJobs && report.afterHoursJobs.length > 0 ? report.afterHoursJobs.map((job, jdx) => (
+                                <li key={jdx}><strong>{job.jobName}:</strong> {job.reason} <em>(Who: {job.who})</em></li>
+                              )) : <li>None</li>}
+                            </ul>
+                          </div>
+                          <div>
+                            <h4>Tech Shoutouts</h4>
+                            <p>{report.techShoutouts || 'None'}</p>
+                          </div>
+                          <div>
+                            <h4>Tech Concerns</h4>
+                            <p>{report.techConcerns || 'None'}</p>
+                          </div>
+                          <div>
+                            <h4>Dept. Shoutouts</h4>
+                            <p>{report.deptShoutouts || 'None'}</p>
+                          </div>
+                          <div>
+                            <h4>Dept. Concerns</h4>
+                            <p>{report.deptConcerns || 'None'}</p>
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        {/* Supervisor Report Display */}
+                        <div className="summary-grid">
+                          <div>
+                            <h4>Equipment Deployed</h4>
+                            <p>{report.equipmentDeployed ? '✅ Yes' : `❌ No - ${report.equipmentDeployedNotes}`}</p>
+                          </div>
+                          <div>
+                            <h4>MIT Lead Forms Submitted</h4>
+                            <p>{report.mitLeadFormsSubmitted ? '✅ Yes' : `❌ No - ${report.mitLeadFormsNotes}`}</p>
+                          </div>
+                          <div>
+                            <h4>DPT Notes Updated</h4>
+                            <p>{report.dptNotesUpdated ? '✅ Yes' : `❌ No - ${report.dptNotesNotes}`}</p>
+                          </div>
+                          <div>
+                            <h4>Talked to Techs</h4>
+                            <p>{report.talkedToTechs ? '✅ Yes' : `❌ No - ${report.talkedToTechsNotes}`}</p>
+                          </div>
+                          <div>
+                            <h4>Today's Win</h4>
+                            <p>{report.todayWin || 'None provided'}</p>
+                          </div>
+                          <div>
+                            <h4>Need Support</h4>
+                            <p>{report.needSupport || 'None'}</p>
+                          </div>
+                        </div>
+                      </>
+                    )}
+
+                    <div style={{ padding: '12px', fontSize: '11px', color: 'var(--text-secondary)', borderTop: '1px solid var(--border-color)' }}>
+                      Submitted: {new Date(report.submittedAt).toLocaleString()}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Second Shift Report Form Modal */}
