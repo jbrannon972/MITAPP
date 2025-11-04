@@ -44,6 +44,7 @@ const KanbanCalendar = ({
   const [showJobModal, setShowJobModal] = useState(false);
   const [selectedJob, setSelectedJob] = useState(null);
   const [isCalculatingDrive, setIsCalculatingDrive] = useState(false);
+  const [calculatingJobs, setCalculatingJobs] = useState(new Set()); // Track jobs being optimized
   const [returnToOfficeTimes, setReturnToOfficeTimes] = useState({});
   const [showOptionsMenu, setShowOptionsMenu] = useState(false);
   const scrollContainerRef = useRef(null);
@@ -1073,19 +1074,16 @@ const KanbanCalendar = ({
     try {
       const updatedRoutes = { ...localRoutes };
 
-      // Calculate start time based on drive time
-      const startTime = targetTechId
-        ? await calculateOptimalStartTime(job, targetTechId)
-        : (job.startTime || job.timeframeStart);
+      // OPTIMISTIC UPDATE: Show job immediately with placeholder time
+      const placeholderStartTime = job.startTime || job.timeframeStart || '09:00';
+      const placeholderStartMinutes = timeToMinutes(placeholderStartTime);
+      const placeholderEndMinutes = placeholderStartMinutes + (job.duration * 60);
+      const placeholderEndTime = minutesToTime(placeholderEndMinutes);
 
-      const startMinutes = timeToMinutes(startTime);
-      const endMinutes = startMinutes + (job.duration * 60);
-      const endTime = minutesToTime(endMinutes);
-
-      const updatedJob = {
+      const tempUpdatedJob = {
         ...job,
-        startTime,
-        endTime,
+        startTime: placeholderStartTime,
+        endTime: placeholderEndTime,
         assignedTech: targetTechId,
         status: targetTechId ? 'assigned' : 'unassigned'
       };
@@ -1121,12 +1119,12 @@ const KanbanCalendar = ({
           if (!updatedRoutes[targetTechId]) {
             updatedRoutes[targetTechId] = {
               tech: targetTech,
-              jobs: [updatedJob]
+              jobs: [tempUpdatedJob]
             };
           } else {
             updatedRoutes[targetTechId] = {
               ...updatedRoutes[targetTechId],
-              jobs: [...updatedRoutes[targetTechId].jobs, updatedJob]
+              jobs: [...updatedRoutes[targetTechId].jobs, tempUpdatedJob]
             };
           }
         }
@@ -1137,22 +1135,22 @@ const KanbanCalendar = ({
           if (!updatedRoutes[targetTechId]) {
             updatedRoutes[targetTechId] = {
               tech: targetTech,
-              jobs: [updatedJob]
+              jobs: [tempUpdatedJob]
             };
           } else {
             updatedRoutes[targetTechId] = {
               ...updatedRoutes[targetTechId],
-              jobs: [...updatedRoutes[targetTechId].jobs, updatedJob]
+              jobs: [...updatedRoutes[targetTechId].jobs, tempUpdatedJob]
             };
           }
         }
       }
 
-      // Update the global jobs list with recalculated times
-      const updatedJobs = localJobs.map(j => {
-        // If this is the job being moved/unassigned, use the updated version
+      // Update the global jobs list with temporary times
+      const tempUpdatedJobs = localJobs.map(j => {
+        // If this is the job being moved/unassigned, use the temp version
         if (j.id === job.id) {
-          return updatedJob;
+          return tempUpdatedJob;
         }
         // For source tech: use recalculated job if it exists
         if (sourceTechId && updatedRoutes[sourceTechId]) {
@@ -1161,22 +1159,68 @@ const KanbanCalendar = ({
             return recalculatedJob;
           }
         }
-        // For target tech: use the updated job if it exists
-        if (targetTechId && updatedRoutes[targetTechId]) {
-          const movedJob = updatedRoutes[targetTechId].jobs.find(rj => rj.id === j.id && rj.type !== 'secondTechAssignment');
-          if (movedJob) {
-            return movedJob;
-          }
-        }
         return j;
       });
 
+      // INSTANT UI UPDATE: Show the job on the tech immediately
       setLocalRoutes(updatedRoutes);
-      setLocalJobs(updatedJobs);
+      setLocalJobs(tempUpdatedJobs);
       setDraggedJob(null);
 
-      await onUpdateRoutes(updatedRoutes);
-      await onUpdateJobs(updatedJobs);
+      // Mark job as calculating
+      if (targetTechId) {
+        setCalculatingJobs(prev => new Set(prev).add(job.id));
+      }
+
+      // ASYNC OPTIMIZATION: Calculate optimal time in background
+      if (targetTechId) {
+        // Calculate optimal start time asynchronously
+        const optimalStartTime = await calculateOptimalStartTime(job, targetTechId);
+        const optimalStartMinutes = timeToMinutes(optimalStartTime);
+        const optimalEndMinutes = optimalStartMinutes + (job.duration * 60);
+        const optimalEndTime = minutesToTime(optimalEndMinutes);
+
+        const finalUpdatedJob = {
+          ...tempUpdatedJob,
+          startTime: optimalStartTime,
+          endTime: optimalEndTime
+        };
+
+        // Update routes with optimal times
+        const finalUpdatedRoutes = { ...updatedRoutes };
+        if (finalUpdatedRoutes[targetTechId]) {
+          finalUpdatedRoutes[targetTechId] = {
+            ...finalUpdatedRoutes[targetTechId],
+            jobs: finalUpdatedRoutes[targetTechId].jobs.map(j =>
+              j.id === job.id ? finalUpdatedJob : j
+            )
+          };
+        }
+
+        // Update jobs with optimal times
+        const finalUpdatedJobs = tempUpdatedJobs.map(j =>
+          j.id === job.id ? finalUpdatedJob : j
+        );
+
+        // Update UI with optimized times
+        setLocalRoutes(finalUpdatedRoutes);
+        setLocalJobs(finalUpdatedJobs);
+
+        // Remove from calculating set
+        setCalculatingJobs(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(job.id);
+          return newSet;
+        });
+
+        // Save to Firebase
+        await onUpdateRoutes(finalUpdatedRoutes);
+        await onUpdateJobs(finalUpdatedJobs);
+      } else {
+        // Job being unassigned - save immediately
+        await onUpdateRoutes(updatedRoutes);
+        await onUpdateJobs(tempUpdatedJobs);
+      }
     } finally {
       // Clear flag after a brief delay to allow Firebase sync to complete
       setTimeout(() => {
@@ -2311,6 +2355,9 @@ const KanbanCalendar = ({
                             <div style={{ fontWeight: '600', fontSize: '10px', marginBottom: '2px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                               <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
                                 {job.customerName}
+                                {calculatingJobs.has(job.id) && (
+                                  <i className="fas fa-spinner fa-spin" style={{ marginLeft: '4px', color: 'var(--info-color)', fontSize: '9px' }} title="Optimizing route..."></i>
+                                )}
                               </span>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '2px', marginLeft: '4px' }}>
                                 {showArrows && (
