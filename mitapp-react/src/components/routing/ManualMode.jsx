@@ -55,6 +55,7 @@ const ManualMode = ({
   const [showTwoTechModal, setShowTwoTechModal] = useState(false);
   const [pendingRouteDropData, setPendingRouteDropData] = useState(null);
   const [officeCoordinates, setOfficeCoordinates] = useState({});
+  const [optimizingTechs, setOptimizingTechs] = useState(new Set()); // Track techs with routes being optimized
   const [loadingState, setLoadingState] = useState({
     isOpen: false,
     title: '',
@@ -657,7 +658,7 @@ const ManualMode = ({
   };
 
   // Continue route assignment after two-tech modal (or directly if no two-tech jobs)
-  const continueRouteAssignment = async (routeJobs, helperJobs, targetTechId, targetTech, shift, startLocation, fromTechId) => {
+  const continueRouteAssignment = async (routeJobs, helperJobs, targetTechId, targetTech, shift, startLocation, fromTechId, isOptimistic = false) => {
     try {
       // Geocode jobs that need coordinates
       const mapbox = getMapboxService();
@@ -1067,14 +1068,88 @@ const ManualMode = ({
         return;  // Wait for modal completion
       }
 
-      // No two-tech jobs - proceed with normal assignment
-      await continueRouteAssignment(routeJobs, [], targetTechId, targetTech, shift, startLocation, fromTechId);
+      // OPTIMISTIC UI UPDATE: Show jobs immediately on tech's route
+      const tempJobsWithPlaceholderTimes = routeJobs.map((job, idx) => ({
+        ...job,
+        startTime: job.startTime || job.timeframeStart || '09:00',
+        endTime: job.endTime || job.timeframeEnd || '17:00',
+        assignedTech: targetTechId,
+        status: 'assigned'
+      }));
+
+      // Get existing jobs for this tech
+      const existingJobs = routes[targetTechId]?.jobs?.filter(
+        j => !routeJobs.some(rj => rj.id === j.id)
+      ) || [];
+
+      // Update routes immediately
+      const tempUpdatedRoutes = { ...routes };
+
+      // Remove from source tech
+      if (fromTechId && tempUpdatedRoutes[fromTechId]) {
+        tempUpdatedRoutes[fromTechId] = {
+          ...tempUpdatedRoutes[fromTechId],
+          jobs: tempUpdatedRoutes[fromTechId].jobs.filter(
+            j => !routeJobs.some(rj => rj.id === j.id)
+          )
+        };
+      }
+
+      // Add to target tech
+      if (!tempUpdatedRoutes[targetTechId]) {
+        tempUpdatedRoutes[targetTechId] = {
+          tech: targetTech,
+          jobs: tempJobsWithPlaceholderTimes
+        };
+      } else {
+        tempUpdatedRoutes[targetTechId] = {
+          ...tempUpdatedRoutes[targetTechId],
+          jobs: [...existingJobs, ...tempJobsWithPlaceholderTimes]
+        };
+      }
+
+      // Update jobs state
+      const tempUpdatedJobs = jobs.map(job => {
+        const matchingRouteJob = routeJobs.find(rj => rj.id === job.id);
+        if (matchingRouteJob) {
+          return {
+            ...job,
+            assignedTech: targetTechId,
+            status: 'assigned'
+          };
+        }
+        return job;
+      });
+
+      // INSTANT UI UPDATE
+      setRoutes(tempUpdatedRoutes);
+      setJobs(tempUpdatedJobs);
       setDraggedRoute(null);
+
+      // Mark tech as optimizing
+      setOptimizingTechs(prev => new Set(prev).add(targetTechId));
+
+      // ASYNC OPTIMIZATION: Run in background
+      await continueRouteAssignment(routeJobs, [], targetTechId, targetTech, shift, startLocation, fromTechId, true);
+
+      // Remove from optimizing set
+      setOptimizingTechs(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(targetTechId);
+        return newSet;
+      });
 
     } catch (error) {
       console.error('Error assigning route:', error);
       showAlert('Error assigning route. Please try again.', 'Error', 'error');
       setDraggedRoute(null);
+
+      // Remove from optimizing set on error
+      setOptimizingTechs(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(targetTechId);
+        return newSet;
+      });
     }
   };
 
@@ -2282,6 +2357,9 @@ const ManualMode = ({
                           </span>
                         )}
                         <span>{formatTechName(tech.name)}</span>
+                        {optimizingTechs.has(tech.id) && (
+                          <i className="fas fa-spinner fa-spin" style={{ marginLeft: '4px', color: 'var(--info-color)', fontSize: '10px' }} title="Optimizing route..."></i>
+                        )}
                         {!isOff && (
                           <span
                             title={techStartTimes[tech.id] ? `Custom start: ${techStartTimes[tech.id]}` : "Set start time"}
