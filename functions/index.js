@@ -555,3 +555,93 @@ async function sendEmail(htmlContent, date) {
     throw error;
   }
 }
+
+/**
+ * Callable function to create user accounts for techs without auth
+ * Only accessible by authenticated users with Manager role
+ */
+exports.createTechAccounts = functions.https.onCall(async (data, context) => {
+  // Verify authentication
+  if (!context.auth) {
+    throw new functions.https.HttpsError(
+      'unauthenticated',
+      'User must be authenticated to create accounts'
+    );
+  }
+
+  // Verify admin/manager role
+  const callerDoc = await admin.firestore()
+    .collection('users')
+    .doc(context.auth.uid)
+    .get();
+
+  const callerRole = callerDoc.data()?.role;
+  if (callerRole !== 'Manager' && callerRole !== 'Admin') {
+    throw new functions.https.HttpsError(
+      'permission-denied',
+      'Only managers can create user accounts'
+    );
+  }
+
+  const { techsToCreate } = data;
+
+  if (!Array.isArray(techsToCreate) || techsToCreate.length === 0) {
+    throw new functions.https.HttpsError(
+      'invalid-argument',
+      'techsToCreate must be a non-empty array'
+    );
+  }
+
+  const results = {
+    created: [],
+    errors: []
+  };
+
+  // Create accounts for each tech
+  for (const tech of techsToCreate) {
+    try {
+      if (!tech.email) {
+        results.errors.push({
+          tech: tech.name,
+          error: 'No email provided'
+        });
+        continue;
+      }
+
+      // Create Firebase Auth user
+      const userRecord = await admin.auth().createUser({
+        email: tech.email,
+        password: 'Mitigation1',
+        displayName: tech.name,
+        emailVerified: false
+      });
+
+      // Create Firestore user document
+      await admin.firestore().collection('users').doc(userRecord.uid).set({
+        email: tech.email,
+        username: tech.name,
+        name: tech.name,
+        role: tech.role || 'Technician',
+        zoneName: tech.zoneName || 'Unknown',
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        createdBy: context.auth.uid
+      });
+
+      results.created.push({
+        name: tech.name,
+        email: tech.email,
+        uid: userRecord.uid
+      });
+
+      console.log(`Created account for ${tech.name} (${tech.email})`);
+    } catch (error) {
+      console.error(`Error creating account for ${tech.name}:`, error);
+      results.errors.push({
+        tech: tech.name,
+        error: error.message
+      });
+    }
+  }
+
+  return results;
+});

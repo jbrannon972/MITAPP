@@ -1,6 +1,7 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
+import { getFunctions } from 'firebase/functions';
 import { getMessaging, isSupported } from 'firebase/messaging';
 import { getPerformance } from 'firebase/performance';
 
@@ -21,6 +22,7 @@ export const GOOGLE_CLIENT_ID = '1069061948061-roq457in5ig4hnbd1hq8pt4n5jkl0if6.
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
+export const functions = getFunctions(app);
 
 // Initialize Firebase Performance Monitoring
 export const perf = getPerformance(app);

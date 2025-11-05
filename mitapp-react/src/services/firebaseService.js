@@ -1,4 +1,4 @@
-import { db } from '../config/firebase';
+import { db, functions } from '../config/firebase';
 import {
   collection,
   doc,
@@ -13,6 +13,7 @@ import {
   onSnapshot,
   serverTimestamp
 } from 'firebase/firestore';
+import { httpsCallable } from 'firebase/functions';
 
 class FirebaseService {
   // Collection references
@@ -721,6 +722,22 @@ class FirebaseService {
       await setDoc(docRef, cleanedData);
     } catch (error) {
       console.error(`Error saving document with metadata to ${collectionName}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Create user accounts for technicians without auth accounts
+   * @param {Array} techsToCreate - Array of tech objects with name, email, role, zoneName
+   * @returns {Promise<Object>} Results with created and errors arrays
+   */
+  async createTechAccounts(techsToCreate) {
+    try {
+      const createAccountsFunction = httpsCallable(functions, 'createTechAccounts');
+      const result = await createAccountsFunction({ techsToCreate });
+      return result.data;
+    } catch (error) {
+      console.error('Error calling createTechAccounts function:', error);
       throw error;
     }
   }
