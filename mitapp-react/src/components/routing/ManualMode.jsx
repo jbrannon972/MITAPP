@@ -1247,7 +1247,14 @@ const ManualMode = ({
       jobs: techJobs
     };
 
+    setRoutes(updatedRoutes);
     onUpdateRoutes(updatedRoutes);
+  };
+
+  const moveJobInRoute = (techId, jobIndex, direction) => {
+    const newIndex = direction === 'up' ? jobIndex - 1 : jobIndex + 1;
+    if (newIndex < 0 || newIndex >= routes[techId].jobs.length) return;
+    reorderJobsInRoute(techId, jobIndex, newIndex);
   };
 
   const unassignedCount = jobs.filter(j => !j.assignedTech).length;
@@ -2093,7 +2100,7 @@ const ManualMode = ({
           </div>
 
           {/* Job Hover Popup - Bottom Left */}
-          {hoveredJob && !selectedTech && (
+          {hoveredJob && (
             <div
               onMouseEnter={() => {
                 // Clear hide timeout when hovering over popup
@@ -2230,6 +2237,8 @@ const ManualMode = ({
               {routes[selectedTech].jobs.map((job, idx) => (
                 <div
                   key={job.id}
+                  onMouseEnter={() => setHoveredJob(job)}
+                  onMouseLeave={() => setHoveredJob(null)}
                   style={{
                     padding: '6px',
                     backgroundColor: 'var(--surface-secondary)',
@@ -2237,10 +2246,53 @@ const ManualMode = ({
                     marginBottom: '4px',
                     borderLeft: `3px solid ${getJobTypeColor(job.jobType)}`,
                     fontSize: '11px',
-                    position: 'relative'
+                    position: 'relative',
+                    cursor: 'pointer'
                   }}
                 >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', gap: '4px' }}>
+                    {/* Up/Down Arrows */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', marginRight: '2px' }}>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          moveJobInRoute(selectedTech, idx, 'up');
+                        }}
+                        disabled={idx === 0}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          cursor: idx === 0 ? 'not-allowed' : 'pointer',
+                          padding: '0',
+                          color: idx === 0 ? 'var(--text-disabled)' : 'var(--primary-color)',
+                          fontSize: '10px',
+                          opacity: idx === 0 ? 0.3 : 1
+                        }}
+                        title="Move up"
+                      >
+                        <i className="fas fa-chevron-up"></i>
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          moveJobInRoute(selectedTech, idx, 'down');
+                        }}
+                        disabled={idx === routes[selectedTech].jobs.length - 1}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          cursor: idx === routes[selectedTech].jobs.length - 1 ? 'not-allowed' : 'pointer',
+                          padding: '0',
+                          color: idx === routes[selectedTech].jobs.length - 1 ? 'var(--text-disabled)' : 'var(--primary-color)',
+                          fontSize: '10px',
+                          opacity: idx === routes[selectedTech].jobs.length - 1 ? 0.3 : 1
+                        }}
+                        title="Move down"
+                      >
+                        <i className="fas fa-chevron-down"></i>
+                      </button>
+                    </div>
+
                     <div style={{ flex: 1 }}>
                       <div style={{ fontWeight: '600', marginBottom: '2px' }}>
                         {idx + 1}. {job.customerName}
