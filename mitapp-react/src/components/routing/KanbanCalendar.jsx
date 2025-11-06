@@ -128,7 +128,6 @@ const KanbanCalendar = ({
   // Calculate return to office times - debounced to avoid excessive API calls
   useEffect(() => {
     let isMounted = true;
-    let debounceTimeoutId = null;
 
     const calculateReturnTimes = async () => {
       const newReturnTimes = {};
@@ -217,13 +216,11 @@ const KanbanCalendar = ({
 
     // Debounce the calculation to avoid hammering the API
     const debouncedCalculate = debounce(calculateReturnTimes, 500);
-    debounceTimeoutId = debouncedCalculate();
+    debouncedCalculate();
 
     return () => {
       isMounted = false;
-      if (debounceTimeoutId) {
-        clearTimeout(debounceTimeoutId);
-      }
+      // Debounced function handles its own cleanup
     };
   }, [localRoutes, techs, offices, selectedDate, companyMeetingMode]);
 

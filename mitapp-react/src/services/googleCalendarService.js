@@ -210,13 +210,10 @@ class GoogleCalendarService {
         dateTime: endDateTime,
         timeZone: 'America/Chicago'
       },
-      colorId: this.getEventColorForJobType(job.jobType),
+      // Use default calendar color (tech's calendar color)
       reminders: {
         useDefault: false,
-        overrides: [
-          { method: 'popup', minutes: 30 },
-          { method: 'popup', minutes: 10 }
-        ]
+        overrides: [] // No reminders
       },
       extendedProperties: {
         private: {
@@ -406,12 +403,10 @@ class GoogleCalendarService {
           dateTime: endDateTime,
           timeZone: 'America/Chicago'
         },
-        colorId: '8', // Gray
+        // Use default calendar color (tech's calendar color)
         reminders: {
           useDefault: false,
-          overrides: [
-            { method: 'popup', minutes: 10 }
-          ]
+          overrides: [] // No reminders
         },
         extendedProperties: {
           private: {
