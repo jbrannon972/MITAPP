@@ -83,6 +83,96 @@ export const normalizeTimeFormat = (timeStr) => {
 };
 
 /**
+ * Parse a timeframe string (e.g., from TF() in CSV) with smart AM/PM inference
+ * Handles cases like "12-6 PM", "12-6", "12p-6p", "8:00-17:00"
+ * @param {string} tfContent - Content inside TF() (e.g., "12-6 PM", "8-5")
+ * @returns {object} - { start: string, end: string } in HH:MM format, or { start: null, end: null } if invalid
+ */
+export const parseTimeframeString = (tfContent) => {
+  if (!tfContent || typeof tfContent !== 'string') {
+    return { start: null, end: null };
+  }
+
+  const trimmed = tfContent.trim();
+
+  // Split on dash (handle spaces around dash)
+  const parts = trimmed.split(/\s*-\s*/);
+  if (parts.length !== 2) {
+    return { start: null, end: null };
+  }
+
+  let [startPart, endPart] = parts;
+
+  // Check if there's an AM/PM indicator on each part
+  const ampmRegex = /\s*(am|pm|a|p)$/i;
+
+  const endHasAMPM = ampmRegex.test(endPart);
+  const startHasAMPM = ampmRegex.test(startPart);
+
+  // Case 1: Neither has AM/PM - infer based on common work hours
+  if (!startHasAMPM && !endHasAMPM) {
+    // Extract numeric hours
+    const startMatch = startPart.match(/^(\d{1,2}):?(\d{2})?$/);
+    const endMatch = endPart.match(/^(\d{1,2}):?(\d{2})?$/);
+
+    if (!startMatch || !endMatch) {
+      return { start: null, end: null };
+    }
+
+    const startHour = parseInt(startMatch[1], 10);
+    const startMin = startMatch[2] || '00';
+    const endHour = parseInt(endMatch[1], 10);
+    const endMin = endMatch[2] || '00';
+
+    // Apply sensible defaults for common work hours
+    if (startHour >= 7 && startHour <= 12 && endHour <= 6) {
+      // Pattern: 8-5, 9-3, 12-6 → AM start, PM end (typical work day)
+      startPart = `${startHour}:${startMin}`;
+      endPart = `${endHour}:${endMin} PM`;
+    } else if (startHour >= 1 && startHour <= 6 && endHour >= 1 && endHour <= 11) {
+      // Pattern: 1-4, 2-5 → likely both PM (afternoon shift)
+      startPart = `${startHour}:${startMin} PM`;
+      endPart = `${endHour}:${endMin} PM`;
+    } else {
+      // Keep as-is, will be normalized to 24-hour
+      startPart = `${startHour}:${startMin}`;
+      endPart = `${endHour}:${endMin}`;
+    }
+  }
+  // Case 2: Only end has AM/PM - apply to start based on logic
+  else if (!startHasAMPM && endHasAMPM) {
+    const endMeridiem = endPart.match(ampmRegex)[1];
+
+    const startMatch = startPart.match(/^(\d{1,2}):?(\d{2})?$/);
+    const endMatch = endPart.match(/^(\d{1,2}):?(\d{2})?/);
+
+    if (!startMatch || !endMatch) {
+      return { start: null, end: null };
+    }
+
+    const startHour = parseInt(startMatch[1], 10);
+    const startMin = startMatch[2] || '00';
+    const endHour = parseInt(endMatch[1], 10);
+
+    // If start < end in clock terms, likely same period
+    // Example: "12-6 PM" → 12pm-6pm
+    if (startHour < endHour || (startHour === 12 && endHour < 12)) {
+      startPart = `${startHour}:${startMin} ${endMeridiem}`;
+    } else {
+      // Different periods or same time - use same meridiem
+      startPart = `${startHour}:${startMin} ${endMeridiem}`;
+    }
+  }
+  // Case 3: Both have AM/PM - no inference needed, will be handled by normalizeTimeFormat
+
+  // Now convert both parts using our existing normalization
+  const start = normalizeTimeFormat(startPart);
+  const end = normalizeTimeFormat(endPart);
+
+  return { start, end };
+};
+
+/**
  * Validate time format (HH:MM or H:MM)
  * @param {string} timeStr - Time string to validate
  * @returns {boolean} - True if valid
@@ -350,6 +440,8 @@ export default {
   sanitizeJob,
   isValidTimeFormat,
   normalizeTimeFormat,
+  convertAMPMTo24Hour,
+  parseTimeframeString,
   isStartBeforeEnd,
   formatValidationErrors,
   checkJobSafety

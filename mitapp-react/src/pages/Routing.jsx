@@ -15,7 +15,7 @@ import firebaseService from '../services/firebaseService';
 import { getMapboxService, initMapboxService } from '../services/mapboxService';
 import { getCalculatedScheduleForDay } from '../utils/calendarManager';
 import { debounce } from '../utils/routingHelpers';
-import { validateJobs, sanitizeJob, formatValidationErrors, normalizeTimeFormat } from '../utils/validators';
+import { validateJobs, sanitizeJob, formatValidationErrors, parseTimeframeString } from '../utils/validators';
 import {
   optimizeRoute,
   balanceWorkload,
@@ -555,12 +555,14 @@ const Routing = () => {
 
       const description = job.route_description || '';
 
-      // Try TF(HH:MM-HH:MM) format first - also handles AM/PM like TF(12p-6p)
-      const tfMatch = description.match(/TF\(([^-]+)-([^)]+)\)/);
+      // Try TF(HH:MM-HH:MM) format first - handles AM/PM like TF(12p-6p), TF(12-6 PM), TF(12-6)
+      const tfMatch = description.match(/TF\(([^)]+)\)/);
       if (tfMatch) {
-        // Normalize both times to handle AM/PM formats
-        timeframeStart = normalizeTimeFormat(tfMatch[1].trim());
-        timeframeEnd = normalizeTimeFormat(tfMatch[2].trim());
+        const { start, end } = parseTimeframeString(tfMatch[1]);
+        if (start && end) {
+          timeframeStart = start;
+          timeframeEnd = end;
+        }
       } else {
         // Try TF: followed by flexible time formats
         // Match "TF:" or "TF :" followed by timeframe
