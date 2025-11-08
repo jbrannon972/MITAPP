@@ -678,10 +678,128 @@ export const calculateRouteSummary = (route) => {
   };
 };
 
+/**
+ * Calculate route quality rating and return color indicator
+ * @param {Object} route - Route object with jobs array
+ * @returns {Object} - { rating: 'green'|'yellow'|'red', score: number, reasons: string[], details: object }
+ */
+export const calculateRouteQuality = (route) => {
+  if (!route || !route.jobs || route.jobs.length === 0) {
+    return {
+      rating: 'green',
+      score: 100,
+      reasons: [],
+      details: { efficiency: 100, violations: 0, backtracking: 0 }
+    };
+  }
+
+  const jobs = route.jobs.filter(j => j.type !== 'secondTechAssignment'); // Exclude second tech assignments
+  if (jobs.length === 0) {
+    return {
+      rating: 'green',
+      score: 100,
+      reasons: [],
+      details: { efficiency: 100, violations: 0, backtracking: 0 }
+    };
+  }
+
+  let score = 100;
+  const reasons = [];
+
+  // Calculate drive time ratio
+  const totalWorkHours = jobs.reduce((sum, job) => sum + job.duration, 0);
+  const totalDriveMinutes = jobs.reduce((sum, job) => sum + (job.travelTime || 0), 0);
+  const driveTimeRatio = totalDriveMinutes / (totalWorkHours * 60);
+
+  // Penalize excessive drive time
+  // Good: < 20% drive time, Acceptable: 20-35%, Poor: > 35%
+  if (driveTimeRatio > 0.35) {
+    score -= 30;
+    const drivePercent = Math.round(driveTimeRatio * 100);
+    reasons.push(`Excessive drive time (${drivePercent}% of work time)`);
+  } else if (driveTimeRatio > 0.20) {
+    score -= 15;
+    const drivePercent = Math.round(driveTimeRatio * 100);
+    reasons.push(`High drive time (${drivePercent}% of work time)`);
+  }
+
+  // Check for time window violations
+  let violations = 0;
+  jobs.forEach(job => {
+    if (job.startTime && job.timeframeStart && job.timeframeEnd) {
+      const startMinutes = timeToMinutes(job.startTime);
+      const windowStart = timeToMinutes(job.timeframeStart);
+      const windowEnd = timeToMinutes(job.timeframeEnd);
+
+      if (startMinutes < windowStart - 90 || startMinutes > windowEnd) {
+        violations++;
+      }
+    }
+  });
+
+  if (violations > 0) {
+    score -= violations * 20; // 20 points per violation
+    reasons.push(`${violations} timeframe violation${violations > 1 ? 's' : ''}`);
+  }
+
+  // Detect potential backtracking (jobs out of geographical order)
+  // Simple heuristic: if job addresses jump around a lot, might be backtracking
+  let backtrackingIssues = 0;
+  for (let i = 0; i < jobs.length - 2; i++) {
+    const job1 = jobs[i];
+    const job2 = jobs[i + 1];
+    const job3 = jobs[i + 2];
+
+    // If job2's travel time is much higher than average, might indicate backtracking
+    if (job2.travelTime && job1.travelTime && job3.travelTime) {
+      const avgTravel = (job1.travelTime + job3.travelTime) / 2;
+      if (job2.travelTime > avgTravel * 2 && job2.travelTime > 30) {
+        backtrackingIssues++;
+      }
+    }
+  }
+
+  if (backtrackingIssues > 1) {
+    score -= backtrackingIssues * 10;
+    reasons.push(`Possible backtracking (${backtrackingIssues} inefficient segments)`);
+  }
+
+  // Check for underutilization
+  if (totalWorkHours < 4 && jobs.length > 0) {
+    score -= 10;
+    reasons.push(`Underutilized (only ${totalWorkHours}h of work)`);
+  }
+
+  // Determine rating based on final score
+  let rating;
+  if (score >= 80) {
+    rating = 'green'; // Optimal route
+  } else if (score >= 60) {
+    rating = 'yellow'; // Acceptable but could improve
+  } else {
+    rating = 'red'; // Poor route quality
+  }
+
+  return {
+    rating,
+    score: Math.max(0, Math.min(100, score)),
+    reasons: reasons.length > 0 ? reasons : ['Route looks good!'],
+    details: {
+      efficiency: Math.round((1 - driveTimeRatio) * 100),
+      violations,
+      backtracking: backtrackingIssues,
+      driveTimeRatio: Math.round(driveTimeRatio * 100),
+      totalDriveMinutes,
+      totalWorkHours
+    }
+  };
+};
+
 export default {
   optimizeRoute,
   balanceWorkload,
   assignDemoTechs,
   getRoutingEligibleTechs,
-  calculateRouteSummary
+  calculateRouteSummary,
+  calculateRouteQuality
 };

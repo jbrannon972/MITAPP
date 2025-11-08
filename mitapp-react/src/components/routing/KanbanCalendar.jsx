@@ -5,6 +5,7 @@ import { getMapboxService } from '../../services/mapboxService';
 import { debounce, safeAsync, formatTimeAMPM, sanitizeRouteData } from '../../utils/routingHelpers';
 import { DEFAULT_TRAVEL_TIME, OFF_STATUSES, OFFICE_COORDINATES, HOUSTON_CENTER } from '../../utils/routingConstants';
 import { detectConflicts, autoFixConflicts } from '../../utils/conflictDetection';
+import { calculateRouteQuality } from '../../utils/routeOptimizer';
 import ConflictPanel from './ConflictPanel';
 
 const KanbanCalendar = ({
@@ -1991,6 +1992,9 @@ const KanbanCalendar = ({
             const isDragging = draggedTech === tech.id;
             const isOff = isTechOff(tech.id);
 
+            // Calculate route quality
+            const routeQuality = calculateRouteQuality(techRoute);
+
             // Format zone prefix (Z1, Z2, or 2nd)
             const getZonePrefix = (zone) => {
               if (!zone) return '';
@@ -2070,6 +2074,22 @@ const KanbanCalendar = ({
                       }}>
                         {zonePrefix}
                       </span>
+                    )}
+                    {/* Route Quality Indicator */}
+                    {!isOff && techJobs.length > 0 && (
+                      <span
+                        style={{
+                          width: '10px',
+                          height: '10px',
+                          borderRadius: '50%',
+                          backgroundColor: routeQuality.rating === 'green' ? '#10b981' :
+                                         routeQuality.rating === 'yellow' ? '#f59e0b' : '#ef4444',
+                          flexShrink: 0,
+                          boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+                          cursor: 'help'
+                        }}
+                        title={`Route Quality: ${routeQuality.score}%\n${routeQuality.reasons.join('\n')}\n\nEfficiency: ${routeQuality.details.efficiency}%\nDrive time: ${routeQuality.details.totalDriveMinutes}m (${routeQuality.details.driveTimeRatio}% of work time)\nTimeframe violations: ${routeQuality.details.violations}\nBacktracking issues: ${routeQuality.details.backtracking}`}
+                      />
                     )}
                     <h4 style={{ margin: 0, fontSize: '11px', fontWeight: '600', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '4px' }}>
                       <span>{formatTechName(tech.name)}</span>
