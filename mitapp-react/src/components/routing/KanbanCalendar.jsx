@@ -2078,7 +2078,7 @@ const KanbanCalendar = ({
                     )}
                     {/* Route Quality Indicator */}
                     {!isOff && techJobs.length > 0 && (
-                      <RouteQualityTooltip routeQuality={routeQuality} size="10px" />
+                      <RouteQualityTooltip routeQuality={routeQuality} size="10px" direction="bottom" />
                     )}
                     <h4 style={{ margin: 0, fontSize: '11px', fontWeight: '600', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '4px' }}>
                       <span>{formatTechName(tech.name)}</span>

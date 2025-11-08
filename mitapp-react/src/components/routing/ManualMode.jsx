@@ -2470,6 +2470,7 @@ const ManualMode = ({
                           <RouteQualityTooltip
                             routeQuality={routeQuality}
                             size="8px"
+                            direction="left"
                             onDotClick={(e) => e.stopPropagation()}
                           />
                         )}

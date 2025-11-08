@@ -1,9 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 
-const RouteQualityTooltip = ({ routeQuality, size = '10px', onDotClick }) => {
+const RouteQualityTooltip = ({ routeQuality, size = '10px', onDotClick, direction = 'right' }) => {
   const [showTooltip, setShowTooltip] = useState(false);
-  const [position, setPosition] = useState({ top: 0, left: 0 });
+  const [coords, setCoords] = useState({ top: 0, left: 0 });
   const dotRef = useRef(null);
 
   useEffect(() => {
@@ -12,25 +12,92 @@ const RouteQualityTooltip = ({ routeQuality, size = '10px', onDotClick }) => {
       const scrollY = window.scrollY || document.documentElement.scrollTop;
       const scrollX = window.scrollX || document.documentElement.scrollLeft;
 
-      // Position tooltip to the right of the dot
-      setPosition({
-        top: rect.top + scrollY + (rect.height / 2),
-        left: rect.right + scrollX + 8 // 8px gap from dot
-      });
+      // Calculate position based on direction
+      let newCoords = { top: 0, left: 0 };
+
+      if (direction === 'bottom') {
+        // Position below the dot, centered horizontally
+        newCoords = {
+          top: rect.bottom + scrollY + 8,
+          left: rect.left + scrollX + (rect.width / 2)
+        };
+      } else if (direction === 'left') {
+        // Position to the left of the dot, centered vertically
+        newCoords = {
+          top: rect.top + scrollY + (rect.height / 2),
+          left: rect.left + scrollX - 8
+        };
+      } else {
+        // Default: position to the right of the dot, centered vertically
+        newCoords = {
+          top: rect.top + scrollY + (rect.height / 2),
+          left: rect.right + scrollX + 8
+        };
+      }
+
+      setCoords(newCoords);
     }
-  }, [showTooltip]);
+  }, [showTooltip, direction]);
 
   if (!routeQuality) return null;
 
   const { rating, score, reasons, details } = routeQuality;
 
+  // Determine transform and arrow based on direction
+  let transform = '';
+  let arrowStyle = {};
+
+  if (direction === 'bottom') {
+    transform = 'translateX(-50%)';
+    // Arrow pointing up
+    arrowStyle = {
+      position: 'absolute',
+      bottom: '100%',
+      left: '50%',
+      transform: 'translateX(-50%)',
+      width: 0,
+      height: 0,
+      borderLeft: '6px solid transparent',
+      borderRight: '6px solid transparent',
+      borderBottom: '6px solid #1f2937'
+    };
+  } else if (direction === 'left') {
+    transform = 'translate(-100%, -50%)';
+    // Arrow pointing right
+    arrowStyle = {
+      position: 'absolute',
+      top: '50%',
+      left: '100%',
+      transform: 'translateY(-50%)',
+      width: 0,
+      height: 0,
+      borderTop: '6px solid transparent',
+      borderBottom: '6px solid transparent',
+      borderLeft: '6px solid #1f2937'
+    };
+  } else {
+    transform = 'translateY(-50%)';
+    // Arrow pointing left
+    arrowStyle = {
+      position: 'absolute',
+      top: '50%',
+      right: '100%',
+      transform: 'translateY(-50%)',
+      width: 0,
+      height: 0,
+      borderTop: '6px solid transparent',
+      borderBottom: '6px solid transparent',
+      borderRight: '6px solid #1f2937'
+    };
+  }
+
   const tooltipContent = showTooltip && (
     <div
       style={{
         position: 'fixed',
-        top: `${position.top}px`,
-        left: `${position.left}px`,
-        transform: 'translateY(-50%)',
+        top: `${coords.top}px`,
+        left: `${coords.left}px`,
+        transform: transform,
         backgroundColor: '#1f2937',
         color: 'white',
         padding: '12px 14px',
@@ -47,20 +114,8 @@ const RouteQualityTooltip = ({ routeQuality, size = '10px', onDotClick }) => {
         border: '1px solid #374151'
       }}
     >
-      {/* Left Arrow */}
-      <div
-        style={{
-          position: 'absolute',
-          top: '50%',
-          right: '100%',
-          transform: 'translateY(-50%)',
-          width: 0,
-          height: 0,
-          borderTop: '6px solid transparent',
-          borderBottom: '6px solid transparent',
-          borderRight: '6px solid #1f2937'
-        }}
-      />
+      {/* Arrow */}
+      <div style={arrowStyle} />
 
       {/* Header */}
       <div style={{ fontWeight: '700', marginBottom: '8px', fontSize: '13px', textAlign: 'center' }}>
