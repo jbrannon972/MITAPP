@@ -4,24 +4,79 @@
  */
 
 /**
+ * Convert AM/PM time format to 24-hour format
+ * @param {string} timeStr - Time string (e.g., "12p", "6p", "12:00pm", "6:00AM")
+ * @returns {string} - 24-hour format time (e.g., "12:00", "18:00") or original if not AM/PM
+ */
+export const convertAMPMTo24Hour = (timeStr) => {
+  if (!timeStr || typeof timeStr !== 'string') return timeStr;
+
+  const trimmed = timeStr.trim().toLowerCase();
+
+  // Check for AM/PM indicators (a, p, am, pm)
+  const ampmRegex = /^(\d{1,2})(?::(\d{2}))?\s*(a|p|am|pm)$/i;
+  const match = trimmed.match(ampmRegex);
+
+  if (!match) return timeStr; // Not AM/PM format, return as-is
+
+  let hours = parseInt(match[1], 10);
+  const minutes = match[2] || '00';
+  const meridiem = match[3].toLowerCase();
+
+  // Validate minutes
+  const mins = parseInt(minutes, 10);
+  if (mins < 0 || mins > 59) return timeStr;
+
+  // Convert to 24-hour
+  const isPM = meridiem === 'p' || meridiem === 'pm';
+  const isAM = meridiem === 'a' || meridiem === 'am';
+
+  if (isPM) {
+    // 12pm stays 12, 1pm-11pm becomes 13-23
+    if (hours !== 12) {
+      hours += 12;
+    }
+  } else if (isAM) {
+    // 12am becomes 00, 1am-11am stays 1-11
+    if (hours === 12) {
+      hours = 0;
+    }
+  }
+
+  // Validate final hour range
+  if (hours < 0 || hours > 23) return timeStr;
+
+  return `${String(hours).padStart(2, '0')}:${minutes}`;
+};
+
+/**
  * Normalize time format from h:mm or hh:mm to HH:MM
- * @param {string} timeStr - Time string (e.g., "9:00" or "09:00")
+ * Also handles AM/PM format conversion
+ * @param {string} timeStr - Time string (e.g., "9:00", "09:00", "12p", "6:00pm")
  * @returns {string} - Normalized time in HH:MM format (e.g., "09:00")
  */
 export const normalizeTimeFormat = (timeStr) => {
   if (!timeStr || typeof timeStr !== 'string') return timeStr;
 
+  // First try to convert AM/PM format
+  const converted = convertAMPMTo24Hour(timeStr);
+
+  // If it was AM/PM and converted, return it
+  if (converted !== timeStr) {
+    return converted;
+  }
+
   // Accept both h:mm and hh:mm formats
   const timeRegex = /^(\d{1,2}):([0-5]\d)$/;
-  const match = timeStr.trim().match(timeRegex);
+  const match = converted.trim().match(timeRegex);
 
-  if (!match) return timeStr; // Return as-is if invalid format
+  if (!match) return converted; // Return as-is if invalid format
 
   const hours = parseInt(match[1], 10);
   const minutes = match[2];
 
   // Validate hour range
-  if (hours < 0 || hours > 23) return timeStr;
+  if (hours < 0 || hours > 23) return converted;
 
   // Pad hours to 2 digits
   return `${String(hours).padStart(2, '0')}:${minutes}`;
