@@ -772,12 +772,12 @@ export const calculateRouteQuality = (route) => {
 
   // Determine rating based on final score
   let rating;
-  if (score >= 80) {
-    rating = 'green'; // Optimal route
+  if (score >= 75) {
+    rating = 'green'; // Excellent route
   } else if (score >= 60) {
     rating = 'yellow'; // Acceptable but could improve
   } else {
-    rating = 'red'; // Poor route quality
+    rating = 'red'; // Poor route quality (displays as orange)
   }
 
   return {

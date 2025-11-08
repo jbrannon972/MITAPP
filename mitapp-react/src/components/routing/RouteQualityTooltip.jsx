@@ -119,7 +119,7 @@ const RouteQualityTooltip = ({ routeQuality, size = '10px', onDotClick, directio
 
       {/* Header */}
       <div style={{ fontWeight: '700', marginBottom: '8px', fontSize: '13px', textAlign: 'center' }}>
-        🚗 ROUTE QUALITY: {rating.toUpperCase()} ({score}/100)
+        🚗 ROUTE QUALITY: {rating === 'red' ? 'ORANGE' : rating.toUpperCase()} ({score}/100)
       </div>
 
       {/* Reasons */}
@@ -201,7 +201,7 @@ const RouteQualityTooltip = ({ routeQuality, size = '10px', onDotClick, directio
           height: size,
           borderRadius: '50%',
           backgroundColor: rating === 'green' ? '#10b981' :
-                         rating === 'yellow' ? '#f59e0b' : '#ef4444',
+                         rating === 'yellow' ? '#f59e0b' : '#fb923c',
           display: 'inline-block',
           flexShrink: 0,
           boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
