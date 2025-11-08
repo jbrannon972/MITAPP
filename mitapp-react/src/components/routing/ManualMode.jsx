@@ -6,6 +6,7 @@ import { optimizeRoute, calculateRouteQuality } from '../../utils/routeOptimizer
 import googleCalendarService from '../../services/googleCalendarService';
 import TwoTechAssignmentModal from './TwoTechAssignmentModal';
 import LoadingModal from './LoadingModal';
+import RouteQualityTooltip from './RouteQualityTooltip';
 import { GOOGLE_CLIENT_ID } from '../../config/firebase';
 import { formatTimeAMPM, sanitizeRouteData } from '../../utils/routingHelpers';
 
@@ -2466,19 +2467,10 @@ const ManualMode = ({
                         )}
                         {/* Route Quality Indicator */}
                         {!isOff && jobCount > 0 && (
-                          <span
-                            style={{
-                              width: '8px',
-                              height: '8px',
-                              borderRadius: '50%',
-                              backgroundColor: routeQuality.rating === 'green' ? '#10b981' :
-                                             routeQuality.rating === 'yellow' ? '#f59e0b' : '#ef4444',
-                              flexShrink: 0,
-                              boxShadow: '0 1px 2px rgba(0,0,0,0.2)',
-                              cursor: 'help'
-                            }}
-                            title={`🚗 ROUTE QUALITY: ${routeQuality.rating.toUpperCase()} (${routeQuality.score}/100)\n\n${routeQuality.reasons.join('\n')}\n\n━━━━━━━━━━━━━━━━━━━━\nDETAILED BREAKDOWN:\n━━━━━━━━━━━━━━━━━━━━\n\n📊 Drive Time Efficiency:\n   • Drive time: ${routeQuality.details.totalDriveMinutes} min (${routeQuality.details.driveTimeRatio}% of work time)\n   • Route efficiency: ${routeQuality.details.efficiency}%\n   • Thresholds: <10% = Green, 10-25% = Yellow, >25% = Red\n\n⏰ Timeframe Compliance:\n   • Violations: ${routeQuality.details.violations}\n   • Penalty: ${routeQuality.details.violations * 20} points\n\n🔄 Route Optimization:\n   • Backtracking issues: ${routeQuality.details.backtracking}\n   • Penalty: ${routeQuality.details.backtracking * 10} points\n\n💼 Workload Utilization:\n   • Total work hours: ${routeQuality.details.totalWorkHours}h\n   • Status: ${routeQuality.details.totalWorkHours >= 4 ? 'Good' : 'Underutilized (<4h)'}`}
-                            onClick={(e) => e.stopPropagation()}
+                          <RouteQualityTooltip
+                            routeQuality={routeQuality}
+                            size="8px"
+                            onDotClick={(e) => e.stopPropagation()}
                           />
                         )}
                         <span>{formatTechName(tech.name)}</span>

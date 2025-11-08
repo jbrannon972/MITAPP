@@ -7,6 +7,7 @@ import { DEFAULT_TRAVEL_TIME, OFF_STATUSES, OFFICE_COORDINATES, HOUSTON_CENTER }
 import { detectConflicts, autoFixConflicts } from '../../utils/conflictDetection';
 import { calculateRouteQuality } from '../../utils/routeOptimizer';
 import ConflictPanel from './ConflictPanel';
+import RouteQualityTooltip from './RouteQualityTooltip';
 
 const KanbanCalendar = ({
   jobs: initialJobs,
@@ -2077,19 +2078,7 @@ const KanbanCalendar = ({
                     )}
                     {/* Route Quality Indicator */}
                     {!isOff && techJobs.length > 0 && (
-                      <span
-                        style={{
-                          width: '10px',
-                          height: '10px',
-                          borderRadius: '50%',
-                          backgroundColor: routeQuality.rating === 'green' ? '#10b981' :
-                                         routeQuality.rating === 'yellow' ? '#f59e0b' : '#ef4444',
-                          flexShrink: 0,
-                          boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-                          cursor: 'help'
-                        }}
-                        title={`🚗 ROUTE QUALITY: ${routeQuality.rating.toUpperCase()} (${routeQuality.score}/100)\n\n${routeQuality.reasons.join('\n')}\n\n━━━━━━━━━━━━━━━━━━━━\nDETAILED BREAKDOWN:\n━━━━━━━━━━━━━━━━━━━━\n\n📊 Drive Time Efficiency:\n   • Drive time: ${routeQuality.details.totalDriveMinutes} min (${routeQuality.details.driveTimeRatio}% of work time)\n   • Route efficiency: ${routeQuality.details.efficiency}%\n   • Thresholds: <10% = Green, 10-25% = Yellow, >25% = Red\n\n⏰ Timeframe Compliance:\n   • Violations: ${routeQuality.details.violations}\n   • Penalty: ${routeQuality.details.violations * 20} points\n\n🔄 Route Optimization:\n   • Backtracking issues: ${routeQuality.details.backtracking}\n   • Penalty: ${routeQuality.details.backtracking * 10} points\n\n💼 Workload Utilization:\n   • Total work hours: ${routeQuality.details.totalWorkHours}h\n   • Status: ${routeQuality.details.totalWorkHours >= 4 ? 'Good' : 'Underutilized (<4h)'}`}
-                      />
+                      <RouteQualityTooltip routeQuality={routeQuality} size="10px" />
                     )}
                     <h4 style={{ margin: 0, fontSize: '11px', fontWeight: '600', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '4px' }}>
                       <span>{formatTechName(tech.name)}</span>
