@@ -3070,10 +3070,13 @@ input:checked + .slider:before {
 }
 
 .calendar-grid {
+    display: flex;
+    flex-direction: column;
     background: white;
     border-radius: 8px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     overflow: hidden;
+    width: 100%;
 }
 
 .calendar-weekdays {
@@ -3081,6 +3084,7 @@ input:checked + .slider:before {
     grid-template-columns: repeat(7, 1fr);
     background: var(--primary-color);
     color: white;
+    width: 100%;
 }
 
 .weekday-label {
@@ -3095,6 +3099,7 @@ input:checked + .slider:before {
     grid-template-columns: repeat(7, 1fr);
     gap: 1px;
     background: #e5e7eb;
+    width: 100%;
 }
 
 .calendar-day {
