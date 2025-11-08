@@ -100,14 +100,14 @@ const RouteQualityTooltip = ({ routeQuality, size = '10px', onDotClick, directio
         transform: transform,
         backgroundColor: '#1f2937',
         color: 'white',
-        padding: '12px 14px',
-        borderRadius: '8px',
+        padding: '8px 10px',
+        borderRadius: '6px',
         boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
         zIndex: 999999,
-        minWidth: '320px',
-        maxWidth: '400px',
-        fontSize: '12px',
-        lineHeight: '1.5',
+        minWidth: '280px',
+        maxWidth: '320px',
+        fontSize: '11px',
+        lineHeight: '1.4',
         whiteSpace: 'normal',
         pointerEvents: 'none',
         fontFamily: 'monospace',
@@ -118,82 +118,52 @@ const RouteQualityTooltip = ({ routeQuality, size = '10px', onDotClick, directio
       <div style={arrowStyle} />
 
       {/* Header */}
-      <div style={{ fontWeight: '700', marginBottom: '8px', fontSize: '13px', textAlign: 'center' }}>
-        🚗 ROUTE QUALITY: {rating === 'red' ? 'ORANGE' : rating.toUpperCase()} ({score}/100)
+      <div style={{ fontWeight: '700', marginBottom: '6px', fontSize: '12px', textAlign: 'center' }}>
+        {rating === 'red' ? '🟠' : rating === 'yellow' ? '🟡' : '🟢'} {score}/100
       </div>
 
       {/* Reasons */}
       {reasons && reasons.length > 0 && (
-        <div style={{ marginBottom: '10px', paddingBottom: '10px', borderBottom: '1px solid #4b5563' }}>
+        <div style={{ marginBottom: '6px', paddingBottom: '6px', borderBottom: '1px solid #4b5563', fontSize: '10px' }}>
           {reasons.map((reason, idx) => (
-            <div key={idx} style={{ marginBottom: '4px' }}>
+            <div key={idx} style={{ marginBottom: '2px' }}>
               • {reason}
             </div>
           ))}
         </div>
       )}
 
-      {/* Detailed Breakdown */}
-      <div style={{ fontSize: '11px' }}>
-        <div style={{ fontWeight: '600', marginBottom: '6px', textAlign: 'center', color: '#9ca3af' }}>
-          ━━━ DETAILED BREAKDOWN ━━━
+      {/* Compact Breakdown */}
+      <div style={{ fontSize: '10px', lineHeight: '1.3' }}>
+        {/* Drive Time */}
+        <div style={{ marginBottom: '4px' }}>
+          <span style={{ color: '#60a5fa' }}>🚗 Drive:</span> {details.totalDriveMinutes}min ({details.driveTimeRatio}%) = -{details.driveTimeRatio}pts
         </div>
 
-        {/* Drive Time Efficiency */}
-        <div style={{ marginBottom: '8px' }}>
-          <div style={{ fontWeight: '600', color: '#60a5fa', marginBottom: '3px' }}>
-            📊 Drive Time Efficiency:
+        {/* Violations */}
+        {details.violations > 0 && (
+          <div style={{ marginBottom: '4px' }}>
+            <span style={{ color: '#fbbf24' }}>⏰ Violations:</span> {details.violations} = -{details.violations * 20}pts
           </div>
-          <div style={{ paddingLeft: '12px' }}>
-            <div>• Drive time: {details.totalDriveMinutes} min ({details.driveTimeRatio}% of work)</div>
-            <div>• Penalty: -{details.driveTimeRatio} points (1 point per %)</div>
-            <div>• Route efficiency: {details.efficiency}%</div>
+        )}
+
+        {/* Backtracking */}
+        {details.backtracking > 0 && (
+          <div style={{ marginBottom: '4px' }}>
+            <span style={{ color: '#a78bfa' }}>🔄 Backtrack:</span> {details.backtracking} = -{details.backtracking * 10}pts
           </div>
+        )}
+
+        {/* Workload */}
+        <div style={{ marginBottom: '4px' }}>
+          <span style={{ color: '#34d399' }}>💼 Work:</span> {details.totalWorkHours}h
+          {details.totalWorkHours < 4 && <span style={{ color: '#f87171' }}> (under, -10pts)</span>}
+          {details.totalWorkHours > 8 && <span style={{ color: '#fb923c' }}> (over, -{Math.ceil(details.totalWorkHours - 8) * 10}pts)</span>}
         </div>
 
-        {/* Timeframe Compliance */}
-        <div style={{ marginBottom: '8px' }}>
-          <div style={{ fontWeight: '600', color: '#fbbf24', marginBottom: '3px' }}>
-            ⏰ Timeframe Compliance:
-          </div>
-          <div style={{ paddingLeft: '12px' }}>
-            <div>• Violations: {details.violations}</div>
-            <div>• Penalty: -{details.violations * 20} points (20 per violation)</div>
-          </div>
-        </div>
-
-        {/* Route Optimization */}
-        <div style={{ marginBottom: '8px' }}>
-          <div style={{ fontWeight: '600', color: '#a78bfa', marginBottom: '3px' }}>
-            🔄 Route Optimization:
-          </div>
-          <div style={{ paddingLeft: '12px' }}>
-            <div>• Backtracking issues: {details.backtracking}</div>
-            <div>• Penalty: -{details.backtracking * 10} points (10 per issue)</div>
-          </div>
-        </div>
-
-        {/* Workload Utilization */}
-        <div style={{ marginBottom: '8px' }}>
-          <div style={{ fontWeight: '600', color: '#34d399', marginBottom: '3px' }}>
-            💼 Workload Utilization:
-          </div>
-          <div style={{ paddingLeft: '12px' }}>
-            <div>• Total work hours: {details.totalWorkHours}h</div>
-            <div style={{ color: details.totalWorkHours < 4 ? '#f87171' : details.totalWorkHours > 8 ? '#fb923c' : '#34d399' }}>
-              • {details.totalWorkHours < 4 ? 'Underutilized (<4h, -10 points)' :
-                  details.totalWorkHours > 8 ? `Overutilized (>8h, -${Math.ceil(details.totalWorkHours - 8) * 10} points)` :
-                  'Good (4-8 hours)'}
-            </div>
-          </div>
-        </div>
-
-        {/* Score Thresholds */}
-        <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px solid #4b5563', fontSize: '10px', color: '#9ca3af' }}>
-          <div style={{ fontWeight: '600', marginBottom: '3px' }}>Score Thresholds:</div>
-          <div>• ≥75 = 🟢 Green (Excellent)</div>
-          <div>• ≥60 = 🟡 Yellow (Acceptable)</div>
-          <div>• &lt;60 = 🟠 Orange (Needs attention)</div>
+        {/* Thresholds */}
+        <div style={{ marginTop: '6px', paddingTop: '6px', borderTop: '1px solid #4b5563', fontSize: '9px', color: '#9ca3af' }}>
+          75+ 🟢 | 60-74 🟡 | &lt;60 🟠
         </div>
       </div>
     </div>
