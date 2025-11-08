@@ -372,7 +372,7 @@ const HuddleCalendar = () => {
 
 // Modal component to show huddle details
 const HuddleDetailModal = ({ huddle, onClose, onRefresh, staffingData, generateZoneId }) => {
-  const [editingLateCoverage, setEditingLateCoverage] = useState(null); // { recordIdx, personId, personName }
+  const [editingLateCoverage, setEditingLateCoverage] = useState(null); // { zoneId, zoneName, personId, personName }
   const [coverageDate, setCoverageDate] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -380,8 +380,8 @@ const HuddleDetailModal = ({ huddle, onClose, onRefresh, staffingData, generateZ
 
   const { date, dateStr, huddle: huddleContent, attendance, isPast, isFuture } = huddle;
 
-  const handleMarkCoveredLater = (recordIdx, person) => {
-    setEditingLateCoverage({ recordIdx, personId: person.id, personName: person.name });
+  const handleMarkCoveredLater = (zoneId, zoneName, person) => {
+    setEditingLateCoverage({ zoneId, zoneName, personId: person.id, personName: person.name });
     // Default to today's date
     setCoverageDate(format(new Date(), 'yyyy-MM-dd'));
   };
@@ -391,15 +391,29 @@ const HuddleDetailModal = ({ huddle, onClose, onRefresh, staffingData, generateZ
 
     setSaving(true);
     try {
-      const record = attendance[editingLateCoverage.recordIdx];
-      const attendanceId = `${dateStr}_${record.zoneId}`;
+      const { zoneId, zoneName, personId, personName } = editingLateCoverage;
+      const attendanceId = `${dateStr}_${zoneId}`;
 
-      // Get existing attendance document
-      const existingDoc = await firebaseService.getDocument('hou_huddle_attendance', attendanceId);
+      // Get existing attendance document (might not exist if no one was marked present)
+      let existingDoc = await firebaseService.getDocument('hou_huddle_attendance', attendanceId);
+
+      // If no attendance record exists, create one
+      if (!existingDoc) {
+        existingDoc = {
+          date: dateStr,
+          zoneId,
+          zoneName,
+          present: [],
+          manuallyAdded: [],
+          recordedBy: 'system',
+          recordedByName: 'System',
+          recordedAt: new Date().toISOString()
+        };
+      }
 
       // Add to coveredLater array
       const coveredLater = existingDoc.coveredLater || [];
-      const existingIndex = coveredLater.findIndex(c => c.techId === editingLateCoverage.personId);
+      const existingIndex = coveredLater.findIndex(c => c.techId === personId);
 
       if (existingIndex >= 0) {
         // Update existing entry
@@ -407,8 +421,8 @@ const HuddleDetailModal = ({ huddle, onClose, onRefresh, staffingData, generateZ
       } else {
         // Add new entry
         coveredLater.push({
-          techId: editingLateCoverage.personId,
-          techName: editingLateCoverage.personName,
+          techId: personId,
+          techName: personName,
           coverageDate
         });
       }
@@ -492,46 +506,53 @@ const HuddleDetailModal = ({ huddle, onClose, onRefresh, staffingData, generateZ
     }
 
     if (isPast) {
-      // Past huddle - show attendance by zone
+      // Past huddle - show attendance by zone (ALL zones, even if no attendance recorded)
+      const allZones = staffingData?.zones || [];
+
       return (
         <div className="huddle-attendance-summary">
           <h3>Attendance by Zone</h3>
-          {attendance.length === 0 ? (
-            <p className="no-attendance">No attendance recorded for this huddle.</p>
+          {allZones.length === 0 ? (
+            <p className="no-attendance">No zones configured.</p>
           ) : (
             <div className="zones-attendance">
-              {attendance.map((record, idx) => {
-                // Find zone by matching generated ID or zone name
-                const zone = staffingData?.zones?.find(z => {
-                  const zId = z.id || generateZoneId(z.name);
-                  return zId === record.zoneId;
-                });
-                const zoneMembers = zone?.members || [];
-                const zoneLead = zone?.lead;
+              {allZones.map((zone, idx) => {
+                const zoneId = zone.id || generateZoneId(zone.name);
+
+                // Find attendance record for this zone (if it exists)
+                const record = attendance.find(a => a.zoneId === zoneId);
+
+                const zoneMembers = zone.members || [];
+                const zoneLead = zone.lead;
                 const allZonePersonnel = [...zoneMembers];
                 if (zoneLead) allZonePersonnel.push(zoneLead);
 
                 const presentNames = [];
-                // Add zone members who were present
-                allZonePersonnel.forEach(person => {
-                  if (record.present.includes(person.id)) {
-                    presentNames.push({ name: person.name, fromOtherZone: false });
-                  }
-                });
 
-                // Add manually added members from other zones
-                record.manuallyAdded?.forEach(person => {
-                  presentNames.push({ name: person.name, fromOtherZone: true, originalZone: person.originalZone });
-                });
+                // If there's an attendance record, process it
+                if (record) {
+                  // Add zone members who were present
+                  allZonePersonnel.forEach(person => {
+                    if (record.present.includes(person.id)) {
+                      presentNames.push({ name: person.name, fromOtherZone: false });
+                    }
+                  });
 
-                const absentMembers = allZonePersonnel.filter(person => !record.present.includes(person.id));
+                  // Add manually added members from other zones
+                  record.manuallyAdded?.forEach(person => {
+                    presentNames.push({ name: person.name, fromOtherZone: true, originalZone: person.originalZone });
+                  });
+                }
+                // If no record, everyone is absent (no one in presentNames)
+
+                const absentMembers = allZonePersonnel.filter(person => !record?.present?.includes(person.id));
 
                 return (
                   <div key={idx} className="zone-attendance-card">
                     <div className="zone-attendance-header">
-                      <h4>{record.zoneName}</h4>
+                      <h4>{zone.name}</h4>
                       <span className="attendance-count">
-                        {presentNames.length}/{allZonePersonnel.length + (record.manuallyAdded?.length || 0)} present
+                        {presentNames.length}/{allZonePersonnel.length + (record?.manuallyAdded?.length || 0)} present
                       </span>
                     </div>
 
@@ -561,8 +582,8 @@ const HuddleDetailModal = ({ huddle, onClose, onRefresh, staffingData, generateZ
                         ) : (
                           <ul>
                             {absentMembers.map((person, personIdx) => {
-                              // Check if this person was covered later
-                              const coveredInfo = (record.coveredLater || []).find(c => c.techId === person.id);
+                              // Check if this person was covered later (only if record exists)
+                              const coveredInfo = record ? (record.coveredLater || []).find(c => c.techId === person.id) : null;
 
                               return (
                                 <li key={personIdx} className="absent-member" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
@@ -579,14 +600,16 @@ const HuddleDetailModal = ({ huddle, onClose, onRefresh, staffingData, generateZ
                                       </span>
                                     )}
                                   </div>
-                                  <button
-                                    className="btn btn-sm btn-secondary"
-                                    onClick={() => handleMarkCoveredLater(idx, person)}
-                                    style={{ fontSize: '11px', padding: '4px 8px' }}
-                                    title={coveredInfo ? 'Update coverage date' : 'Mark as covered later'}
-                                  >
-                                    <i className="fas fa-calendar-check"></i> {coveredInfo ? 'Update' : 'Covered Later'}
-                                  </button>
+                                  {record && (
+                                    <button
+                                      className="btn btn-sm btn-secondary"
+                                      onClick={() => handleMarkCoveredLater(zoneId, zone.name, person)}
+                                      style={{ fontSize: '11px', padding: '4px 8px' }}
+                                      title={coveredInfo ? 'Update coverage date' : 'Mark as covered later'}
+                                    >
+                                      <i className="fas fa-calendar-check"></i> {coveredInfo ? 'Update' : 'Covered Later'}
+                                    </button>
+                                  )}
                                 </li>
                               );
                             })}
@@ -595,11 +618,20 @@ const HuddleDetailModal = ({ huddle, onClose, onRefresh, staffingData, generateZ
                       </div>
                     </div>
 
-                    <div className="record-info">
-                      <small>
-                        Recorded by {record.recordedByName} on {format(new Date(record.recordedAt), 'MMM d, yyyy h:mm a')}
-                      </small>
-                    </div>
+                    {record && (
+                      <div className="record-info">
+                        <small>
+                          Recorded by {record.recordedByName} on {format(new Date(record.recordedAt), 'MMM d, yyyy h:mm a')}
+                        </small>
+                      </div>
+                    )}
+                    {!record && (
+                      <div className="record-info">
+                        <small style={{ color: 'var(--error-color)', fontStyle: 'italic' }}>
+                          <i className="fas fa-exclamation-triangle"></i> No attendance recorded for this zone
+                        </small>
+                      </div>
+                    )}
                   </div>
                 );
               })}
