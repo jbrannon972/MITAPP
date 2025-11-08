@@ -3109,7 +3109,6 @@ input:checked + .slider:before {
 }
 
 .calendar-day {
-    aspect-ratio: 0.85;
     background: white;
     padding: 8px;
     cursor: pointer;
@@ -3117,9 +3116,8 @@ input:checked + .slider:before {
     display: flex;
     flex-direction: column;
     align-items: flex-start;
-    transition: all 0.2s ease;
-    min-height: 70px;
-    max-height: 100px;
+    transition: background 0.2s ease;
+    height: 85px;
     border-right: 1px solid #e5e7eb;
     border-bottom: 1px solid #e5e7eb;
 }
@@ -3130,7 +3128,6 @@ input:checked + .slider:before {
 
 .calendar-day:hover {
     background: var(--surface-secondary);
-    transform: scale(1.02);
 }
 
 .calendar-day.empty {

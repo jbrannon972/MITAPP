@@ -607,22 +607,26 @@ const HuddleDetailModal = ({ huddle, onClose, onRefresh, staffingData, generateZ
           )}
 
           {/* Show huddle content if available */}
-          {huddleContent && (
-            <div className="huddle-content-reference">
-              <h3>Huddle Topics Covered</h3>
-              <ul className="topics-list">
-                {Object.entries(huddleContent.categories || {}).map(([key, category]) => {
-                  if (category.visible && category.content && category.content.trim()) {
-                    return (
-                      <li key={key}>
-                        <strong>{getCategoryTitle(key)}:</strong> {category.content.substring(0, 100)}
-                        {category.content.length > 100 && '...'}
-                      </li>
-                    );
-                  }
-                  return null;
-                })}
-              </ul>
+          {huddleContent && huddleContent.categories && (
+            <div className="huddle-content-reference" style={{ marginTop: '32px' }}>
+              <h3 style={{ marginBottom: '16px' }}>Huddle Topics Covered</h3>
+              {Object.entries(huddleContent.categories).map(([key, category]) => {
+                if (category.visible && category.content && category.content.trim()) {
+                  return (
+                    <div key={key} style={{ marginBottom: '24px', padding: '16px', border: '1px solid var(--border-color)', borderRadius: '8px', maxWidth: '100%', overflowWrap: 'break-word' }}>
+                      <h4 style={{ marginTop: 0, marginBottom: '12px', color: 'var(--primary-color)', overflowWrap: 'break-word' }}>
+                        {getCategoryIcon(key)} {getCategoryTitle(key)}
+                      </h4>
+                      <div className="markdown-content" style={{ fontSize: '14px', lineHeight: '1.6', maxWidth: '100%' }}>
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                          {category.content}
+                        </ReactMarkdown>
+                      </div>
+                    </div>
+                  );
+                }
+                return null;
+              })}
             </div>
           )}
         </div>
