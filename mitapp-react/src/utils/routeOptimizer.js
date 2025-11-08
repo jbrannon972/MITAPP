@@ -711,16 +711,18 @@ export const calculateRouteQuality = (route) => {
   const totalDriveMinutes = jobs.reduce((sum, job) => sum + (job.travelTime || 0), 0);
   const driveTimeRatio = totalDriveMinutes / (totalWorkHours * 60);
 
-  // Penalize excessive drive time
+  // Penalize drive time: -1 point per percent
   // Good: < 10% drive time, Acceptable: 10-25%, Poor: > 25%
-  if (driveTimeRatio > 0.25) {
-    score -= 30;
-    const drivePercent = Math.round(driveTimeRatio * 100);
-    reasons.push(`Excessive drive time (${drivePercent}% of work time)`);
-  } else if (driveTimeRatio > 0.10) {
-    score -= 15;
-    const drivePercent = Math.round(driveTimeRatio * 100);
-    reasons.push(`High drive time (${drivePercent}% of work time)`);
+  const drivePercent = Math.round(driveTimeRatio * 100);
+  score -= drivePercent;
+
+  // Add reason based on drive time severity
+  if (drivePercent > 25) {
+    reasons.push(`Excessive drive time (${drivePercent}% of work time, -${drivePercent} points)`);
+  } else if (drivePercent > 10) {
+    reasons.push(`High drive time (${drivePercent}% of work time, -${drivePercent} points)`);
+  } else if (drivePercent > 0) {
+    reasons.push(`Drive time: ${drivePercent}% of work time (-${drivePercent} points)`);
   }
 
   // Check for time window violations
@@ -767,7 +769,15 @@ export const calculateRouteQuality = (route) => {
   // Check for underutilization
   if (totalWorkHours < 4 && jobs.length > 0) {
     score -= 10;
-    reasons.push(`Underutilized (only ${totalWorkHours}h of work)`);
+    reasons.push(`Underutilized (only ${totalWorkHours}h of work, -10 points)`);
+  }
+
+  // Penalize overutilization: -10 points per hour over 8
+  if (totalWorkHours > 8) {
+    const hoursOver = Math.ceil(totalWorkHours - 8);
+    const penalty = hoursOver * 10;
+    score -= penalty;
+    reasons.push(`Overutilized (${totalWorkHours.toFixed(1)}h of work, ${hoursOver}h over 8h limit, -${penalty} points)`);
   }
 
   // Determine rating based on final score
