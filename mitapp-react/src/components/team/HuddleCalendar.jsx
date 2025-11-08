@@ -15,10 +15,17 @@ const HuddleCalendar = () => {
   const [selectedHuddle, setSelectedHuddle] = useState(null);
   const [showModal, setShowModal] = useState(false);
 
+  // Helper function to generate consistent zone IDs from zone names (same as HuddleInfoModal)
+  const generateZoneId = (zoneName) => {
+    if (!zoneName) return null;
+    // Convert "Zone 3" → "zone_3", "2nd Shift" → "2nd_shift", etc.
+    return zoneName.toLowerCase().replace(/\s+/g, '_');
+  };
+
   // Load huddle data for current month
   useEffect(() => {
     loadMonthData();
-  }, [currentMonth]);
+  }, [currentMonth, staffingData]);
 
   const loadMonthData = async () => {
     setLoading(true);
@@ -35,7 +42,9 @@ const HuddleCalendar = () => {
       const attendancePromises = days.flatMap(day => {
         const dateStr = format(day, 'yyyy-MM-dd');
         return (staffingData?.zones || []).map(zone => {
-          const attendanceId = `${dateStr}_${zone.id}`;
+          // Generate zone ID same way as HuddleInfoModal does
+          const zoneId = zone.id || generateZoneId(zone.name);
+          const attendanceId = `${dateStr}_${zoneId}`;
           return firebaseService.getDocument('hou_huddle_attendance', attendanceId);
         });
       });
@@ -354,6 +363,7 @@ const HuddleCalendar = () => {
           onClose={closeModal}
           onRefresh={loadMonthData}
           staffingData={staffingData}
+          generateZoneId={generateZoneId}
         />
       )}
     </div>
@@ -361,7 +371,7 @@ const HuddleCalendar = () => {
 };
 
 // Modal component to show huddle details
-const HuddleDetailModal = ({ huddle, onClose, onRefresh, staffingData }) => {
+const HuddleDetailModal = ({ huddle, onClose, onRefresh, staffingData, generateZoneId }) => {
   if (!huddle) return null;
 
   const { date, dateStr, huddle: huddleContent, attendance, isPast, isFuture } = huddle;
@@ -436,7 +446,11 @@ const HuddleDetailModal = ({ huddle, onClose, onRefresh, staffingData }) => {
           ) : (
             <div className="zones-attendance">
               {attendance.map((record, idx) => {
-                const zone = staffingData?.zones?.find(z => z.id === record.zoneId);
+                // Find zone by matching generated ID or zone name
+                const zone = staffingData?.zones?.find(z => {
+                  const zId = z.id || generateZoneId(z.name);
+                  return zId === record.zoneId;
+                });
                 const zoneMembers = zone?.members || [];
                 const zoneLead = zone?.lead;
                 const allZonePersonnel = [...zoneMembers];
