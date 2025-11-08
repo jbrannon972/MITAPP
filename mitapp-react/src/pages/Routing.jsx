@@ -62,6 +62,7 @@ const Routing = () => {
   const markersRef = useRef([]);
   const sessionStartTime = useRef(Date.now());
   const listenerErrorCount = useRef(0);
+  const cancelOptimizationRef = useRef(false); // Flag to cancel route optimization
 
   // Houston office locations
   const offices = {
@@ -961,6 +962,9 @@ const Routing = () => {
       return;
     }
 
+    // Reset cancel flag
+    cancelOptimizationRef.current = false;
+
     setOptimizing(true);
     setShowOptimizeModal(false);
 
@@ -1048,6 +1052,12 @@ const Routing = () => {
       let completedTechs = 0;
 
       for (const [techId, assignment] of techsWithJobs) {
+        // Check for cancellation
+        if (cancelOptimizationRef.current) {
+          console.log('🛑 Route optimization cancelled by user');
+          break;
+        }
+
         if (assignment.jobs.length === 0) continue;
 
         // Update progress for this tech
@@ -1107,6 +1117,15 @@ const Routing = () => {
 
       const routeOptimizationDuration = perfLogger.endTimer('route_optimization');
       autoOptimizeTrace.putMetric('route_optimization_duration_ms', Math.round(routeOptimizationDuration));
+
+      // Check if cancelled before continuing
+      if (cancelOptimizationRef.current) {
+        setLoadingState(prev => ({ ...prev, isOpen: false }));
+        autoOptimizeTrace.putAttribute('cancelled', 'true');
+        autoOptimizeTrace.stop();
+        showAlert(`Optimization cancelled. Completed ${completedTechs} of ${techsWithJobs.length} technicians.`, 'Optimization Cancelled', 'info');
+        return;
+      }
 
       // Step 4: Auto-assign demo techs
       setLoadingState(prev => ({
@@ -2050,6 +2069,14 @@ const Routing = () => {
           totalSteps={loadingState.totalSteps}
           currentStepNumber={loadingState.currentStepNumber}
           showSteps={loadingState.showSteps}
+          canCancel={optimizing}
+          onCancel={() => {
+            cancelOptimizationRef.current = true;
+            setLoadingState(prev => ({
+              ...prev,
+              message: 'Cancelling optimization...'
+            }));
+          }}
         />
     </Layout>
   );
