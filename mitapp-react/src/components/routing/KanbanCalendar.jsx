@@ -5,9 +5,7 @@ import { getMapboxService } from '../../services/mapboxService';
 import { debounce, safeAsync, formatTimeAMPM, sanitizeRouteData } from '../../utils/routingHelpers';
 import { DEFAULT_TRAVEL_TIME, OFF_STATUSES, OFFICE_COORDINATES, HOUSTON_CENTER } from '../../utils/routingConstants';
 import { detectConflicts, autoFixConflicts } from '../../utils/conflictDetection';
-import { smartFillTechDay, optimizeJobSelection } from '../../utils/smartAssignment';
 import ConflictPanel from './ConflictPanel';
-import TechRecommendationTooltip from './TechRecommendationTooltip';
 
 const KanbanCalendar = ({
   jobs: initialJobs,
@@ -61,9 +59,6 @@ const KanbanCalendar = ({
 
   // Conflict detection state
   const [conflicts, setConflicts] = useState([]);
-
-  // Tech recommendation tooltip state
-  const [techRecommendation, setTechRecommendation] = useState(null);
 
   // Hide Off techs toggle state
   const [hideOffTechs, setHideOffTechs] = useState(() => {
@@ -333,79 +328,6 @@ const KanbanCalendar = ({
       showAlert('Could not automatically fix these conflicts. Please resolve them manually.', 'Manual Intervention Required', 'warning');
     }
   }, [localRoutes, localJobs, techs, onUpdateRoutes, onUpdateJobs]);
-
-  // Smart Fill Day handler
-  const handleSmartFillDay = useCallback(async (tech) => {
-    const unassignedJobs = localJobs.filter(j => !j.assignedTech);
-
-    if (unassignedJobs.length === 0) {
-      showAlert('No unassigned jobs available.', 'No Jobs', 'info');
-      return;
-    }
-
-    try {
-      const result = await smartFillTechDay(tech, unassignedJobs, localRoutes, scheduleForDay, {
-        targetHours: 8,
-        offices
-      });
-
-      if (result.selectedJobs.length === 0) {
-        showAlert(`No suitable jobs found for ${tech.name}.`, 'No Jobs Found', 'info');
-        return;
-      }
-
-      // Show preview
-      showConfirm(
-        `Smart Fill for ${tech.name}\n\n` +
-        `Selected ${result.selectedJobs.length} jobs (${result.addedHours.toFixed(1)} hrs)\n` +
-        `Total: ${result.totalHours.toFixed(1)}/8 hrs\n\n` +
-        `Jobs:\n${result.selectedJobs.map(j => `• ${j.customerName} (${j.duration}h)`).join('\n')}\n\n` +
-        `Continue?`,
-        'Smart Fill Preview',
-        async () => {
-
-      // Optimize job order
-      // Company Meeting Mode: All techs start at 9:00 AM
-      const customStartTime = companyMeetingMode
-        ? "09:00"
-        : techStartTimes[tech.id];
-      const optimized = await optimizeJobSelection(result.selectedJobs, tech, localRoutes, {
-        offices,
-        shift: tech.name?.toLowerCase().includes('second') ? 'second' : 'first',
-        customStartTime: customStartTime,
-        companyMeetingMode: companyMeetingMode
-      });
-
-      // Assign jobs
-      const updatedRoutes = { ...localRoutes };
-      if (!updatedRoutes[tech.id]) {
-        updatedRoutes[tech.id] = { tech, jobs: [] };
-      }
-      updatedRoutes[tech.id].jobs = [
-        ...updatedRoutes[tech.id].jobs,
-        ...optimized.optimizedJobs
-      ];
-
-      const updatedJobs = localJobs.map(j =>
-        result.selectedJobs.find(sj => sj.id === j.id)
-          ? { ...j, assignedTech: tech.id, status: 'assigned' }
-          : j
-      );
-
-      setLocalRoutes(updatedRoutes);
-      setLocalJobs(updatedJobs);
-      await onUpdateRoutes(updatedRoutes);
-      await onUpdateJobs(updatedJobs);
-
-      showAlert(`Successfully assigned ${result.selectedJobs.length} jobs to ${tech.name}!`, 'Smart Fill Complete', 'success');
-        },
-        'question'
-      );
-    } catch (error) {
-      console.error('Error in smart fill:', error);
-      showAlert(`Error filling day: ${error.message}`, 'Error', 'error');
-    }
-  }, [localJobs, localRoutes, scheduleForDay, offices, techs, onUpdateRoutes, onUpdateJobs]);
 
   // Multi-select handlers
   const handleJobClick = useCallback((job, event) => {
@@ -2673,40 +2595,6 @@ const KanbanCalendar = ({
         onAutoFix={handleAutoFix}
         onDismiss={() => {}}
       />
-
-      {/* Tech Recommendation Tooltip */}
-      {techRecommendation && (
-        <TechRecommendationTooltip
-          job={techRecommendation.job}
-          techs={techs}
-          routes={localRoutes}
-          scheduleForDay={scheduleForDay}
-          position={techRecommendation.position}
-          onAssignTech={async (jobId, techId) => {
-            const job = localJobs.find(j => j.id === jobId);
-            const tech = techs.find(t => t.id === techId);
-            if (!job || !tech) return;
-
-            const updatedRoutes = { ...localRoutes };
-            if (!updatedRoutes[techId]) {
-              updatedRoutes[techId] = { tech, jobs: [] };
-            }
-            updatedRoutes[techId].jobs.push(job);
-
-            const updatedJobs = localJobs.map(j =>
-              j.id === jobId
-                ? { ...j, assignedTech: techId, status: 'assigned' }
-                : j
-            );
-
-            setLocalRoutes(updatedRoutes);
-            setLocalJobs(updatedJobs);
-            await onUpdateRoutes(updatedRoutes);
-            await onUpdateJobs(updatedJobs);
-          }}
-          onClose={() => setTechRecommendation(null)}
-        />
-      )}
 
       {/* Multi-select toolbar */}
       {isMultiSelectMode && selectedJobs.size > 0 && (
