@@ -712,12 +712,12 @@ export const calculateRouteQuality = (route) => {
   const driveTimeRatio = totalDriveMinutes / (totalWorkHours * 60);
 
   // Penalize excessive drive time
-  // Good: < 20% drive time, Acceptable: 20-35%, Poor: > 35%
-  if (driveTimeRatio > 0.35) {
+  // Good: < 10% drive time, Acceptable: 10-25%, Poor: > 25%
+  if (driveTimeRatio > 0.25) {
     score -= 30;
     const drivePercent = Math.round(driveTimeRatio * 100);
     reasons.push(`Excessive drive time (${drivePercent}% of work time)`);
-  } else if (driveTimeRatio > 0.20) {
+  } else if (driveTimeRatio > 0.10) {
     score -= 15;
     const drivePercent = Math.round(driveTimeRatio * 100);
     reasons.push(`High drive time (${drivePercent}% of work time)`);
