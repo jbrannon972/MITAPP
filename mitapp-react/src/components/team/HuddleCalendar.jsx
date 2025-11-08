@@ -447,11 +447,11 @@ const HuddleDetailModal = ({ huddle, onClose, onRefresh, staffingData, generateZ
               {Object.entries(huddleContent.categories).map(([key, category]) => {
                 if (category.visible && category.content && category.content.trim()) {
                   return (
-                    <div key={key} style={{ marginBottom: '24px', padding: '16px', border: '1px solid var(--border-color)', borderRadius: '8px' }}>
-                      <h4 style={{ marginTop: 0, marginBottom: '12px', color: 'var(--primary-color)' }}>
+                    <div key={key} style={{ marginBottom: '24px', padding: '16px', border: '1px solid var(--border-color)', borderRadius: '8px', maxWidth: '100%', overflowWrap: 'break-word' }}>
+                      <h4 style={{ marginTop: 0, marginBottom: '12px', color: 'var(--primary-color)', overflowWrap: 'break-word' }}>
                         {getCategoryIcon(key)} {getCategoryTitle(key)}
                       </h4>
-                      <div className="markdown-content" style={{ fontSize: '14px', lineHeight: '1.6' }}>
+                      <div className="markdown-content" style={{ fontSize: '14px', lineHeight: '1.6', maxWidth: '100%' }}>
                         <ReactMarkdown remarkPlugins={[remarkGfm]}>
                           {category.content}
                         </ReactMarkdown>
