@@ -813,7 +813,7 @@ const ManualMode = ({
 
         if (violations.length > 0) {
           const violationMessages = violations.map(v =>
-            `${v.customerName}: Arrives ${v.arrivalTime} but window closes at ${v.timeframeEnd}`
+            `${v.customerName}: Arrives ${formatTimeAMPM(v.arrivalTime)} but window closes at ${formatTimeAMPM(v.timeframeEnd)}`
           ).join('\n');
 
           showAlert(`TIMEFRAME VIOLATIONS DETECTED:\n\n${violationMessages}\n\nThese jobs cannot be completed within their timeframe windows. Please adjust the route or reassign jobs.`, 'Timeframe Conflict', 'warning');
@@ -941,9 +941,9 @@ const ManualMode = ({
                 ? `${hours}h ${mins}m`
                 : `${mins} minutes`;
 
-              return `• ${j.customerName} (${j.timeframeStart}-${j.timeframeEnd})\n  ⏰ Would arrive at ${timing.estimatedArrival}, ${lateBy} past deadline`;
+              return `• ${j.customerName} (${formatTimeAMPM(j.timeframeStart)}-${formatTimeAMPM(j.timeframeEnd)})\n  ⏰ Would arrive at ${formatTimeAMPM(timing.estimatedArrival)}, ${lateBy} past deadline`;
             }
-            return `• ${j.customerName} (${j.timeframeStart}-${j.timeframeEnd})`;
+            return `• ${j.customerName} (${formatTimeAMPM(j.timeframeStart)}-${formatTimeAMPM(j.timeframeEnd)})`;
           }).join('\n');
 
           const assignableJobCount = optimized.optimizedJobs.length;
@@ -2140,7 +2140,7 @@ const ManualMode = ({
                 <strong>{hoveredJob.jobType}</strong> • {hoveredJob.duration}h
               </div>
               <div style={{ fontSize: '11px', color: 'var(--success-color)', fontWeight: '600', marginBottom: '4px' }}>
-                <i className="fas fa-clock"></i> Timeframe: {hoveredJob.timeframeStart} - {hoveredJob.timeframeEnd}
+                <i className="fas fa-clock"></i> Timeframe: {formatTimeAMPM(hoveredJob.timeframeStart)} - {formatTimeAMPM(hoveredJob.timeframeEnd)}
               </div>
               {hoveredJob.phone && (
                 <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '4px' }}>

@@ -2209,7 +2209,7 @@ const KanbanCalendar = ({
                         backgroundColor: 'rgba(255,255,255,0.8)',
                         padding: '0 2px'
                       }}>
-                        {time}
+                        {formatTimeAMPM(time)}
                       </span>
                     </div>
                   ))}
