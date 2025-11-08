@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { getMapboxService } from '../../services/mapboxService';
-import { optimizeRoute } from '../../utils/routeOptimizer';
+import { optimizeRoute, calculateRouteQuality } from '../../utils/routeOptimizer';
 import googleCalendarService from '../../services/googleCalendarService';
 import TwoTechAssignmentModal from './TwoTechAssignmentModal';
 import LoadingModal from './LoadingModal';
@@ -2397,6 +2397,9 @@ const ManualMode = ({
               const isSelected = selectedTech === tech.id;
               const isOff = isTechOff(tech.id);
 
+              // Calculate route quality
+              const routeQuality = calculateRouteQuality(techRoute);
+
               // Format zone prefix (Z1, Z2, or 2nd)
               const getZonePrefix = (zone) => {
                 if (!zone) return '';
@@ -2460,6 +2463,23 @@ const ManualMode = ({
                           }}>
                             {zonePrefix}
                           </span>
+                        )}
+                        {/* Route Quality Indicator */}
+                        {!isOff && jobCount > 0 && (
+                          <span
+                            style={{
+                              width: '8px',
+                              height: '8px',
+                              borderRadius: '50%',
+                              backgroundColor: routeQuality.rating === 'green' ? '#10b981' :
+                                             routeQuality.rating === 'yellow' ? '#f59e0b' : '#ef4444',
+                              flexShrink: 0,
+                              boxShadow: '0 1px 2px rgba(0,0,0,0.2)',
+                              cursor: 'help'
+                            }}
+                            title={`Route Quality: ${routeQuality.score}%\n${routeQuality.reasons.join('\n')}\n\nEfficiency: ${routeQuality.details.efficiency}%\nDrive time: ${routeQuality.details.totalDriveMinutes}m (${routeQuality.details.driveTimeRatio}% of work time)\nTimeframe violations: ${routeQuality.details.violations}\nBacktracking issues: ${routeQuality.details.backtracking}`}
+                            onClick={(e) => e.stopPropagation()}
+                          />
                         )}
                         <span>{formatTechName(tech.name)}</span>
                         {optimizingTechs.has(tech.id) && (
