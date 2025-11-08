@@ -564,36 +564,15 @@ const Routing = () => {
           timeframeEnd = end;
         }
       } else {
-        // Try TF: followed by flexible time formats
-        // Match "TF:" or "TF :" followed by timeframe
-        const tfFlexMatch = description.match(/TF\s*:\s*(\d{1,2})(?::(\d{2}))?(?:am?|a)?-(\d{1,2})(?::(\d{2}))?(?:pm?|p)?/i);
-        if (tfFlexMatch && tfFlexMatch[1] && tfFlexMatch[3]) {
-          // Validate regex captured required groups before parsing
-          let startHour = parseInt(tfFlexMatch[1], 10);
-          const startMin = tfFlexMatch[2] || '00';
-          let endHour = parseInt(tfFlexMatch[3], 10);
-          const endMin = tfFlexMatch[4] || '00';
-
-          // Validate parsing didn't result in NaN
-          if (!isNaN(startHour) && !isNaN(endHour)) {
-            // Check for explicit AM/PM markers
-            const matchedText = tfFlexMatch[0].toLowerCase();
-            const hasStartAM = matchedText.includes(`${startHour}a`) || matchedText.includes(`${startHour}am`);
-            const hasEndPM = matchedText.includes(`-${endHour}p`) || matchedText.includes(`-${endHour}pm`);
-            const hasEndAM = matchedText.includes(`-${endHour}a`) || matchedText.includes(`-${endHour}am`);
-
-            // If no explicit AM/PM markers, assume single digit hours are: start=AM, end=PM
-            if (!hasStartAM && !hasEndPM && !hasEndAM && startHour < 12 && endHour < 12) {
-              // "TF: 9-1" -> assume 9 AM to 1 PM
-              if (endHour < 12) endHour += 12;
-            } else {
-              // Handle explicit markers
-              if (hasStartAM && startHour === 12) startHour = 0;
-              if (hasEndPM && endHour < 12) endHour += 12;
-            }
-
-            timeframeStart = `${String(startHour).padStart(2, '0')}:${startMin}`;
-            timeframeEnd = `${String(endHour).padStart(2, '0')}:${endMin}`;
+        // Try TF: format (with colon instead of parentheses)
+        // Extract everything after "TF:" and use smart parser
+        const tfColonMatch = description.match(/TF\s*:\s*([^\|]+?)(?:\s+(?:TF_det|WTC|IS_POT|Morning|EQ|RA|DT|IS_PC|EQP|SB|Cat:|Rooms:|COL:)|$)/i);
+        if (tfColonMatch) {
+          const tfContent = tfColonMatch[1].trim();
+          const { start, end } = parseTimeframeString(tfContent);
+          if (start && end) {
+            timeframeStart = start;
+            timeframeEnd = end;
           }
         }
       }
