@@ -120,14 +120,50 @@ const KanbanCalendar = ({
     localStorage.setItem('hideOffTechs', JSON.stringify(hideOffTechs));
   }, [hideOffTechs]);
 
-  // Calculate return to office times - debounced to avoid excessive API calls
+  // Track previous routes to detect which techs changed
+  const prevRoutesRef = useRef({});
+
+  // Calculate return to office times - optimized to only recalculate changed techs
   useEffect(() => {
     let isMounted = true;
 
     const calculateReturnTimes = async () => {
-      const newReturnTimes = {};
+      const newReturnTimes = { ...returnToOfficeTimes }; // Start with existing times
 
-      for (const tech of techs) {
+      // Determine which techs need recalculation
+      const techsToRecalculate = techs.filter(tech => {
+        const currentJobs = localRoutes[tech.id]?.jobs || [];
+        const prevJobs = prevRoutesRef.current[tech.id]?.jobs || [];
+
+        // Recalculate if:
+        // - Number of jobs changed
+        // - Job IDs changed (different jobs)
+        // - Job details changed (addresses, times)
+        if (currentJobs.length !== prevJobs.length) return true;
+        if (currentJobs.length === 0) {
+          return prevJobs.length > 0; // Clear return time if jobs removed
+        }
+
+        // Compare job IDs and last job details
+        const currentJobIds = currentJobs.map(j => j.id).sort().join(',');
+        const prevJobIds = prevJobs.map(j => j.id).sort().join(',');
+        if (currentJobIds !== prevJobIds) return true;
+
+        // Check if last job changed (most important for return time)
+        const currentLast = currentJobs[currentJobs.length - 1];
+        const prevLast = prevJobs[prevJobs.length - 1];
+        if (!currentLast || !prevLast) return true;
+        if (currentLast.id !== prevLast.id) return true;
+        if (currentLast.address !== prevLast.address) return true;
+        if (currentLast.endTime !== prevLast.endTime) return true;
+        if (currentLast.timeframeEnd !== prevLast.timeframeEnd) return true;
+
+        return false; // No changes, skip recalculation
+      });
+
+      console.log(`📊 Recalculating return times for ${techsToRecalculate.length}/${techs.length} techs`);
+
+      for (const tech of techsToRecalculate) {
         if (!isMounted) return; // Check if still mounted
 
         const techRoute = localRoutes[tech.id];
@@ -153,12 +189,6 @@ const KanbanCalendar = ({
         const officeKey = tech.office;
         const officeAddress = offices[officeKey]?.address;
         const officeName = offices[officeKey]?.name || 'Office';
-
-        console.log(`🏠 Return calculation for ${tech.name}:`, {
-          homeOffice: officeName,
-          lastJob: lastJob.customerName,
-          companyMeetingMode
-        });
 
         if (!officeAddress || !lastJob.address) {
           // Fallback: use default travel time
@@ -206,6 +236,8 @@ const KanbanCalendar = ({
 
       if (isMounted) {
         setReturnToOfficeTimes(newReturnTimes);
+        // Update previous routes reference
+        prevRoutesRef.current = { ...localRoutes };
       }
     };
 
@@ -217,7 +249,7 @@ const KanbanCalendar = ({
       isMounted = false;
       // Debounced function handles its own cleanup
     };
-  }, [localRoutes, techs, offices, selectedDate, companyMeetingMode]);
+  }, [localRoutes, techs, offices, selectedDate, companyMeetingMode, returnToOfficeTimes]);
 
   // Recalculate drive times on initial load to fix any default/estimated times
   // This ensures routes from auto-optimizer get real Mapbox drive times
