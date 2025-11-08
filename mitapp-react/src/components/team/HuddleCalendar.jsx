@@ -372,9 +372,64 @@ const HuddleCalendar = () => {
 
 // Modal component to show huddle details
 const HuddleDetailModal = ({ huddle, onClose, onRefresh, staffingData, generateZoneId }) => {
+  const [editingLateCoverage, setEditingLateCoverage] = useState(null); // { recordIdx, personId, personName }
+  const [coverageDate, setCoverageDate] = useState('');
+  const [saving, setSaving] = useState(false);
+
   if (!huddle) return null;
 
   const { date, dateStr, huddle: huddleContent, attendance, isPast, isFuture } = huddle;
+
+  const handleMarkCoveredLater = (recordIdx, person) => {
+    setEditingLateCoverage({ recordIdx, personId: person.id, personName: person.name });
+    // Default to today's date
+    setCoverageDate(format(new Date(), 'yyyy-MM-dd'));
+  };
+
+  const saveCoverLater = async () => {
+    if (!editingLateCoverage || !coverageDate) return;
+
+    setSaving(true);
+    try {
+      const record = attendance[editingLateCoverage.recordIdx];
+      const attendanceId = `${dateStr}_${record.zoneId}`;
+
+      // Get existing attendance document
+      const existingDoc = await firebaseService.getDocument('hou_huddle_attendance', attendanceId);
+
+      // Add to coveredLater array
+      const coveredLater = existingDoc.coveredLater || [];
+      const existingIndex = coveredLater.findIndex(c => c.techId === editingLateCoverage.personId);
+
+      if (existingIndex >= 0) {
+        // Update existing entry
+        coveredLater[existingIndex].coverageDate = coverageDate;
+      } else {
+        // Add new entry
+        coveredLater.push({
+          techId: editingLateCoverage.personId,
+          techName: editingLateCoverage.personName,
+          coverageDate
+        });
+      }
+
+      // Save back
+      await firebaseService.saveDocument('hou_huddle_attendance', attendanceId, {
+        ...existingDoc,
+        coveredLater
+      });
+
+      setEditingLateCoverage(null);
+      setCoverageDate('');
+      // Refresh the view
+      onRefresh();
+    } catch (error) {
+      console.error('Error saving late coverage:', error);
+      alert('Error saving late coverage. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const renderContent = () => {
     if (isFuture) {
@@ -505,11 +560,36 @@ const HuddleDetailModal = ({ huddle, onClose, onRefresh, staffingData, generateZ
                           <p className="empty-list">Everyone present</p>
                         ) : (
                           <ul>
-                            {absentMembers.map((person, personIdx) => (
-                              <li key={personIdx} className="absent-member">
-                                {person.name}
-                              </li>
-                            ))}
+                            {absentMembers.map((person, personIdx) => {
+                              // Check if this person was covered later
+                              const coveredInfo = (record.coveredLater || []).find(c => c.techId === person.id);
+
+                              return (
+                                <li key={personIdx} className="absent-member" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                                  <div>
+                                    <span>{person.name}</span>
+                                    {coveredInfo && (
+                                      <span style={{
+                                        marginLeft: '8px',
+                                        fontSize: '12px',
+                                        color: 'var(--success-color)',
+                                        fontStyle: 'italic'
+                                      }}>
+                                        ✓ Covered on {format(new Date(coveredInfo.coverageDate), 'MMM d, yyyy')}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <button
+                                    className="btn btn-sm btn-secondary"
+                                    onClick={() => handleMarkCoveredLater(idx, person)}
+                                    style={{ fontSize: '11px', padding: '4px 8px' }}
+                                    title={coveredInfo ? 'Update coverage date' : 'Mark as covered later'}
+                                  >
+                                    <i className="fas fa-calendar-check"></i> {coveredInfo ? 'Update' : 'Covered Later'}
+                                  </button>
+                                </li>
+                              );
+                            })}
                           </ul>
                         )}
                       </div>
@@ -572,6 +652,55 @@ const HuddleDetailModal = ({ huddle, onClose, onRefresh, staffingData, generateZ
           </button>
         </div>
       </div>
+
+      {/* Late Coverage Date Picker Modal */}
+      {editingLateCoverage && (
+        <div className="modal-overlay active" onClick={() => setEditingLateCoverage(null)} style={{ zIndex: 1001 }}>
+          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: '400px' }}>
+            <div className="modal-header">
+              <h3>
+                <i className="fas fa-calendar-check"></i> Mark as Covered Later
+              </h3>
+              <button className="modal-close" onClick={() => setEditingLateCoverage(null)}>
+                <i className="fas fa-times"></i>
+              </button>
+            </div>
+            <div className="modal-body">
+              <p style={{ marginBottom: '16px', fontSize: '14px' }}>
+                When were the huddle topics covered with <strong>{editingLateCoverage.personName}</strong>?
+              </p>
+              <div className="form-group">
+                <label htmlFor="coverage-date">Coverage Date:</label>
+                <input
+                  id="coverage-date"
+                  type="date"
+                  className="form-control"
+                  value={coverageDate}
+                  onChange={(e) => setCoverageDate(e.target.value)}
+                  max={format(new Date(), 'yyyy-MM-dd')}
+                  min={dateStr}
+                />
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button
+                className="btn btn-secondary"
+                onClick={() => setEditingLateCoverage(null)}
+                disabled={saving}
+              >
+                Cancel
+              </button>
+              <button
+                className="btn btn-primary"
+                onClick={saveCoverLater}
+                disabled={saving || !coverageDate}
+              >
+                <i className="fas fa-save"></i> {saving ? 'Saving...' : 'Save'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

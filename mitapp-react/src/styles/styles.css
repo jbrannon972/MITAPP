@@ -1065,7 +1065,9 @@ body {
 .modal-body {
     padding: 20px;
     overflow-y: auto;
+    overflow-x: hidden;
     flex-grow: 1;
+    max-width: 100%;
 }
 
 .modal-footer {
@@ -2667,6 +2669,10 @@ input:checked + .slider:before {
 /* Markdown Content Rendering */
 .markdown-content {
     line-height: 1.7;
+    max-width: 100%;
+    overflow-wrap: break-word;
+    word-wrap: break-word;
+    word-break: break-word;
 }
 
 .markdown-content p {
@@ -3088,10 +3094,10 @@ input:checked + .slider:before {
 }
 
 .weekday-label {
-    padding: 12px;
+    padding: 8px;
     text-align: center;
     font-weight: 600;
-    font-size: 14px;
+    font-size: 13px;
 }
 
 .calendar-days {
@@ -3103,15 +3109,17 @@ input:checked + .slider:before {
 }
 
 .calendar-day {
-    aspect-ratio: 1;
+    aspect-ratio: 0.85;
     background: white;
-    padding: 8px;
+    padding: 6px;
     cursor: pointer;
     position: relative;
     display: flex;
     flex-direction: column;
     align-items: flex-start;
     transition: all 0.2s ease;
+    min-height: 60px;
+    max-height: 90px;
 }
 
 .calendar-day:hover {
@@ -3142,10 +3150,10 @@ input:checked + .slider:before {
 }
 
 .day-number {
-    font-size: 16px;
+    font-size: 14px;
     font-weight: 600;
     color: var(--text-primary);
-    margin-bottom: 4px;
+    margin-bottom: 2px;
 }
 
 .day-indicator {
@@ -3173,6 +3181,8 @@ input:checked + .slider:before {
 .huddle-detail-content,
 .huddle-attendance-summary {
     padding: 20px 0;
+    max-width: 100%;
+    overflow-wrap: break-word;
 }
 
 .content-summary {
