@@ -179,7 +179,7 @@ const RouteQualityTooltip = ({ routeQuality, size = '10px', onDotClick, directio
           height: size,
           borderRadius: '50%',
           backgroundColor: rating === 'green' ? '#10b981' :
-                         rating === 'yellow' ? '#f59e0b' : '#fb923c',
+                         rating === 'yellow' ? '#eab308' : '#fb923c',
           display: 'inline-block',
           flexShrink: 0,
           boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
