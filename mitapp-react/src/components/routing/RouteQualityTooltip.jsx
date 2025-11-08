@@ -146,10 +146,8 @@ const RouteQualityTooltip = ({ routeQuality, size = '10px', onDotClick, directio
           </div>
           <div style={{ paddingLeft: '12px' }}>
             <div>• Drive time: {details.totalDriveMinutes} min ({details.driveTimeRatio}% of work)</div>
+            <div>• Penalty: -{details.driveTimeRatio} points (1 point per %)</div>
             <div>• Route efficiency: {details.efficiency}%</div>
-            <div style={{ color: '#9ca3af', fontSize: '10px' }}>
-              (&lt;10% = Green, 10-25% = Yellow, &gt;25% = Red)
-            </div>
           </div>
         </div>
 
@@ -160,7 +158,7 @@ const RouteQualityTooltip = ({ routeQuality, size = '10px', onDotClick, directio
           </div>
           <div style={{ paddingLeft: '12px' }}>
             <div>• Violations: {details.violations}</div>
-            <div>• Penalty: {details.violations * 20} points</div>
+            <div>• Penalty: -{details.violations * 20} points (20 per violation)</div>
           </div>
         </div>
 
@@ -171,21 +169,31 @@ const RouteQualityTooltip = ({ routeQuality, size = '10px', onDotClick, directio
           </div>
           <div style={{ paddingLeft: '12px' }}>
             <div>• Backtracking issues: {details.backtracking}</div>
-            <div>• Penalty: {details.backtracking * 10} points</div>
+            <div>• Penalty: -{details.backtracking * 10} points (10 per issue)</div>
           </div>
         </div>
 
         {/* Workload Utilization */}
-        <div>
+        <div style={{ marginBottom: '8px' }}>
           <div style={{ fontWeight: '600', color: '#34d399', marginBottom: '3px' }}>
             💼 Workload Utilization:
           </div>
           <div style={{ paddingLeft: '12px' }}>
             <div>• Total work hours: {details.totalWorkHours}h</div>
-            <div style={{ color: details.totalWorkHours >= 4 ? '#34d399' : '#f87171' }}>
-              • Status: {details.totalWorkHours >= 4 ? 'Good' : 'Underutilized (<4h)'}
+            <div style={{ color: details.totalWorkHours < 4 ? '#f87171' : details.totalWorkHours > 8 ? '#fb923c' : '#34d399' }}>
+              • {details.totalWorkHours < 4 ? 'Underutilized (<4h, -10 points)' :
+                  details.totalWorkHours > 8 ? `Overutilized (>8h, -${Math.ceil(details.totalWorkHours - 8) * 10} points)` :
+                  'Good (4-8 hours)'}
             </div>
           </div>
+        </div>
+
+        {/* Score Thresholds */}
+        <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px solid #4b5563', fontSize: '10px', color: '#9ca3af' }}>
+          <div style={{ fontWeight: '600', marginBottom: '3px' }}>Score Thresholds:</div>
+          <div>• ≥75 = 🟢 Green (Excellent)</div>
+          <div>• ≥60 = 🟡 Yellow (Acceptable)</div>
+          <div>• &lt;60 = 🟠 Orange (Needs attention)</div>
         </div>
       </div>
     </div>
