@@ -2477,7 +2477,7 @@ const ManualMode = ({
                               boxShadow: '0 1px 2px rgba(0,0,0,0.2)',
                               cursor: 'help'
                             }}
-                            title={`Route Quality: ${routeQuality.score}%\n${routeQuality.reasons.join('\n')}\n\nEfficiency: ${routeQuality.details.efficiency}%\nDrive time: ${routeQuality.details.totalDriveMinutes}m (${routeQuality.details.driveTimeRatio}% of work time)\nTimeframe violations: ${routeQuality.details.violations}\nBacktracking issues: ${routeQuality.details.backtracking}`}
+                            title={`🚗 ROUTE QUALITY: ${routeQuality.rating.toUpperCase()} (${routeQuality.score}/100)\n\n${routeQuality.reasons.join('\n')}\n\n━━━━━━━━━━━━━━━━━━━━\nDETAILED BREAKDOWN:\n━━━━━━━━━━━━━━━━━━━━\n\n📊 Drive Time Efficiency:\n   • Drive time: ${routeQuality.details.totalDriveMinutes} min (${routeQuality.details.driveTimeRatio}% of work time)\n   • Route efficiency: ${routeQuality.details.efficiency}%\n   • Thresholds: <10% = Green, 10-25% = Yellow, >25% = Red\n\n⏰ Timeframe Compliance:\n   • Violations: ${routeQuality.details.violations}\n   • Penalty: ${routeQuality.details.violations * 20} points\n\n🔄 Route Optimization:\n   • Backtracking issues: ${routeQuality.details.backtracking}\n   • Penalty: ${routeQuality.details.backtracking * 10} points\n\n💼 Workload Utilization:\n   • Total work hours: ${routeQuality.details.totalWorkHours}h\n   • Status: ${routeQuality.details.totalWorkHours >= 4 ? 'Good' : 'Underutilized (<4h)'}`}
                             onClick={(e) => e.stopPropagation()}
                           />
                         )}
