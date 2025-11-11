@@ -66,6 +66,11 @@ export const normalizeTimeFormat = (timeStr) => {
     return converted;
   }
 
+  // Special case: 24:00 represents midnight (end of day)
+  if (converted.trim() === '24:00') {
+    return '23:59'; // Treat as last minute of the day for practical routing purposes
+  }
+
   // Accept both h:mm and hh:mm formats
   const timeRegex = /^(\d{1,2}):([0-5]\d)$/;
   const match = converted.trim().match(timeRegex);
