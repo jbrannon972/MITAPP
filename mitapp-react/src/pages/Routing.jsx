@@ -9,6 +9,7 @@ import ManualMode from '../components/routing/ManualMode';
 import KanbanCalendar from '../components/routing/KanbanCalendar';
 import ConfirmModal from '../components/routing/ConfirmModal';
 import LoadingModal from '../components/routing/LoadingModal';
+import ManualTimeframeModal from '../components/routing/ManualTimeframeModal';
 import { useData } from '../contexts/DataContext';
 import { useAuth } from '../contexts/AuthContext';
 import firebaseService from '../services/firebaseService';
@@ -57,6 +58,12 @@ const Routing = () => {
     currentStepNumber: 0,
     showSteps: false
   });
+  // Manual timeframe correction workflow state
+  const [showManualTimeframeModal, setShowManualTimeframeModal] = useState(false);
+  const [currentJobNeedingCorrection, setCurrentJobNeedingCorrection] = useState(null);
+  const [jobsNeedingCorrection, setJobsNeedingCorrection] = useState([]);
+  const [correctedJobs, setCorrectedJobs] = useState([]);
+  const [pendingParsedJobs, setPendingParsedJobs] = useState([]);
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const markersRef = useRef([]);
@@ -358,62 +365,181 @@ const Routing = () => {
 
         perfLogger.startTimer('csv_parsing');
         const text = event.target.result;
-        const parsedJobs = parseCSV(text);
+        const { parsedJobs, jobsNeedingCorrection } = parseCSV(text);
         const parsingDuration = perfLogger.endTimer('csv_parsing');
         csvImportTrace.putMetric('parsing_duration_ms', Math.round(parsingDuration));
-        csvImportTrace.putMetric('jobs_parsed', parsedJobs.length);
+        csvImportTrace.putMetric('jobs_parsed', parsedJobs.length + jobsNeedingCorrection.length);
+        csvImportTrace.putMetric('jobs_needing_correction', jobsNeedingCorrection.length);
 
-        // Step 2: Sanitize and validate data
-        setLoadingState(prev => ({
-          ...prev,
-          progress: 40,
-          currentStepNumber: 2,
-          currentStep: 'Validating job data...',
-          message: `Checking ${parsedJobs.length} jobs for errors`
-        }));
+        // Close loading modal
+        setLoadingState(prev => ({ ...prev, isOpen: false }));
 
-        perfLogger.startTimer('validation');
-        // Sanitize all jobs first (fix common issues)
-        const sanitizedJobs = parsedJobs.map(sanitizeJob);
+        // If there are jobs needing correction, start the manual correction workflow
+        if (jobsNeedingCorrection.length > 0) {
+          console.log(`⏰ ${jobsNeedingCorrection.length} jobs need manual timeframe correction`);
+          setPendingParsedJobs(parsedJobs);
+          setJobsNeedingCorrection(jobsNeedingCorrection);
+          setCorrectedJobs([]);
+          setCurrentJobNeedingCorrection(jobsNeedingCorrection[0]);
+          setShowManualTimeframeModal(true);
+          return; // Don't proceed with validation yet
+        }
 
-        // Validate all jobs
-        const { validJobs, invalidJobs, stats } = validateJobs(sanitizedJobs);
-        const validationDuration = perfLogger.endTimer('validation');
+        // No jobs need correction, proceed with validation
+        await proceedWithValidationAndSave(parsedJobs, csvImportTrace);
+
+      } catch (error) {
+        console.error('CSV import error:', error);
+        setLoadingState(prev => ({ ...prev, isOpen: false }));
+
+        // Track failure in performance monitoring
+        if (csvImportTrace) {
+          csvImportTrace.putAttribute('success', 'false');
+          csvImportTrace.putAttribute('error', error.message || 'Unknown error');
+          csvImportTrace.stop();
+        }
+
+        showAlert(`Error importing CSV: ${error.message}`, 'Import Failed', 'error');
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  // Handle manual timeframe correction submission
+  const handleManualTimeframeSubmit = (startTime, endTime) => {
+    if (!currentJobNeedingCorrection) return;
+
+    console.log(`✅ Corrected timeframe for job ${currentJobNeedingCorrection.id}: ${startTime} - ${endTime}`);
+
+    // Update the job with corrected timeframe
+    const correctedJob = {
+      ...currentJobNeedingCorrection,
+      timeframeStart: startTime,
+      timeframeEnd: endTime,
+      needsManualTimeframe: false
+    };
+    delete correctedJob.originalTimeframe;
+
+    // Add to corrected jobs list
+    const updatedCorrectedJobs = [...correctedJobs, correctedJob];
+    setCorrectedJobs(updatedCorrectedJobs);
+
+    // Move to next job needing correction
+    const remainingJobs = jobsNeedingCorrection.slice(1);
+    setJobsNeedingCorrection(remainingJobs);
+
+    if (remainingJobs.length > 0) {
+      // Show next job
+      setCurrentJobNeedingCorrection(remainingJobs[0]);
+    } else {
+      // All jobs corrected, proceed with validation
+      setShowManualTimeframeModal(false);
+      setCurrentJobNeedingCorrection(null);
+
+      // Combine all jobs and proceed
+      const allJobs = [...pendingParsedJobs, ...updatedCorrectedJobs];
+      console.log(`✅ All ${updatedCorrectedJobs.length} timeframes corrected. Proceeding with ${allJobs.length} total jobs.`);
+
+      proceedWithValidationAndSave(allJobs);
+    }
+  };
+
+  // Handle skipping a job with unparsable timeframe
+  const handleManualTimeframeSkip = () => {
+    if (!currentJobNeedingCorrection) return;
+
+    console.log(`⏭️ Skipped job ${currentJobNeedingCorrection.id} with unparsable timeframe`);
+
+    // Move to next job needing correction without adding current job to corrected list
+    const remainingJobs = jobsNeedingCorrection.slice(1);
+    setJobsNeedingCorrection(remainingJobs);
+
+    if (remainingJobs.length > 0) {
+      // Show next job
+      setCurrentJobNeedingCorrection(remainingJobs[0]);
+    } else {
+      // All jobs processed (corrected or skipped), proceed with validation
+      setShowManualTimeframeModal(false);
+      setCurrentJobNeedingCorrection(null);
+
+      // Combine all jobs (only include corrected ones, skipped jobs are excluded)
+      const allJobs = [...pendingParsedJobs, ...correctedJobs];
+      console.log(`✅ Finished timeframe correction. Proceeding with ${allJobs.length} total jobs (${correctedJobs.length} corrected, ${jobsNeedingCorrection.length} skipped).`);
+
+      proceedWithValidationAndSave(allJobs);
+    }
+  };
+
+  // Handle closing the manual timeframe modal (cancel import)
+  const handleManualTimeframeClose = () => {
+    setShowManualTimeframeModal(false);
+    setCurrentJobNeedingCorrection(null);
+    setJobsNeedingCorrection([]);
+    setCorrectedJobs([]);
+    setPendingParsedJobs([]);
+    console.log('❌ CSV import cancelled during timeframe correction');
+  };
+
+  // Process validation and save after all timeframes are corrected
+  const proceedWithValidationAndSave = async (allJobs, csvImportTrace = null) => {
+    try {
+      // Show loading modal
+      setLoadingState({
+        isOpen: true,
+        title: 'Importing CSV',
+        message: 'Validating jobs...',
+        progress: 40,
+        totalSteps: 3,
+        currentStepNumber: 2,
+        currentStep: 'Validating job data...',
+        showSteps: true
+      });
+
+      perfLogger.startTimer('validation');
+      // Sanitize all jobs first (fix common issues)
+      const sanitizedJobs = allJobs.map(sanitizeJob);
+
+      // Validate all jobs
+      const { validJobs, invalidJobs, stats } = validateJobs(sanitizedJobs);
+      const validationDuration = perfLogger.endTimer('validation');
+      if (csvImportTrace) {
         csvImportTrace.putMetric('validation_duration_ms', Math.round(validationDuration));
         csvImportTrace.putMetric('valid_jobs', validJobs.length);
         csvImportTrace.putMetric('invalid_jobs', invalidJobs.length);
+      }
 
-        console.log('📊 Validation results:', stats);
-        if (invalidJobs.length > 0) {
-          console.warn('⚠️ Invalid jobs found:', invalidJobs);
-        }
+      console.log('📊 Validation results:', stats);
+      if (invalidJobs.length > 0) {
+        console.warn('⚠️ Invalid jobs found:', invalidJobs);
+      }
 
-        // Step 3: Save valid jobs to Firebase
-        setLoadingState(prev => ({
-          ...prev,
-          progress: 70,
-          currentStepNumber: 3,
-          currentStep: 'Saving jobs to database...',
-          message: `Saving ${validJobs.length} valid jobs`
-        }));
+      // Step 3: Save valid jobs to Firebase
+      setLoadingState(prev => ({
+        ...prev,
+        progress: 70,
+        currentStepNumber: 3,
+        currentStep: 'Saving jobs to database...',
+        message: `Saving ${validJobs.length} valid jobs`
+      }));
 
-        setJobs(validJobs);
-        await saveJobsNow(validJobs);
+      setJobs(validJobs);
+      await saveJobsNow(validJobs);
 
-        // Complete
-        setLoadingState(prev => ({
-          ...prev,
-          progress: 100,
-          currentStep: 'Complete!',
-          message: `Imported ${validJobs.length} jobs successfully`
-        }));
+      // Complete
+      setLoadingState(prev => ({
+        ...prev,
+        progress: 100,
+        currentStep: 'Complete!',
+        message: `Imported ${validJobs.length} jobs successfully`
+      }));
 
-        // Wait a moment to show 100% before closing
-        await new Promise(resolve => setTimeout(resolve, 500));
+      // Wait a moment to show 100% before closing
+      await new Promise(resolve => setTimeout(resolve, 500));
 
-        setLoadingState(prev => ({ ...prev, isOpen: false }));
+      setLoadingState(prev => ({ ...prev, isOpen: false }));
 
-        // Complete performance tracking
+      // Complete performance tracking
+      if (csvImportTrace) {
         const totalDuration = perfLogger.endTimer('total_csv_import');
         csvImportTrace.putMetric('total_duration_ms', Math.round(totalDuration));
         csvImportTrace.putAttribute('success', 'true');
@@ -422,35 +548,28 @@ const Routing = () => {
 
         // Log performance summary
         perfLogger.logSummary();
-
-        // Show results with validation warnings if needed
-        if (invalidJobs.length === 0) {
-          showAlert(
-            `✅ Successfully imported ${validJobs.length} jobs!\n\nAll jobs passed validation.`,
-            'Import Complete',
-            'success'
-          );
-        } else {
-          const errorMessage = formatValidationErrors(invalidJobs);
-          showAlert(
-            `⚠️ Imported ${validJobs.length} of ${stats.total} jobs (${stats.successRate}% success)\n\n${errorMessage}\n\nValid jobs have been imported. Please fix the errors in your CSV and re-import if needed.`,
-            'Import Complete with Warnings',
-            'warning'
-          );
-        }
-      } catch (error) {
-        console.error('CSV import error:', error);
-        setLoadingState(prev => ({ ...prev, isOpen: false }));
-
-        // Track failure in performance monitoring
-        csvImportTrace.putAttribute('success', 'false');
-        csvImportTrace.putAttribute('error', error.message || 'Unknown error');
-        csvImportTrace.stop();
-
-        showAlert(`Error importing CSV: ${error.message}`, 'Import Failed', 'error');
       }
-    };
-    reader.readAsText(file);
+
+      // Show results with validation warnings if needed
+      if (invalidJobs.length === 0) {
+        showAlert(
+          `✅ Successfully imported ${validJobs.length} jobs!\n\nAll jobs passed validation.`,
+          'Import Complete',
+          'success'
+        );
+      } else {
+        const errorMessage = formatValidationErrors(invalidJobs);
+        showAlert(
+          `⚠️ Imported ${validJobs.length} of ${stats.total} jobs (${stats.successRate}% success)\n\n${errorMessage}\n\nValid jobs have been imported. Please fix the errors in your CSV and re-import if needed.`,
+          'Import Complete with Warnings',
+          'warning'
+        );
+      }
+    } catch (error) {
+      console.error('Validation/save error:', error);
+      setLoadingState(prev => ({ ...prev, isOpen: false }));
+      showAlert(`Error processing jobs: ${error.message}`, 'Processing Failed', 'error');
+    }
   };
 
   // Proper CSV parser that handles commas inside quoted fields
@@ -525,11 +644,13 @@ const Routing = () => {
       rows.push(currentRow);
     }
 
-    if (rows.length === 0) return [];
+    if (rows.length === 0) return { parsedJobs: [], jobsNeedingCorrection: [] };
 
     const headers = parseCSVLine(rows[0]);
 
     const jobs = [];
+    const needsCorrection = [];
+
     for (let i = 1; i < rows.length; i++) {
       if (!rows[i].trim()) continue;
 
@@ -551,29 +672,34 @@ const Routing = () => {
       // - TF(09:00-13:00)
       // - TF: 9a-1p, TF: 9am-1pm
       // - TF: 9-1 (assumes AM to PM)
-      let timeframeStart = '08:00';
-      let timeframeEnd = '17:00';
+      let timeframeStart = null;
+      let timeframeEnd = null;
+      let originalTimeframe = '';
+      let timeframeParsed = false;
 
       const description = job.route_description || '';
 
       // Try TF(HH:MM-HH:MM) format first - handles AM/PM like TF(12p-6p), TF(12-6 PM), TF(12-6)
       const tfMatch = description.match(/TF\(([^)]+)\)/);
       if (tfMatch) {
+        originalTimeframe = tfMatch[1];
         const { start, end } = parseTimeframeString(tfMatch[1]);
         if (start && end) {
           timeframeStart = start;
           timeframeEnd = end;
+          timeframeParsed = true;
         }
       } else {
         // Try TF: format (with colon instead of parentheses)
         // Extract everything after "TF:" and use smart parser
         const tfColonMatch = description.match(/TF\s*:\s*([^\|]+?)(?:\s+(?:TF_det|WTC|IS_POT|Morning|EQ|RA|DT|IS_PC|EQP|SB|Cat:|Rooms:|COL:)|$)/i);
         if (tfColonMatch) {
-          const tfContent = tfColonMatch[1].trim();
-          const { start, end } = parseTimeframeString(tfContent);
+          originalTimeframe = tfColonMatch[1].trim();
+          const { start, end } = parseTimeframeString(tfColonMatch[1].trim());
           if (start && end) {
             timeframeStart = start;
             timeframeEnd = end;
+            timeframeParsed = true;
           }
         }
       }
@@ -585,14 +711,14 @@ const Routing = () => {
       // DT(true) means "Demo Tech" is required (a second person)
       const requiresTwoTechs = (job.route_description || '').includes('DT(true)');
 
-      jobs.push({
+      const jobData = {
         id: job.text || `job_${Date.now()}_${i}`,
         customerName: customerName,
         address: job.customer_address || '',
         zone: zone,
         duration: parseFloat(job.duration) || 1,
-        timeframeStart: timeframeStart,
-        timeframeEnd: timeframeEnd,
+        timeframeStart: timeframeStart || '08:00', // Fallback for now
+        timeframeEnd: timeframeEnd || '17:00', // Fallback for now
         jobType: jobType,
         requiresTwoTechs: requiresTwoTechs,
         description: job.route_description || '',
@@ -606,10 +732,20 @@ const Routing = () => {
           zone: zone,
           text: job.text
         }
-      });
+      };
+
+      // If timeframe couldn't be parsed and there was an original timeframe string,
+      // flag this job for manual correction
+      if (!timeframeParsed && originalTimeframe) {
+        jobData.originalTimeframe = originalTimeframe;
+        jobData.needsManualTimeframe = true;
+        needsCorrection.push(jobData);
+      } else {
+        jobs.push(jobData);
+      }
     }
 
-    return jobs;
+    return { parsedJobs: jobs, jobsNeedingCorrection: needsCorrection };
   };
 
   // Immediate save function (private)
@@ -2057,6 +2193,15 @@ const Routing = () => {
           type={modal.type}
           confirmText={modal.confirmText}
           cancelText={modal.cancelText}
+        />
+
+        {/* Manual Timeframe Correction Modal */}
+        <ManualTimeframeModal
+          show={showManualTimeframeModal}
+          job={currentJobNeedingCorrection}
+          onSubmit={handleManualTimeframeSubmit}
+          onSkip={handleManualTimeframeSkip}
+          onClose={handleManualTimeframeClose}
         />
 
         {/* Loading Modal with Progress */}
