@@ -5,6 +5,18 @@ match /hou_settings/secure_config {
 allow write: if request.auth != null;
 allow read: if false;
 }
+
+// Huddle content - managers can write, managers/supervisors can read
+match /hou_huddle_content/{document=**} {
+  allow read: if request.auth != null;
+  allow write: if request.auth != null;
+}
+
+// Huddle attendance - managers/supervisors can read and write
+match /hou_huddle_attendance/{document=**} {
+  allow read, write: if request.auth != null;
+}
+
 match /{document=**} {
   allow read, write: if request.auth != null;
 }

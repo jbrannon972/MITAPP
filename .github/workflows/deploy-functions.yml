@@ -1,0 +1,69 @@
+name: Deploy Firebase Functions
+
+on:
+  push:
+    branches:
+      - claude/connect-service-011CUUw7Cvs7ixKxsQzoHotb
+      - main
+    paths:
+      - 'functions/**'
+      - '.github/workflows/deploy-functions.yml'
+  workflow_dispatch: # Allow manual trigger from GitHub UI
+
+jobs:
+  deploy:
+    name: Deploy Cloud Functions
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: functions/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          cd functions
+          npm ci
+
+      - name: Create Firebase service account file
+        run: |
+          echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}' > $HOME/firebase-service-account.json
+
+      - name: Set Firebase environment variables
+        run: |
+          npm install -g firebase-tools
+          firebase use --token "${{ secrets.FIREBASE_TOKEN }}" mitapp-production || true
+          firebase functions:config:set \
+            email.user="${{ secrets.EMAIL_USER }}" \
+            email.password="${{ secrets.EMAIL_PASSWORD }}" \
+            --token "${{ secrets.FIREBASE_TOKEN }}"
+        continue-on-error: true
+
+      - name: Deploy to Firebase
+        run: |
+          firebase deploy --only functions --token "${{ secrets.FIREBASE_TOKEN }}"
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ env.HOME }}/firebase-service-account.json
+
+      - name: Clean up
+        if: always()
+        run: |
+          rm -f $HOME/firebase-service-account.json
+
+      - name: Deployment success notification
+        if: success()
+        run: |
+          echo "✅ Firebase Functions deployed successfully!"
+          echo "The daily email report function is now live and will run at 5 AM CST daily."
+
+      - name: Deployment failure notification
+        if: failure()
+        run: |
+          echo "❌ Firebase Functions deployment failed!"
+          echo "Check the logs above for error details."
