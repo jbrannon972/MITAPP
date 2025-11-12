@@ -679,12 +679,16 @@ const Routing = () => {
 
       const description = job.route_description || '';
 
+      // Regex to validate HH:MM format
+      const timeFormatRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
+
       // Try TF(HH:MM-HH:MM) format first - handles AM/PM like TF(12p-6p), TF(12-6 PM), TF(12-6)
       const tfMatch = description.match(/TF\(([^)]+)\)/);
       if (tfMatch) {
         originalTimeframe = tfMatch[1];
         const { start, end } = parseTimeframeString(tfMatch[1]);
-        if (start && end) {
+        // Validate that both times are in proper HH:MM format
+        if (start && end && timeFormatRegex.test(start) && timeFormatRegex.test(end)) {
           timeframeStart = start;
           timeframeEnd = end;
           timeframeParsed = true;
@@ -696,7 +700,8 @@ const Routing = () => {
         if (tfColonMatch) {
           originalTimeframe = tfColonMatch[1].trim();
           const { start, end } = parseTimeframeString(tfColonMatch[1].trim());
-          if (start && end) {
+          // Validate that both times are in proper HH:MM format
+          if (start && end && timeFormatRegex.test(start) && timeFormatRegex.test(end)) {
             timeframeStart = start;
             timeframeEnd = end;
             timeframeParsed = true;
