@@ -739,10 +739,24 @@ const Routing = () => {
         }
       };
 
-      // If timeframe couldn't be parsed and there was an original timeframe string,
-      // flag this job for manual correction
-      if (!timeframeParsed && originalTimeframe) {
-        jobData.originalTimeframe = originalTimeframe;
+      // Check if timeframe is logically valid (start < end)
+      let timeframeLogicallyInvalid = false;
+      if (timeframeParsed && timeframeStart && timeframeEnd) {
+        const [startHour, startMin] = timeframeStart.split(':').map(Number);
+        const [endHour, endMin] = timeframeEnd.split(':').map(Number);
+        const startMinutes = startHour * 60 + startMin;
+        const endMinutes = endHour * 60 + endMin;
+
+        if (startMinutes >= endMinutes) {
+          timeframeLogicallyInvalid = true;
+        }
+      }
+
+      // Flag for manual correction if:
+      // 1. Timeframe couldn't be parsed at all, OR
+      // 2. Timeframe was parsed but is logically invalid (start >= end)
+      if ((!timeframeParsed && originalTimeframe) || timeframeLogicallyInvalid) {
+        jobData.originalTimeframe = originalTimeframe || `${timeframeStart}-${timeframeEnd}`;
         jobData.needsManualTimeframe = true;
         needsCorrection.push(jobData);
       } else {
