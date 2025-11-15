@@ -83,6 +83,20 @@ const KanbanCalendar = ({
     return `${firstName} ${lastInitial}.`;
   };
 
+  // Helper function to get Storm Mode staff type badge info
+  const getStaffTypeBadge = (tech) => {
+    if (!tech.type || tech.type === 'tech') return null;
+
+    const badges = {
+      projectManager: { label: 'PM', color: '#8b5cf6', icon: '📋' },
+      ehqLeader: { label: 'EHQ', color: '#f59e0b', icon: '👔' },
+      ehqCSStaff: { label: 'CS', color: '#06b6d4', icon: '🎧' },
+      subContractor: { label: 'SUB', color: '#ec4899', icon: '👥' }
+    };
+
+    return badges[tech.type] || null;
+  };
+
   // Removed deepEqual - not currently used in the component
 
   /**
@@ -1930,6 +1944,23 @@ const KanbanCalendar = ({
                         flexShrink: 0
                       }}>
                         {zonePrefix}
+                      </span>
+                    )}
+                    {/* Storm Mode Staff Type Badge */}
+                    {getStaffTypeBadge(tech) && (
+                      <span
+                        style={{
+                          backgroundColor: getStaffTypeBadge(tech).color,
+                          color: 'white',
+                          padding: '2px 5px',
+                          borderRadius: '3px',
+                          fontSize: '8px',
+                          fontWeight: '700',
+                          flexShrink: 0
+                        }}
+                        title={`Storm Mode: ${tech.role || tech.type}`}
+                      >
+                        {getStaffTypeBadge(tech).label}
                       </span>
                     )}
                     {/* Route Quality Indicator */}
