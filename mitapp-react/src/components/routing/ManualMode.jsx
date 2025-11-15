@@ -2176,8 +2176,20 @@ const ManualMode = ({
                 fontSize: '11px'
               }}
             >
-              <div style={{ fontWeight: '600', marginBottom: '6px', fontSize: '13px', color: 'var(--text-primary)' }}>
-                {hoveredJob.customerName}
+              <div style={{
+                fontWeight: '600',
+                marginBottom: '6px',
+                fontSize: '13px',
+                color: 'var(--text-primary)',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                gap: '8px'
+              }}>
+                <span>{hoveredJob.customerName}</span>
+                <span style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: '500' }}>
+                  {hoveredJob.id}
+                </span>
               </div>
               <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '4px' }}>
                 <i className="fas fa-map-marker-alt"></i> {hoveredJob.address}
@@ -2188,9 +2200,9 @@ const ManualMode = ({
               <div style={{ fontSize: '11px', color: 'var(--success-color)', fontWeight: '600', marginBottom: '4px' }}>
                 <i className="fas fa-clock"></i> Timeframe: {formatTimeAMPM(hoveredJob.timeframeStart)} - {formatTimeAMPM(hoveredJob.timeframeEnd)}
               </div>
-              {hoveredJob.phone && (
-                <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '4px' }}>
-                  <i className="fas fa-phone"></i> {hoveredJob.phone}
+              {hoveredJob.requestedTech && (
+                <div style={{ fontSize: '11px', color: 'var(--warning-color)', marginBottom: '4px', fontWeight: 'bold' }}>
+                  <i className="fas fa-user-tag"></i> Req: {hoveredJob.requestedTech}
                 </div>
               )}
               {hoveredJob.description && (
