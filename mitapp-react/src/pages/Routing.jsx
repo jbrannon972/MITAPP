@@ -1920,14 +1920,6 @@ const Routing = () => {
       </div>
 
       <button
-        className="btn btn-success btn-small"
-        onClick={() => setShowOptimizeModal(true)}
-        disabled={optimizing || unassignedJobs.length === 0}
-        style={{ padding: '4px 12px', fontSize: '12px' }}
-      >
-        <i className="fas fa-magic"></i> {optimizing ? 'Optimizing...' : 'Auto-Optimize'}
-      </button>
-      <button
         className="btn btn-primary btn-small"
         onClick={() => setShowImportModal(true)}
         style={{ padding: '4px 12px', fontSize: '12px' }}
