@@ -741,6 +741,467 @@ class FirebaseService {
       throw error;
     }
   }
+
+  // ==================== STORM MODE FUNCTIONS ====================
+
+  /**
+   * Load Storm Mode data for a specific date
+   * @param {string} date - Date in YYYY-MM-DD format
+   * @returns {Promise<Object>} Storm Mode data including all staff categories
+   */
+  async loadStormModeData(date) {
+    try {
+      const docRef = doc(db, 'hou_storm_mode', date);
+      const docSnap = await getDoc(docRef);
+
+      if (docSnap.exists()) {
+        return docSnap.data();
+      }
+
+      // Return default empty structure
+      return {
+        active: false,
+        lastUpdated: null,
+        projectManagers: [],
+        ehqLeaders: [],
+        ehqCSStaff: [],
+        subContractors: []
+      };
+    } catch (error) {
+      console.error('Error loading Storm Mode data:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Save Storm Mode data for a specific date
+   * @param {string} date - Date in YYYY-MM-DD format
+   * @param {Object} data - Storm Mode data
+   */
+  async saveStormModeData(date, data) {
+    try {
+      const docRef = doc(db, 'hou_storm_mode', date);
+      const cleanedData = this.removeUndefined({
+        ...data,
+        lastUpdated: serverTimestamp()
+      });
+      await setDoc(docRef, cleanedData);
+    } catch (error) {
+      console.error('Error saving Storm Mode data:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Add a Project Manager to Storm Mode
+   * @param {string} date - Date in YYYY-MM-DD format
+   * @param {Object} pm - Project Manager object
+   */
+  async addProjectManager(date, pm) {
+    try {
+      const stormData = await this.loadStormModeData(date);
+      const newPM = {
+        id: `pm_${Date.now()}`,
+        name: pm.name,
+        startingLocation: pm.startingLocation || 'office_1',
+        capabilities: {
+          install: pm.capabilities?.install ?? true,
+          sub: pm.capabilities?.sub ?? true,
+          cs: pm.capabilities?.cs ?? true,
+          pull: pm.capabilities?.pull ?? true
+        },
+        status: 'available',
+        assignedToSub: null,
+        email: pm.email || '',
+        phone: pm.phone || ''
+      };
+
+      stormData.projectManagers.push(newPM);
+      await this.saveStormModeData(date, stormData);
+      return newPM;
+    } catch (error) {
+      console.error('Error adding Project Manager:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Update a Project Manager
+   * @param {string} date - Date in YYYY-MM-DD format
+   * @param {string} pmId - Project Manager ID
+   * @param {Object} updates - Fields to update
+   */
+  async updateProjectManager(date, pmId, updates) {
+    try {
+      const stormData = await this.loadStormModeData(date);
+      const index = stormData.projectManagers.findIndex(pm => pm.id === pmId);
+
+      if (index !== -1) {
+        stormData.projectManagers[index] = {
+          ...stormData.projectManagers[index],
+          ...updates
+        };
+        await this.saveStormModeData(date, stormData);
+      }
+    } catch (error) {
+      console.error('Error updating Project Manager:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Delete a Project Manager
+   * @param {string} date - Date in YYYY-MM-DD format
+   * @param {string} pmId - Project Manager ID
+   */
+  async deleteProjectManager(date, pmId) {
+    try {
+      const stormData = await this.loadStormModeData(date);
+      stormData.projectManagers = stormData.projectManagers.filter(pm => pm.id !== pmId);
+      await this.saveStormModeData(date, stormData);
+    } catch (error) {
+      console.error('Error deleting Project Manager:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Add an EHQ Leader to Storm Mode
+   * @param {string} date - Date in YYYY-MM-DD format
+   * @param {Object} leader - EHQ Leader object
+   */
+  async addEHQLeader(date, leader) {
+    try {
+      const stormData = await this.loadStormModeData(date);
+      const newLeader = {
+        id: `ehq_${Date.now()}`,
+        name: leader.name,
+        startingLocation: leader.startingLocation || 'office_1',
+        capabilities: {
+          install: leader.capabilities?.install ?? true,
+          sub: leader.capabilities?.sub ?? true,
+          cs: leader.capabilities?.cs ?? true,
+          pull: leader.capabilities?.pull ?? false
+        },
+        status: 'available',
+        assignedToSub: null,
+        email: leader.email || '',
+        phone: leader.phone || ''
+      };
+
+      stormData.ehqLeaders.push(newLeader);
+      await this.saveStormModeData(date, stormData);
+      return newLeader;
+    } catch (error) {
+      console.error('Error adding EHQ Leader:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Update an EHQ Leader
+   * @param {string} date - Date in YYYY-MM-DD format
+   * @param {string} leaderId - EHQ Leader ID
+   * @param {Object} updates - Fields to update
+   */
+  async updateEHQLeader(date, leaderId, updates) {
+    try {
+      const stormData = await this.loadStormModeData(date);
+      const index = stormData.ehqLeaders.findIndex(l => l.id === leaderId);
+
+      if (index !== -1) {
+        stormData.ehqLeaders[index] = {
+          ...stormData.ehqLeaders[index],
+          ...updates
+        };
+        await this.saveStormModeData(date, stormData);
+      }
+    } catch (error) {
+      console.error('Error updating EHQ Leader:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Delete an EHQ Leader
+   * @param {string} date - Date in YYYY-MM-DD format
+   * @param {string} leaderId - EHQ Leader ID
+   */
+  async deleteEHQLeader(date, leaderId) {
+    try {
+      const stormData = await this.loadStormModeData(date);
+      stormData.ehqLeaders = stormData.ehqLeaders.filter(l => l.id !== leaderId);
+      await this.saveStormModeData(date, stormData);
+    } catch (error) {
+      console.error('Error deleting EHQ Leader:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Add an EHQ CS Staff member to Storm Mode
+   * @param {string} date - Date in YYYY-MM-DD format
+   * @param {Object} staff - EHQ CS Staff object
+   */
+  async addEHQCSStaff(date, staff) {
+    try {
+      const stormData = await this.loadStormModeData(date);
+      const newStaff = {
+        id: `cs_${Date.now()}`,
+        name: staff.name,
+        startingLocation: staff.startingLocation || 'office_1',
+        capabilities: {
+          install: staff.capabilities?.install ?? false,
+          sub: staff.capabilities?.sub ?? false,
+          cs: true, // Always true for CS staff
+          pull: staff.capabilities?.pull ?? false
+        },
+        status: 'available',
+        email: staff.email || '',
+        phone: staff.phone || ''
+      };
+
+      stormData.ehqCSStaff.push(newStaff);
+      await this.saveStormModeData(date, stormData);
+      return newStaff;
+    } catch (error) {
+      console.error('Error adding EHQ CS Staff:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Update an EHQ CS Staff member
+   * @param {string} date - Date in YYYY-MM-DD format
+   * @param {string} staffId - EHQ CS Staff ID
+   * @param {Object} updates - Fields to update
+   */
+  async updateEHQCSStaff(date, staffId, updates) {
+    try {
+      const stormData = await this.loadStormModeData(date);
+      const index = stormData.ehqCSStaff.findIndex(s => s.id === staffId);
+
+      if (index !== -1) {
+        // Ensure CS capability always stays true
+        if (updates.capabilities) {
+          updates.capabilities.cs = true;
+        }
+        stormData.ehqCSStaff[index] = {
+          ...stormData.ehqCSStaff[index],
+          ...updates
+        };
+        await this.saveStormModeData(date, stormData);
+      }
+    } catch (error) {
+      console.error('Error updating EHQ CS Staff:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Delete an EHQ CS Staff member
+   * @param {string} date - Date in YYYY-MM-DD format
+   * @param {string} staffId - EHQ CS Staff ID
+   */
+  async deleteEHQCSStaff(date, staffId) {
+    try {
+      const stormData = await this.loadStormModeData(date);
+      stormData.ehqCSStaff = stormData.ehqCSStaff.filter(s => s.id !== staffId);
+      await this.saveStormModeData(date, stormData);
+    } catch (error) {
+      console.error('Error deleting EHQ CS Staff:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Add a Sub Contractor to Storm Mode
+   * @param {string} date - Date in YYYY-MM-DD format
+   * @param {Object} sub - Sub Contractor object
+   */
+  async addSubContractor(date, sub) {
+    try {
+      const stormData = await this.loadStormModeData(date);
+      const newSub = {
+        id: `sub_${Date.now()}`,
+        name: sub.name,
+        quantity: sub.quantity || 1,
+        assignedStarter: null,
+        starterStatus: 'needed',
+        contactName: sub.contactName || '',
+        contactPhone: sub.contactPhone || ''
+      };
+
+      stormData.subContractors.push(newSub);
+      await this.saveStormModeData(date, stormData);
+      return newSub;
+    } catch (error) {
+      console.error('Error adding Sub Contractor:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Update a Sub Contractor
+   * @param {string} date - Date in YYYY-MM-DD format
+   * @param {string} subId - Sub Contractor ID
+   * @param {Object} updates - Fields to update
+   */
+  async updateSubContractor(date, subId, updates) {
+    try {
+      const stormData = await this.loadStormModeData(date);
+      const index = stormData.subContractors.findIndex(s => s.id === subId);
+
+      if (index !== -1) {
+        stormData.subContractors[index] = {
+          ...stormData.subContractors[index],
+          ...updates
+        };
+        await this.saveStormModeData(date, stormData);
+      }
+    } catch (error) {
+      console.error('Error updating Sub Contractor:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Delete a Sub Contractor
+   * @param {string} date - Date in YYYY-MM-DD format
+   * @param {string} subId - Sub Contractor ID
+   */
+  async deleteSubContractor(date, subId) {
+    try {
+      const stormData = await this.loadStormModeData(date);
+      stormData.subContractors = stormData.subContractors.filter(s => s.id !== subId);
+      await this.saveStormModeData(date, stormData);
+    } catch (error) {
+      console.error('Error deleting Sub Contractor:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Assign a starter to a sub contractor
+   * @param {string} date - Date in YYYY-MM-DD format
+   * @param {string} subId - Sub Contractor ID
+   * @param {string} starterId - Starter ID (PM or EHQ Leader)
+   * @param {string} starterType - 'projectManager' or 'ehqLeader'
+   */
+  async assignStarter(date, subId, starterId, starterType) {
+    try {
+      const stormData = await this.loadStormModeData(date);
+
+      // Update sub contractor
+      const subIndex = stormData.subContractors.findIndex(s => s.id === subId);
+      if (subIndex !== -1) {
+        stormData.subContractors[subIndex].assignedStarter = starterId;
+        stormData.subContractors[subIndex].starterStatus = 'assigned';
+      }
+
+      // Update starter's assignedToSub field
+      if (starterType === 'projectManager') {
+        const pmIndex = stormData.projectManagers.findIndex(pm => pm.id === starterId);
+        if (pmIndex !== -1) {
+          stormData.projectManagers[pmIndex].assignedToSub = subId;
+          stormData.projectManagers[pmIndex].status = 'assigned';
+        }
+      } else if (starterType === 'ehqLeader') {
+        const leaderIndex = stormData.ehqLeaders.findIndex(l => l.id === starterId);
+        if (leaderIndex !== -1) {
+          stormData.ehqLeaders[leaderIndex].assignedToSub = subId;
+          stormData.ehqLeaders[leaderIndex].status = 'assigned';
+        }
+      }
+
+      await this.saveStormModeData(date, stormData);
+    } catch (error) {
+      console.error('Error assigning starter:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Remove starter assignment from a sub contractor
+   * @param {string} date - Date in YYYY-MM-DD format
+   * @param {string} subId - Sub Contractor ID
+   */
+  async removeStarter(date, subId) {
+    try {
+      const stormData = await this.loadStormModeData(date);
+
+      // Find the sub contractor
+      const sub = stormData.subContractors.find(s => s.id === subId);
+      if (!sub || !sub.assignedStarter) return;
+
+      const starterId = sub.assignedStarter;
+
+      // Clear sub contractor's starter
+      const subIndex = stormData.subContractors.findIndex(s => s.id === subId);
+      if (subIndex !== -1) {
+        stormData.subContractors[subIndex].assignedStarter = null;
+        stormData.subContractors[subIndex].starterStatus = 'needed';
+      }
+
+      // Clear starter's assignedToSub field
+      const pmIndex = stormData.projectManagers.findIndex(pm => pm.id === starterId);
+      if (pmIndex !== -1) {
+        stormData.projectManagers[pmIndex].assignedToSub = null;
+        stormData.projectManagers[pmIndex].status = 'available';
+      } else {
+        const leaderIndex = stormData.ehqLeaders.findIndex(l => l.id === starterId);
+        if (leaderIndex !== -1) {
+          stormData.ehqLeaders[leaderIndex].assignedToSub = null;
+          stormData.ehqLeaders[leaderIndex].status = 'available';
+        }
+      }
+
+      await this.saveStormModeData(date, stormData);
+    } catch (error) {
+      console.error('Error removing starter:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Toggle Storm Mode active status
+   * @param {string} date - Date in YYYY-MM-DD format
+   * @param {boolean} active - Active status
+   */
+  async setStormModeActive(date, active) {
+    try {
+      const stormData = await this.loadStormModeData(date);
+      stormData.active = active;
+      await this.saveStormModeData(date, stormData);
+    } catch (error) {
+      console.error('Error setting Storm Mode active status:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get all available starters (PM and EHQ Leaders not assigned to subs)
+   * @param {string} date - Date in YYYY-MM-DD format
+   * @returns {Promise<Array>} Array of available starters
+   */
+  async getAvailableStarters(date) {
+    try {
+      const stormData = await this.loadStormModeData(date);
+
+      const availablePMs = stormData.projectManagers
+        .filter(pm => !pm.assignedToSub)
+        .map(pm => ({ ...pm, type: 'projectManager', label: `${pm.name} (PM)` }));
+
+      const availableLeaders = stormData.ehqLeaders
+        .filter(l => !l.assignedToSub)
+        .map(l => ({ ...l, type: 'ehqLeader', label: `${l.name} (EHQ Leader)` }));
+
+      return [...availablePMs, ...availableLeaders];
+    } catch (error) {
+      console.error('Error getting available starters:', error);
+      throw error;
+    }
+  }
 }
 
 export default new FirebaseService();
