@@ -32,6 +32,7 @@ const ManualMode = ({
   onToggleCompanyMeetingMode,
   isFullScreen,
   onToggleFullScreen,
+  actionButtons,
   viewSelector
 }) => {
   const [jobs, setJobs] = useState(initialJobs);
@@ -1777,55 +1778,9 @@ const ManualMode = ({
           )}
         </div>
 
-        {/* Right: Action Buttons */}
+        {/* Right: Standardized Action Buttons, View Selector, Options Menu */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          {onImportCSV && (
-            <button
-              onClick={onImportCSV}
-              className="btn btn-primary btn-small"
-              style={{
-                padding: '4px 10px',
-                fontSize: '12px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px'
-              }}
-            >
-              <i className="fas fa-upload"></i> Import CSV
-            </button>
-          )}
-
-          <button
-            onClick={handlePushToCalendars}
-            disabled={pushingToCalendar || Object.values(routes).filter(r => r.jobs?.length > 0).length === 0}
-            className="btn btn-success btn-small"
-            style={{
-              padding: '4px 10px',
-              fontSize: '12px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px'
-            }}
-          >
-            <i className={pushingToCalendar ? "fas fa-spinner fa-spin" : "fas fa-calendar-plus"}></i>
-            {pushingToCalendar ? 'Pushing...' : 'Push to Calendars'}
-          </button>
-
-          {/* Google Settings Button */}
-          <button
-            onClick={() => setShowGoogleSetup(true)}
-            className="btn btn-secondary btn-small"
-            style={{
-              padding: '4px 8px',
-              fontSize: '12px',
-              minWidth: 'unset'
-            }}
-            title="Configure Google Calendar"
-          >
-            <i className="fas fa-cog"></i>
-          </button>
-
-          {/* View Selector - Right before options */}
+          {actionButtons}
           {viewSelector}
 
           {/* Options Menu Button - Far Right */}

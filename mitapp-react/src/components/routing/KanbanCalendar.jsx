@@ -28,6 +28,7 @@ const KanbanCalendar = ({
   onToggleCompanyMeetingMode,
   isFullScreen,
   onToggleFullScreen,
+  actionButtons,
   viewSelector
 }) => {
   // Local state for instant UI updates
@@ -1556,151 +1557,8 @@ const KanbanCalendar = ({
             Drop jobs to auto-schedule • Click job to edit • Click tech name for map
           </p>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          {/* Average Drive Time */}
-          {(() => {
-            const techsWithRoutes = techs.filter(t => {
-              // Exclude MIT Leads from counts
-              if (t.role === 'MIT Lead') return false;
-              const route = localRoutes[t.id];
-              return route && route.jobs && route.jobs.length > 0;
-            });
-
-            if (techsWithRoutes.length > 0) {
-              const totalDrive = techsWithRoutes.reduce((sum, tech) => {
-                const jobs = localRoutes[tech.id]?.jobs || [];
-                const jobDriveTime = jobs.reduce((s, j) => s + (j.travelTime || 0), 0);
-                const returnTime = returnToOfficeTimes[tech.id]?.driveTime || 0;
-                return sum + jobDriveTime + returnTime;
-              }, 0);
-
-              const avgDrive = Math.round(totalDrive / techsWithRoutes.length);
-
-              // Calculate average return time
-              const techsWithReturnTimes = techsWithRoutes.filter(tech => returnToOfficeTimes[tech.id]?.time);
-              let avgReturnTime = null;
-
-              if (techsWithReturnTimes.length > 0) {
-                const totalMinutes = techsWithReturnTimes.reduce((sum, tech) => {
-                  const timeStr = returnToOfficeTimes[tech.id].time;
-                  const [hours, minutes] = timeStr.split(':').map(Number);
-                  return sum + (hours * 60) + minutes;
-                }, 0);
-
-                const avgMinutes = Math.round(totalMinutes / techsWithReturnTimes.length);
-                const avgHours = Math.floor(avgMinutes / 60);
-                const avgMins = avgMinutes % 60;
-                avgReturnTime = `${avgHours}:${String(avgMins).padStart(2, '0')}`;
-              }
-
-              return (
-                <>
-                  <div style={{
-                    backgroundColor: 'var(--warning-bg)',
-                    padding: '4px 8px',
-                    borderRadius: '4px',
-                    fontSize: '11px',
-                    fontWeight: '600',
-                    color: 'var(--warning-color)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '4px'
-                  }}>
-                    <i className="fas fa-car"></i>
-                    Avg Drive: {avgDrive}m
-                  </div>
-                  {avgReturnTime && (
-                    <div style={{
-                      backgroundColor: 'var(--success-bg)',
-                      padding: '4px 8px',
-                      borderRadius: '4px',
-                      fontSize: '11px',
-                      fontWeight: '600',
-                      color: 'var(--success-color)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '4px'
-                    }}>
-                      <i className="fas fa-clock"></i>
-                      Avg Return: {formatTimeAMPM(avgReturnTime)}
-                    </div>
-                  )}
-                </>
-              );
-            }
-            return null;
-          })()}
-          {isCalculatingDrive && (
-            <span style={{ fontSize: '11px', color: 'var(--warning-color)' }}>
-              <i className="fas fa-spinner fa-spin"></i> Calculating...
-            </span>
-          )}
-
-          {/* Active Users - Presence Indicators */}
-          {activeUsers && activeUsers.length > 0 && (
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '3px 8px',
-              backgroundColor: 'var(--info-bg)',
-              borderRadius: '4px',
-              fontSize: '11px',
-              border: '1px solid var(--info-color)',
-              color: 'var(--text-primary)'
-            }}>
-              <i className="fas fa-users" style={{ color: 'var(--info-color)', fontSize: '10px' }}></i>
-              <span style={{ fontWeight: '500' }}>
-                {activeUsers.length} {activeUsers.length === 1 ? 'other user' : 'others'} viewing
-              </span>
-              <div style={{ display: 'flex', gap: '4px', marginLeft: '4px' }}>
-                {activeUsers.slice(0, 3).map((user, idx) => (
-                  <div
-                    key={idx}
-                    title={user.userName || 'Anonymous'}
-                    style={{
-                      width: '20px',
-                      height: '20px',
-                      borderRadius: '50%',
-                      backgroundColor: 'var(--info-color)',
-                      color: 'white',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: '9px',
-                      fontWeight: '600',
-                      textTransform: 'uppercase',
-                      border: '2px solid white'
-                    }}
-                  >
-                    {(user.userName || 'A').charAt(0)}
-                  </div>
-                ))}
-                {activeUsers.length > 3 && (
-                  <div
-                    style={{
-                      width: '20px',
-                      height: '20px',
-                      borderRadius: '50%',
-                      backgroundColor: '#6b7280',
-                      color: 'white',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: '8px',
-                      fontWeight: '600',
-                      border: '2px solid white'
-                    }}
-                    title={`${activeUsers.length - 3} more users`}
-                  >
-                    +{activeUsers.length - 3}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* View Selector - Right before options */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {actionButtons}
           {viewSelector}
 
           {/* Options Menu Button - Far Right */}

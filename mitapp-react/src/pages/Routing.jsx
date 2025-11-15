@@ -1507,83 +1507,9 @@ const Routing = () => {
             </p>
           </div>
 
-          {/* Right: Date Picker, Action Buttons, View Selector, Options Menu */}
+          {/* Right: Standardized Buttons, View Selector, Options Menu */}
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-            {/* Compact Date Picker */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <button
-                className="btn btn-secondary btn-small"
-                onClick={() => {
-                  const date = new Date(selectedDate + 'T12:00:00');
-                  date.setDate(date.getDate() - 1);
-                  setSelectedDate(date.toISOString().split('T')[0]);
-                }}
-                title="Previous day"
-                style={{ padding: '4px 8px', fontSize: '12px', minWidth: 'unset' }}
-              >
-                <i className="fas fa-chevron-left"></i>
-              </button>
-              <input
-                type="date"
-                className="form-control"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                style={{
-                  fontSize: '12px',
-                  padding: '4px 8px',
-                  fontWeight: '500',
-                  border: '1px solid #e5e7eb',
-                  borderRadius: '4px'
-                }}
-              />
-              <button
-                className="btn btn-secondary btn-small"
-                onClick={() => {
-                  const date = new Date(selectedDate + 'T12:00:00');
-                  date.setDate(date.getDate() + 1);
-                  setSelectedDate(date.toISOString().split('T')[0]);
-                }}
-                title="Next day"
-                style={{ padding: '4px 8px', fontSize: '12px', minWidth: 'unset' }}
-              >
-                <i className="fas fa-chevron-right"></i>
-              </button>
-              <button
-                className="btn btn-primary btn-small"
-                onClick={() => setSelectedDate(new Date().toISOString().split('T')[0])}
-                title="Go to today"
-                style={{ padding: '4px 8px', fontSize: '12px' }}
-              >
-                Today
-              </button>
-            </div>
-
-            <button
-              className="btn btn-success btn-small"
-              onClick={() => setShowOptimizeModal(true)}
-              disabled={optimizing || unassignedJobs.length === 0}
-              style={{ padding: '4px 12px', fontSize: '12px' }}
-            >
-              <i className="fas fa-magic"></i> {optimizing ? 'Optimizing...' : 'Auto-Optimize'}
-            </button>
-            <button
-              className="btn btn-primary btn-small"
-              onClick={() => setShowImportModal(true)}
-              style={{ padding: '4px 12px', fontSize: '12px' }}
-            >
-              <i className="fas fa-upload"></i> Import CSV
-            </button>
-            <button
-              className="btn btn-danger btn-small"
-              onClick={handleClearAllJobs}
-              disabled={jobs.length === 0}
-              title="Delete all jobs and routes for this date"
-              style={{ padding: '4px 12px', fontSize: '12px' }}
-            >
-              <i className="fas fa-trash-alt"></i> Clear All
-            </button>
-
-            {/* View Selector - Right before options */}
+            <StandardActionButtons />
             <ViewSelector />
 
             {/* Options Menu Button - Far Right */}
@@ -1941,6 +1867,85 @@ const Routing = () => {
     </div>
   );
 
+  // Standardized action buttons - same across all views
+  const StandardActionButtons = () => (
+    <>
+      {/* Compact Date Picker */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+        <button
+          className="btn btn-secondary btn-small"
+          onClick={() => {
+            const date = new Date(selectedDate + 'T12:00:00');
+            date.setDate(date.getDate() - 1);
+            setSelectedDate(date.toISOString().split('T')[0]);
+          }}
+          title="Previous day"
+          style={{ padding: '4px 8px', fontSize: '12px', minWidth: 'unset' }}
+        >
+          <i className="fas fa-chevron-left"></i>
+        </button>
+        <input
+          type="date"
+          className="form-control"
+          value={selectedDate}
+          onChange={(e) => setSelectedDate(e.target.value)}
+          style={{
+            fontSize: '12px',
+            padding: '4px 8px',
+            fontWeight: '500',
+            border: '1px solid #e5e7eb',
+            borderRadius: '4px'
+          }}
+        />
+        <button
+          className="btn btn-secondary btn-small"
+          onClick={() => {
+            const date = new Date(selectedDate + 'T12:00:00');
+            date.setDate(date.getDate() + 1);
+            setSelectedDate(date.toISOString().split('T')[0]);
+          }}
+          title="Next day"
+          style={{ padding: '4px 8px', fontSize: '12px', minWidth: 'unset' }}
+        >
+          <i className="fas fa-chevron-right"></i>
+        </button>
+        <button
+          className="btn btn-primary btn-small"
+          onClick={() => setSelectedDate(new Date().toISOString().split('T')[0])}
+          title="Go to today"
+          style={{ padding: '4px 8px', fontSize: '12px' }}
+        >
+          Today
+        </button>
+      </div>
+
+      <button
+        className="btn btn-success btn-small"
+        onClick={() => setShowOptimizeModal(true)}
+        disabled={optimizing || unassignedJobs.length === 0}
+        style={{ padding: '4px 12px', fontSize: '12px' }}
+      >
+        <i className="fas fa-magic"></i> {optimizing ? 'Optimizing...' : 'Auto-Optimize'}
+      </button>
+      <button
+        className="btn btn-primary btn-small"
+        onClick={() => setShowImportModal(true)}
+        style={{ padding: '4px 12px', fontSize: '12px' }}
+      >
+        <i className="fas fa-upload"></i> Import CSV
+      </button>
+      <button
+        className="btn btn-danger btn-small"
+        onClick={handleClearAllJobs}
+        disabled={jobs.length === 0}
+        title="Delete all jobs and routes for this date"
+        style={{ padding: '4px 12px', fontSize: '12px' }}
+      >
+        <i className="fas fa-trash-alt"></i> Clear All
+      </button>
+    </>
+  );
+
   const renderRoutingView = () => {
     // Using memoized getLeadTechs and getDemoTechs
     const allTechs = [...getLeadTechs, ...getDemoTechs];
@@ -1968,6 +1973,7 @@ const Routing = () => {
         onToggleCompanyMeetingMode={toggleCompanyMeetingMode}
         isFullScreen={isFullScreen}
         onToggleFullScreen={() => setIsFullScreen(!isFullScreen)}
+        actionButtons={<StandardActionButtons />}
         viewSelector={<ViewSelector />}
       />
     );
@@ -1991,6 +1997,7 @@ const Routing = () => {
         scheduleForDay={scheduleForDay}
         showAlert={showAlert}
         showConfirm={showConfirm}
+        actionButtons={<StandardActionButtons />}
         techStartTimes={techStartTimes}
         setTechStartTimes={updateTechStartTimes}
         companyMeetingMode={companyMeetingMode}
