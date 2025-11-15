@@ -570,6 +570,127 @@ class GoogleCalendarService {
       throw error;
     }
   }
+
+  /**
+   * Push route to calendar for Storm Mode staff (PM, EHQ Leaders, CS Staff, Subs)
+   * @param {Object} route - Route object with jobs
+   * @param {string} date - Date in YYYY-MM-DD format
+   * @param {Object} staff - Staff object with type, name, email
+   * @returns {Promise<object>} Result summary
+   */
+  async pushRouteToCalendar(route, date, staff) {
+    if (!this.isSignedIn()) {
+      await this.signIn();
+    }
+
+    if (!staff.email) {
+      throw new Error(`${staff.name} does not have an email address configured`);
+    }
+
+    // Get staff type label
+    const staffTypeLabel = staff.type === 'projectManager' ? 'PM' :
+                          staff.type === 'ehqLeader' ? 'EHQ Leader' :
+                          staff.type === 'ehqCSStaff' ? 'EHQ CS Staff' :
+                          staff.type === 'subContractor' ? 'Sub Contractor' :
+                          'Tech';
+
+    const results = {
+      success: 0,
+      failed: 0,
+      errors: []
+    };
+
+    // Delete existing events for this date
+    try {
+      await this.deleteEventsForDate(staff.email, date);
+    } catch (error) {
+      console.warn(`Could not delete existing events for ${staff.name}:`, error);
+    }
+
+    // Create events for each job
+    for (const job of route.jobs) {
+      try {
+        // Build event title with staff type
+        const eventTitle = `[${staffTypeLabel}] ${job.jobType} - ${job.customerName}`;
+
+        // Enhanced description for Storm Mode staff
+        let description = `<strong>Storm Mode Assignment</strong><br><br>`;
+        description += `<strong>Staff Type:</strong> ${staffTypeLabel}<br>`;
+        description += `<strong>Assigned To:</strong> ${staff.name}<br><br>`;
+        description += `<strong>Job Details:</strong><br>`;
+        description += `<strong>Customer:</strong> ${job.customerName}<br>`;
+        description += `<strong>Address:</strong> ${job.address}<br>`;
+        description += `<strong>Job Type:</strong> ${job.jobType}<br>`;
+        description += `<strong>Duration:</strong> ${job.duration} hours<br>`;
+
+        if (job.phone) {
+          description += `<strong>Phone:</strong> ${this.formatPhoneNumbersToLinks(job.phone)}<br>`;
+        }
+
+        if (job.zone) {
+          description += `<strong>Zone:</strong> ${job.zone}<br>`;
+        }
+
+        // Add sub contractor specific info
+        if (staff.type === 'subContractor' && job.starter) {
+          description += `<br><strong>Started By:</strong> ${job.starter.name} (${job.starter.type === 'projectManager' ? 'PM' : 'EHQ Leader'})<br>`;
+        }
+
+        // Add starter specific info
+        if ((staff.type === 'projectManager' || staff.type === 'ehqLeader') && job.isStarterJob) {
+          description += `<br><strong>Starting Sub Contractor:</strong> ${job.subContractorName}<br>`;
+          description += `<strong>Supervision:</strong> ${job.supervisionType === 'supervise' ? 'All Day' : 'Start Only (30 min)'}<br>`;
+        }
+
+        const startDateTime = `${date}T${job.startTime}:00`;
+        const endDateTime = `${date}T${job.endTime}:00`;
+
+        const event = {
+          summary: eventTitle,
+          location: job.address,
+          description: description,
+          start: {
+            dateTime: startDateTime,
+            timeZone: 'America/Chicago'
+          },
+          end: {
+            dateTime: endDateTime,
+            timeZone: 'America/Chicago'
+          },
+          reminders: {
+            useDefault: false,
+            overrides: []
+          },
+          extendedProperties: {
+            private: {
+              jobId: job.id,
+              jobType: job.jobType,
+              staffType: staff.type,
+              stormMode: 'true',
+              zone: job.zone || ''
+            }
+          }
+        };
+
+        await window.gapi.client.calendar.events.insert({
+          calendarId: staff.email,
+          resource: event,
+          sendUpdates: 'all'
+        });
+
+        results.success++;
+      } catch (error) {
+        console.error(`Error creating event for ${staff.name}:`, error);
+        results.failed++;
+        results.errors.push({
+          job: job.customerName,
+          error: error.message
+        });
+      }
+    }
+
+    return results;
+  }
 }
 
 // Create singleton instance

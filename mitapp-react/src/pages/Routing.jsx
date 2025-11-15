@@ -2118,14 +2118,16 @@ const Routing = () => {
   );
 
   const renderRoutingView = () => {
-    // Using memoized getLeadTechs and getDemoTechs
-    const allTechs = [...getLeadTechs, ...getDemoTechs];
+    // Use extended staff list (includes Storm Mode staff when enabled)
+    const allTechs = getExtendedStaffList.allStaff;
 
     return (
       <ManualMode
         jobs={jobs}
         routes={routes}
         techs={allTechs}
+        stormMode={stormMode}
+        stormModeData={stormModeData}
         offices={offices}
         mapboxToken={mapboxToken}
         onUpdateRoutes={saveRoutes}
@@ -2151,12 +2153,14 @@ const Routing = () => {
   };
 
   const renderKanbanView = () => {
-    // Using memoized getLeadTechs and getDemoTechs
-    const allTechs = [...getLeadTechs, ...getDemoTechs];
+    // Use extended staff list (includes Storm Mode staff when enabled)
+    const allTechs = getExtendedStaffList.allStaff;
 
     return (
       <KanbanCalendar
         jobs={jobs}
+        stormMode={stormMode}
+        stormModeData={stormModeData}
         routes={routes}
         techs={allTechs}
         offices={offices}
