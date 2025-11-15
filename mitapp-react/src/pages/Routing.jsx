@@ -11,6 +11,8 @@ import StormMode from '../components/routing/StormMode';
 import ConfirmModal from '../components/routing/ConfirmModal';
 import LoadingModal from '../components/routing/LoadingModal';
 import ManualTimeframeModal from '../components/routing/ManualTimeframeModal';
+import CapabilityWarningModal from '../components/routing/CapabilityWarningModal';
+import StormModeFilter, { filterJobs, filterStaff } from '../components/routing/StormModeFilter';
 import { useData } from '../contexts/DataContext';
 import { useAuth } from '../contexts/AuthContext';
 import firebaseService from '../services/firebaseService';
@@ -57,6 +59,14 @@ const Routing = () => {
     ehqCSStaff: [],
     subContractors: []
   }); // Storm Mode staff data
+  const [stormModeFilter, setStormModeFilter] = useState('all'); // Filter for Storm Mode routing
+  const [capabilityWarning, setCapabilityWarning] = useState({
+    show: false,
+    staff: null,
+    jobType: '',
+    job: null,
+    onConfirm: null
+  }); // Capability warning modal state
   const [loadingState, setLoadingState] = useState({
     isOpen: false,
     title: '',
@@ -948,14 +958,85 @@ const Routing = () => {
     return getRoutingEligibleTechs(getTechList);
   }, [getTechList]);
 
-  // Memoized job filters (performance optimization)
+  // Storm Mode: Merge regular techs with Storm Mode staff and apply filter
+  const getExtendedStaffList = useMemo(() => {
+    const regularTechs = [...getLeadTechs, ...getDemoTechs];
+
+    if (!stormMode || !stormModeData) {
+      return {
+        allStaff: regularTechs,
+        regularTechs,
+        projectManagers: [],
+        ehqLeaders: [],
+        ehqCSStaff: [],
+        subContractors: []
+      };
+    }
+
+    // Apply filter
+    const filtered = filterStaff(stormModeData, regularTechs, stormModeFilter);
+
+    // Add type identifier to each staff member for visual indicators
+    const projectManagers = (filtered.projectManagers || []).map(pm => ({
+      ...pm,
+      type: 'projectManager',
+      role: 'Project Manager',
+      office: pm.startingLocation,
+      shift: 'first' // Default to first shift
+    }));
+
+    const ehqLeaders = (filtered.ehqLeaders || []).map(leader => ({
+      ...leader,
+      type: 'ehqLeader',
+      role: 'EHQ Leader',
+      office: leader.startingLocation,
+      shift: 'first'
+    }));
+
+    const ehqCSStaff = (filtered.ehqCSStaff || []).map(staff => ({
+      ...staff,
+      type: 'ehqCSStaff',
+      role: 'EHQ CS Staff',
+      office: staff.startingLocation,
+      shift: 'first'
+    }));
+
+    const subContractors = (filtered.subContractors || []).map(sub => ({
+      ...sub,
+      type: 'subContractor',
+      role: 'Sub Contractor',
+      office: 'office_1', // Default to Conroe
+      shift: 'first'
+    }));
+
+    const allStaff = [
+      ...filtered.regularTechs,
+      ...projectManagers,
+      ...ehqLeaders,
+      ...ehqCSStaff,
+      ...subContractors
+    ];
+
+    return {
+      allStaff,
+      regularTechs: filtered.regularTechs,
+      projectManagers,
+      ehqLeaders,
+      ehqCSStaff,
+      subContractors
+    };
+  }, [getLeadTechs, getDemoTechs, stormMode, stormModeData, stormModeFilter]);
+
+  // Memoized job filters (performance optimization + Storm Mode filtering)
   const unassignedJobs = useMemo(() => {
-    return jobs.filter(j => !j.assignedTech);
-  }, [jobs]);
+    const filtered = jobs.filter(j => !j.assignedTech);
+    return stormMode ? filterJobs(filtered, stormModeFilter) : filtered;
+  }, [jobs, stormMode, stormModeFilter]);
 
   const assignedJobs = useMemo(() => {
-    return jobs.filter(j => j.assignedTech);
-  }, [jobs]);
+    const filtered = jobs.filter(j => j.assignedTech);
+    return stormMode ? filterJobs(filtered, stormModeFilter) : filtered;
+  }, [jobs, stormMode, stormModeFilter]);
 
   const assignJobToTech = async (jobId, techId) => {
     // Validate parameters
@@ -1956,6 +2037,12 @@ const Routing = () => {
           <i className="fas fa-bolt"></i>
         </button>
       )}
+      {/* Storm Mode Filter */}
+      <StormModeFilter
+        activeFilter={stormModeFilter}
+        onFilterChange={setStormModeFilter}
+        stormMode={stormMode}
+      />
     </div>
   );
 
@@ -2404,6 +2491,22 @@ const Routing = () => {
           onSubmit={handleManualTimeframeSubmit}
           onSkip={handleManualTimeframeSkip}
           onClose={handleManualTimeframeClose}
+        />
+
+        {/* Capability Warning Modal */}
+        <CapabilityWarningModal
+          show={capabilityWarning.show}
+          staff={capabilityWarning.staff}
+          jobType={capabilityWarning.jobType}
+          onConfirm={() => {
+            if (capabilityWarning.onConfirm) {
+              capabilityWarning.onConfirm();
+            }
+            setCapabilityWarning({ show: false, staff: null, jobType: '', job: null, onConfirm: null });
+          }}
+          onCancel={() => {
+            setCapabilityWarning({ show: false, staff: null, jobType: '', job: null, onConfirm: null });
+          }}
         />
 
         {/* Loading Modal with Progress */}
