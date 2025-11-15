@@ -50,6 +50,13 @@ const Routing = () => {
   const [techStartTimes, setTechStartTimes] = useState({}); // Store custom start times for techs (for late starts)
   const [companyMeetingMode, setCompanyMeetingMode] = useState(false); // All techs start at Conroe office at 9am
   const [stormMode, setStormMode] = useState(false); // Storm Mode for managing extra staff during emergencies
+  const [stormModeData, setStormModeData] = useState({
+    active: false,
+    projectManagers: [],
+    ehqLeaders: [],
+    ehqCSStaff: [],
+    subContractors: []
+  }); // Storm Mode staff data
   const [loadingState, setLoadingState] = useState({
     isOpen: false,
     title: '',
@@ -282,6 +289,38 @@ const Routing = () => {
       setRoutes(enrichedRoutes);
     }
   }, [staffingData]);
+
+  // Load Storm Mode data when date changes or storm mode is toggled
+  useEffect(() => {
+    const loadStormModeData = async () => {
+      if (!stormMode) {
+        // Reset Storm Mode data when disabled
+        setStormModeData({
+          active: false,
+          projectManagers: [],
+          ehqLeaders: [],
+          ehqCSStaff: [],
+          subContractors: []
+        });
+        return;
+      }
+
+      try {
+        const data = await firebaseService.loadStormModeData(selectedDate);
+        setStormModeData(data);
+
+        // Sync the active state
+        if (data.active !== stormMode) {
+          await firebaseService.setStormModeActive(selectedDate, stormMode);
+        }
+      } catch (error) {
+        console.error('Error loading Storm Mode data:', error);
+        showAlert('Error loading Storm Mode data. Please try again.', 'Error', 'error');
+      }
+    };
+
+    loadStormModeData();
+  }, [selectedDate, stormMode]);
 
   // Removed loadJobs and loadRoutes - using real-time subscriptions instead
 
