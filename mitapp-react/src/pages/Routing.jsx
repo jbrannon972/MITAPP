@@ -1499,16 +1499,15 @@ const Routing = () => {
           borderRadius: '6px',
           border: '1px solid #e5e7eb'
         }}>
-          {/* Left: Title, View Selector, Stats */}
+          {/* Left: Title & Stats */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <h3 style={{ margin: 0, fontSize: '14px', fontWeight: '600' }}>Daily Jobs - {selectedDate}</h3>
-            <ViewSelector />
             <p style={{ margin: 0, fontSize: '11px', color: 'var(--text-secondary)' }}>
               {jobs.length} total | {unassignedJobs.length} unassigned | {assignedJobs.length} assigned
             </p>
           </div>
 
-          {/* Right: Date Picker & Action Buttons */}
+          {/* Right: Date Picker, Action Buttons, View Selector, Options Menu */}
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
             {/* Compact Date Picker */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -1584,7 +1583,10 @@ const Routing = () => {
               <i className="fas fa-trash-alt"></i> Clear All
             </button>
 
-            {/* Options Menu Button */}
+            {/* View Selector - Right before options */}
+            <ViewSelector />
+
+            {/* Options Menu Button - Far Right */}
             <div style={{ position: 'relative' }}>
               <button
                 onClick={() => setShowJobsOptionsMenu(!showJobsOptionsMenu)}

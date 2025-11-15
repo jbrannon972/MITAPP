@@ -1642,7 +1642,6 @@ const ManualMode = ({
         {/* Left: Title, Date, Job Counts */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <h3 style={{ margin: 0, fontSize: '14px', fontWeight: '600' }}>Manual Route Builder</h3>
-          {viewSelector}
 
           {/* Compact Date Picker */}
           {onDateChange && (
@@ -1826,7 +1825,10 @@ const ManualMode = ({
             <i className="fas fa-cog"></i>
           </button>
 
-          {/* Options Menu Button */}
+          {/* View Selector - Right before options */}
+          {viewSelector}
+
+          {/* Options Menu Button - Far Right */}
           <div style={{ position: 'relative' }}>
             <button
               onClick={() => setShowOptionsMenu(!showOptionsMenu)}

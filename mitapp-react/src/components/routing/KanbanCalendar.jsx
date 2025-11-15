@@ -1552,7 +1552,6 @@ const KanbanCalendar = ({
           <h3 style={{ margin: 0, fontSize: '14px', fontWeight: '600' }}>
             <i className="fas fa-calendar-day"></i> Timeline - {selectedDate}
           </h3>
-          {viewSelector}
           <p style={{ margin: 0, fontSize: '11px', color: 'var(--text-secondary)' }}>
             Drop jobs to auto-schedule • Click job to edit • Click tech name for map
           </p>
@@ -1701,7 +1700,10 @@ const KanbanCalendar = ({
             </div>
           )}
 
-          {/* Options Menu Button */}
+          {/* View Selector - Right before options */}
+          {viewSelector}
+
+          {/* Options Menu Button - Far Right */}
           <div style={{ position: 'relative' }}>
             <button
               onClick={() => setShowOptionsMenu(!showOptionsMenu)}
