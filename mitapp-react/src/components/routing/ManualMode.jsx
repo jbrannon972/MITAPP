@@ -1790,9 +1790,27 @@ const ManualMode = ({
           )}
         </div>
 
-        {/* Right: Standardized Action Buttons, View Selector, Options Menu */}
+        {/* Right: Standardized Action Buttons, Push to Calendars, View Selector, Options Menu */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           {actionButtons}
+
+          {/* Push to Calendars - Manual Mode specific */}
+          <button
+            onClick={handlePushToCalendars}
+            disabled={pushingToCalendar || Object.values(routes).filter(r => r.jobs?.length > 0).length === 0}
+            className="btn btn-success btn-small"
+            style={{
+              padding: '4px 12px',
+              fontSize: '12px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px'
+            }}
+          >
+            <i className={pushingToCalendar ? "fas fa-spinner fa-spin" : "fas fa-calendar-plus"}></i>
+            {pushingToCalendar ? 'Pushing...' : 'Push to Calendars'}
+          </button>
+
           {viewSelector}
 
           {/* Options Menu Button - Far Right */}
