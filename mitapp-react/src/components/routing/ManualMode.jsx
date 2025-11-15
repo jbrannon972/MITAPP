@@ -274,29 +274,41 @@ const ManualMode = ({
           markerColor = markerColor + '80'; // Add transparency
         }
 
-        // Make markers 50% bigger for jobs with requested tech
-        const markerSize = job.requestedTech ? 48 : 32;
-        const iconSize = job.requestedTech ? 18 : 12;
+        // For requested tech jobs: bold border and pulsing animation
+        const borderWidth = job.requestedTech ? '5px' : '3px';
+        const borderColor = job.requestedTech ? '#ff9800' : 'var(--surface-color)'; // Orange for requested
+        const pulseAnimation = job.requestedTech ? 'pulse-marker 2s ease-in-out infinite' : 'none';
 
         const el = document.createElement('div');
         el.style.cursor = 'pointer';
         el.innerHTML = `
+          <style>
+            @keyframes pulse-marker {
+              0%, 100% {
+                box-shadow: 0 2px 8px rgba(0,0,0,0.3), 0 0 0 0 rgba(255, 152, 0, 0.7);
+              }
+              50% {
+                box-shadow: 0 2px 8px rgba(0,0,0,0.3), 0 0 0 8px rgba(255, 152, 0, 0);
+              }
+            }
+          </style>
           <div class="job-marker" style="
             background-color: ${markerColor};
             color: var(--surface-color);
-            width: ${markerSize}px;
-            height: ${markerSize}px;
+            width: 32px;
+            height: 32px;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
             font-weight: bold;
             font-size: 14px;
-            border: 3px solid var(--surface-color);
+            border: ${borderWidth} solid ${borderColor};
             box-shadow: 0 2px 8px rgba(0,0,0,0.3);
             transition: transform 0.2s;
+            animation: ${pulseAnimation};
           ">
-            ${job.requiresTwoTechs ? `<i class="fas fa-users" style="font-size: ${iconSize}px;"></i>` : `<i class="fas fa-map-pin" style="font-size: ${iconSize}px;"></i>`}
+            ${job.requiresTwoTechs ? '<i class="fas fa-users" style="font-size: 12px;"></i>' : '<i class="fas fa-map-pin" style="font-size: 12px;"></i>'}
           </div>
         `;
 
