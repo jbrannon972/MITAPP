@@ -1692,10 +1692,6 @@ const KanbanCalendar = ({
               </>
             )}
           </div>
-
-          <div style={{ fontSize: '12px', fontWeight: '500', color: 'var(--info-color)' }}>
-            {localJobs.filter(j => j.assignedTech).length} / {localJobs.length} assigned
-          </div>
         </div>
       </div>
 
