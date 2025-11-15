@@ -33,7 +33,9 @@ const ManualMode = ({
   isFullScreen,
   onToggleFullScreen,
   actionButtons,
-  viewSelector
+  viewSelector,
+  stormMode = false,
+  onShowStormModeCalendarPush
 }) => {
   const [jobs, setJobs] = useState(initialJobs);
   const [routes, setRoutes] = useState(initialRoutes);
@@ -1377,6 +1379,12 @@ const ManualMode = ({
   };
 
   const handlePushToCalendars = async () => {
+    // Storm Mode: Use dedicated Storm Mode calendar push modal
+    if (stormMode && onShowStormModeCalendarPush) {
+      onShowStormModeCalendarPush();
+      return;
+    }
+
     // Check if we have routes to push
     const routesWithJobs = Object.values(routes).filter(r => r.jobs && r.jobs.length > 0);
 

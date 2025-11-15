@@ -12,6 +12,8 @@ import ConfirmModal from '../components/routing/ConfirmModal';
 import LoadingModal from '../components/routing/LoadingModal';
 import ManualTimeframeModal from '../components/routing/ManualTimeframeModal';
 import CapabilityWarningModal from '../components/routing/CapabilityWarningModal';
+import AssignStarterModal from '../components/routing/AssignStarterModal';
+import StormModeCalendarPush from '../components/routing/StormModeCalendarPush';
 import StormModeFilter, { filterJobs, filterStaff } from '../components/routing/StormModeFilter';
 import { useData } from '../contexts/DataContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -67,6 +69,12 @@ const Routing = () => {
     job: null,
     onConfirm: null
   }); // Capability warning modal state
+  const [assignStarter, setAssignStarter] = useState({
+    show: false,
+    subContractor: null,
+    job: null
+  }); // Assign starter modal state
+  const [showCalendarPush, setShowCalendarPush] = useState(false); // Storm Mode calendar push modal
   const [loadingState, setLoadingState] = useState({
     isOpen: false,
     title: '',
@@ -1038,7 +1046,7 @@ const Routing = () => {
     return stormMode ? filterJobs(filtered, stormModeFilter) : filtered;
   }, [jobs, stormMode, stormModeFilter]);
 
-  const assignJobToTech = async (jobId, techId) => {
+  const assignJobToTech = async (jobId, techId, skipChecks = false) => {
     // Validate parameters
     if (!jobId || !techId) {
       console.error('❌ Invalid parameters: jobId and techId are required');
@@ -1061,6 +1069,51 @@ const Routing = () => {
       const existingJob = jobs.find(j => j.id === jobId);
       if (!existingJob) {
         throw new Error(`Job with ID ${jobId} not found. The job may have been deleted.`);
+      }
+
+      // Storm Mode: Check if assigning to sub contractor - they need a starter
+      if (!skipChecks && stormMode && tech.type === 'subContractor') {
+        // Show Assign Starter Modal
+        setAssignStarter({
+          show: true,
+          subContractor: tech,
+          job: existingJob
+        });
+        // The actual assignment will happen after starter is assigned in the modal's onConfirm
+        return;
+      }
+
+      // Storm Mode: Check if staff has capability for this job type
+      if (!skipChecks && stormMode && tech.type && tech.type !== 'tech') {
+        const jobTypeToCapability = {
+          'install': 'install',
+          'demo': 'install',
+          'demo prep': 'install',
+          'demo-prep': 'install',
+          'check': 'cs',
+          'service': 'cs',
+          'fs visit': 'cs',
+          'fs-visit': 'cs',
+          'pull': 'pull'
+        };
+
+        const requiredCapability = jobTypeToCapability[existingJob.jobType?.toLowerCase()];
+        const hasCapability = tech.capabilities?.[requiredCapability];
+
+        if (requiredCapability && !hasCapability) {
+          // Show capability warning modal
+          setCapabilityWarning({
+            show: true,
+            staff: tech,
+            jobType: existingJob.jobType,
+            job: existingJob,
+            onConfirm: () => {
+              // User confirmed to assign anyway - proceed with assignment (skip checks)
+              assignJobToTech(jobId, techId, true);
+            }
+          });
+          return;
+        }
       }
 
       // Step 1: Update UI immediately (optimistic)
@@ -2128,6 +2181,7 @@ const Routing = () => {
         techs={allTechs}
         stormMode={stormMode}
         stormModeData={stormModeData}
+        onShowStormModeCalendarPush={() => setShowCalendarPush(true)}
         offices={offices}
         mapboxToken={mapboxToken}
         onUpdateRoutes={saveRoutes}
@@ -2510,6 +2564,50 @@ const Routing = () => {
           }}
           onCancel={() => {
             setCapabilityWarning({ show: false, staff: null, jobType: '', job: null, onConfirm: null });
+          }}
+        />
+
+        {/* Assign Starter Modal */}
+        <AssignStarterModal
+          show={assignStarter.show}
+          subContractor={assignStarter.subContractor}
+          job={assignStarter.job}
+          selectedDate={selectedDate}
+          onConfirm={(result) => {
+            console.log('Starter assigned:', result);
+            showAlert('Starter assigned successfully', 'success');
+
+            // Now assign the job to the sub contractor (skip checks since starter is assigned)
+            if (assignStarter.job && assignStarter.subContractor) {
+              assignJobToTech(assignStarter.job.id, assignStarter.subContractor.id, true);
+            }
+
+            // Reload Storm Mode data to reflect the new assignment
+            firebaseService.loadStormModeData(selectedDate).then(data => {
+              setStormModeData(data);
+            });
+
+            setAssignStarter({ show: false, subContractor: null, job: null });
+          }}
+          onCancel={() => {
+            setAssignStarter({ show: false, subContractor: null, job: null });
+          }}
+        />
+
+        {/* Storm Mode Calendar Push Modal */}
+        <StormModeCalendarPush
+          show={showCalendarPush}
+          routes={routes}
+          stormModeData={stormModeData}
+          regularTechs={getExtendedStaffList.regularTechs}
+          selectedDate={selectedDate}
+          onClose={() => setShowCalendarPush(false)}
+          onComplete={(results) => {
+            console.log('Calendar push complete:', results);
+            showAlert(`Successfully pushed ${results.completed} of ${results.total} calendars`, 'success');
+            if (results.failed > 0) {
+              showAlert(`${results.failed} calendars failed to push`, 'error');
+            }
           }}
         />
 
