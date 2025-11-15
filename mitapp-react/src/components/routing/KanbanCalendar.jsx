@@ -29,7 +29,9 @@ const KanbanCalendar = ({
   isFullScreen,
   onToggleFullScreen,
   actionButtons,
-  viewSelector
+  viewSelector,
+  stormMode = false,
+  onToggleStormMode
 }) => {
   // Local state for instant UI updates
   // Initialize once and NEVER sync from props again - child is authoritative
@@ -1671,6 +1673,38 @@ const KanbanCalendar = ({
                       />
                       <span style={{ fontWeight: companyMeetingMode ? '600' : 'normal' }}>
                         <i className={`fas ${companyMeetingMode ? 'fa-users' : 'fa-user-clock'}`}></i> Meeting Mode
+                      </span>
+                    </label>
+                  )}
+
+                  {/* Storm Mode Toggle */}
+                  {onToggleStormMode && (
+                    <label style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      padding: '10px 12px',
+                      cursor: 'pointer',
+                      fontSize: '13px',
+                      borderBottom: '1px solid #e5e7eb',
+                      margin: 0,
+                      backgroundColor: stormMode ? 'var(--danger-bg)' : 'transparent'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = stormMode ? 'var(--danger-bg)' : 'var(--surface-secondary)'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = stormMode ? 'var(--danger-bg)' : 'transparent'}
+                    title={stormMode ? 'Storm Mode active - Emergency staff enabled' : 'Enable Storm Mode for emergency staffing'}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={stormMode}
+                        onChange={(e) => {
+                          setShowOptionsMenu(false);
+                          onToggleStormMode();
+                        }}
+                        style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                      />
+                      <span style={{ fontWeight: stormMode ? '600' : 'normal' }}>
+                        <i className={`fas ${stormMode ? 'fa-bolt' : 'fa-cloud-bolt'}`}></i> Storm Mode
                       </span>
                     </label>
                   )}

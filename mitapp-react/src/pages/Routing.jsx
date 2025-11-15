@@ -308,9 +308,31 @@ const Routing = () => {
     }
   }, [staffingData]);
 
-  // Load Storm Mode data when date changes or storm mode is toggled
+  // Load Storm Mode active state and data when date changes
   useEffect(() => {
     const loadStormModeData = async () => {
+      try {
+        const data = await firebaseService.loadStormModeData(selectedDate);
+
+        // Set the active state from Firebase
+        if (data.active !== undefined) {
+          setStormMode(data.active);
+        }
+
+        // Set the Storm Mode data
+        setStormModeData(data);
+      } catch (error) {
+        console.error('Error loading Storm Mode data:', error);
+        // Don't show alert on initial load failure - might just be no data yet
+      }
+    };
+
+    loadStormModeData();
+  }, [selectedDate]);
+
+  // Reload Storm Mode data when storm mode is toggled
+  useEffect(() => {
+    const reloadStormModeData = async () => {
       if (!stormMode) {
         // Reset Storm Mode data when disabled
         setStormModeData({
@@ -326,19 +348,16 @@ const Routing = () => {
       try {
         const data = await firebaseService.loadStormModeData(selectedDate);
         setStormModeData(data);
-
-        // Sync the active state
-        if (data.active !== stormMode) {
-          await firebaseService.setStormModeActive(selectedDate, stormMode);
-        }
       } catch (error) {
-        console.error('Error loading Storm Mode data:', error);
-        showAlert('Error loading Storm Mode data. Please try again.', 'Error', 'error');
+        console.error('Error reloading Storm Mode data:', error);
       }
     };
 
-    loadStormModeData();
-  }, [selectedDate, stormMode]);
+    // Only reload if stormMode changes (skip initial mount)
+    if (stormMode) {
+      reloadStormModeData();
+    }
+  }, [stormMode]);
 
   // Removed loadJobs and loadRoutes - using real-time subscriptions instead
 
@@ -1658,6 +1677,35 @@ const Routing = () => {
     }
   };
 
+  const toggleStormMode = async () => {
+    const newMode = !stormMode;
+    setStormMode(newMode);
+
+    // Save the active state to Firebase Storm Mode document
+    try {
+      await firebaseService.setStormModeActive(selectedDate, newMode);
+
+      const modeText = newMode ? 'enabled' : 'disabled';
+      console.log(`✅ Storm Mode ${modeText}`);
+      showAlert(
+        newMode
+          ? 'Storm Mode is now ON.\n\nEmergency staff and filtering options are now available.'
+          : 'Storm Mode is now OFF.\n\nOnly regular technicians will be shown.',
+        `Storm Mode ${modeText.charAt(0).toUpperCase() + modeText.slice(1)}`,
+        'success'
+      );
+
+      // Reload Storm Mode data to get the updated active state
+      const data = await firebaseService.loadStormModeData(selectedDate);
+      setStormModeData(data);
+    } catch (error) {
+      console.error('Error toggling storm mode:', error);
+      showAlert('Error updating Storm Mode. Please try again.', 'Error', 'error');
+      // Revert on error
+      setStormMode(!newMode);
+    }
+  };
+
   const renderJobsView = () => {
     // Using memoized unassignedJobs and assignedJobs from component level
 
@@ -2181,6 +2229,7 @@ const Routing = () => {
         techs={allTechs}
         stormMode={stormMode}
         stormModeData={stormModeData}
+        onToggleStormMode={toggleStormMode}
         onShowStormModeCalendarPush={() => setShowCalendarPush(true)}
         offices={offices}
         mapboxToken={mapboxToken}
@@ -2215,6 +2264,7 @@ const Routing = () => {
         jobs={jobs}
         stormMode={stormMode}
         stormModeData={stormModeData}
+        onToggleStormMode={toggleStormMode}
         routes={routes}
         techs={allTechs}
         offices={offices}
