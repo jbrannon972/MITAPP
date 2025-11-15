@@ -7,6 +7,7 @@ import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import Layout from '../components/common/Layout';
 import ManualMode from '../components/routing/ManualMode';
 import KanbanCalendar from '../components/routing/KanbanCalendar';
+import StormMode from '../components/routing/StormMode';
 import ConfirmModal from '../components/routing/ConfirmModal';
 import LoadingModal from '../components/routing/LoadingModal';
 import ManualTimeframeModal from '../components/routing/ManualTimeframeModal';
@@ -48,6 +49,7 @@ const Routing = () => {
   const [modal, setModal] = useState({ show: false, title: '', message: '', type: 'info', onConfirm: null, onCancel: null, confirmText: 'OK', cancelText: 'Cancel' });
   const [techStartTimes, setTechStartTimes] = useState({}); // Store custom start times for techs (for late starts)
   const [companyMeetingMode, setCompanyMeetingMode] = useState(false); // All techs start at Conroe office at 9am
+  const [stormMode, setStormMode] = useState(false); // Storm Mode for managing extra staff during emergencies
   const [loadingState, setLoadingState] = useState({
     isOpen: false,
     title: '',
@@ -1587,6 +1589,36 @@ const Routing = () => {
                       </span>
                     </label>
 
+                    {/* Storm Mode Toggle */}
+                    <label style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      padding: '10px 12px',
+                      cursor: 'pointer',
+                      fontSize: '13px',
+                      borderBottom: '1px solid #e5e7eb',
+                      margin: 0,
+                      backgroundColor: stormMode ? 'var(--danger-bg)' : 'transparent'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = stormMode ? 'var(--danger-bg)' : 'var(--surface-secondary)'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = stormMode ? 'var(--danger-bg)' : 'transparent'}
+                    title={stormMode ? 'Storm Mode Active - Managing emergency staff' : 'Enable Storm Mode for emergency staff management'}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={stormMode}
+                        onChange={(e) => {
+                          setShowJobsOptionsMenu(false);
+                          setStormMode(e.target.checked);
+                        }}
+                        style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                      />
+                      <span style={{ fontWeight: stormMode ? '600' : 'normal' }}>
+                        <i className={`fas ${stormMode ? 'fa-bolt' : 'fa-cloud'}`}></i> Storm Mode
+                      </span>
+                    </label>
+
                     {/* Full Screen Toggle */}
                     <button
                       onClick={() => {
@@ -1864,6 +1896,27 @@ const Routing = () => {
       >
         <i className="fas fa-list"></i>
       </button>
+      {stormMode && (
+        <button
+          onClick={() => setActiveView('storm')}
+          title="Storm Mode - Emergency Staff"
+          style={{
+            padding: '6px 10px',
+            fontSize: '14px',
+            border: 'none',
+            borderRadius: '4px',
+            backgroundColor: activeView === 'storm' ? 'var(--danger-color)' : 'transparent',
+            color: activeView === 'storm' ? 'white' : 'var(--danger-color)',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}
+        >
+          <i className="fas fa-bolt"></i>
+        </button>
+      )}
     </div>
   );
 
@@ -2001,6 +2054,19 @@ const Routing = () => {
     );
   };
 
+  const renderStormView = () => {
+    // Using memoized getLeadTechs and getDemoTechs
+    const allTechs = [...getLeadTechs, ...getDemoTechs];
+
+    return (
+      <StormMode
+        techs={allTechs}
+        selectedDate={selectedDate}
+        showAlert={showAlert}
+      />
+    );
+  };
+
   // Full-screen mode: Render without Layout
   if (isFullScreen) {
     return (
@@ -2022,6 +2088,7 @@ const Routing = () => {
             {activeView === 'routing' && renderRoutingView()}
             {activeView === 'kanban' && renderKanbanView()}
             {activeView === 'jobs' && renderJobsView()}
+            {activeView === 'storm' && renderStormView()}
           </>
         )}
 
@@ -2162,6 +2229,7 @@ const Routing = () => {
           {activeView === 'routing' && renderRoutingView()}
           {activeView === 'kanban' && renderKanbanView()}
           {activeView === 'jobs' && renderJobsView()}
+          {activeView === 'storm' && renderStormView()}
         </>
       )}
 
