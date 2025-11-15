@@ -273,14 +273,18 @@ const ManualMode = ({
           markerColor = markerColor + '80'; // Add transparency
         }
 
+        // Make markers 50% bigger for jobs with requested tech
+        const markerSize = job.requestedTech ? 48 : 32;
+        const iconSize = job.requestedTech ? 18 : 12;
+
         const el = document.createElement('div');
         el.style.cursor = 'pointer';
         el.innerHTML = `
           <div class="job-marker" style="
             background-color: ${markerColor};
             color: var(--surface-color);
-            width: 32px;
-            height: 32px;
+            width: ${markerSize}px;
+            height: ${markerSize}px;
             border-radius: 50%;
             display: flex;
             align-items: center;
@@ -291,7 +295,7 @@ const ManualMode = ({
             box-shadow: 0 2px 8px rgba(0,0,0,0.3);
             transition: transform 0.2s;
           ">
-            ${job.requiresTwoTechs ? '<i class="fas fa-users" style="font-size: 12px;"></i>' : '<i class="fas fa-map-pin" style="font-size: 12px;"></i>'}
+            ${job.requiresTwoTechs ? `<i class="fas fa-users" style="font-size: ${iconSize}px;"></i>` : `<i class="fas fa-map-pin" style="font-size: ${iconSize}px;"></i>`}
           </div>
         `;
 
@@ -1237,19 +1241,91 @@ const ManualMode = ({
     await onUpdateJobs(updatedJobs);
   };
 
-  const reorderJobsInRoute = (techId, startIndex, endIndex) => {
+  const reorderJobsInRoute = async (techId, startIndex, endIndex) => {
     const updatedRoutes = { ...routes };
     const techJobs = [...updatedRoutes[techId].jobs];
     const [removed] = techJobs.splice(startIndex, 1);
     techJobs.splice(endIndex, 0, removed);
 
+    // Recalculate times for the reordered route
+    const tech = updatedRoutes[techId].tech;
+    const recalculatedJobs = await recalculateRouteTimes(techJobs, tech);
+
     updatedRoutes[techId] = {
       ...updatedRoutes[techId],
-      jobs: techJobs
+      jobs: recalculatedJobs
     };
 
     setRoutes(updatedRoutes);
     onUpdateRoutes(updatedRoutes);
+  };
+
+  // Recalculate arrival, start, end times for jobs in current order
+  const recalculateRouteTimes = async (jobs, tech) => {
+    if (!jobs || jobs.length === 0) return [];
+
+    const mapboxService = getMapboxService();
+
+    // Get shift start time
+    const shiftStartTime = techStartTimes[tech.id] || (tech.shift === 'second' ? '13:00' : '07:00');
+    let currentTimeMinutes = parseInt(shiftStartTime.split(':')[0]) * 60 + parseInt(shiftStartTime.split(':')[1]);
+
+    // Get start office coordinates
+    const startOfficeKey = companyMeetingMode ? 'office_1' : tech.office;
+    const startOfficeCoords = officeCoordinates[startOfficeKey];
+
+    const recalculatedJobs = [];
+    let previousCoords = startOfficeCoords;
+
+    for (const job of jobs) {
+      const jobCoords = await mapboxService.geocodeAddress(job.address);
+
+      if (!jobCoords) {
+        // If geocoding fails, use fallback times
+        recalculatedJobs.push({
+          ...job,
+          arrivalTime: minutesToTime(currentTimeMinutes),
+          startTime: minutesToTime(currentTimeMinutes),
+          endTime: minutesToTime(currentTimeMinutes + (job.duration * 60))
+        });
+        currentTimeMinutes += (job.duration * 60) + 30; // Assume 30 min drive
+        continue;
+      }
+
+      // Calculate drive time from previous location
+      let driveTimeMinutes = 15; // Default fallback
+      try {
+        const driveTime = await mapboxService.getDrivingRoute(previousCoords, jobCoords);
+        driveTimeMinutes = driveTime ? Math.ceil(driveTime / 60) : 15;
+      } catch (error) {
+        console.warn('Drive time calculation failed, using fallback:', error);
+      }
+
+      // Calculate arrival and times
+      const arrivalTimeMinutes = currentTimeMinutes + driveTimeMinutes;
+      const windowStartMinutes = parseInt(job.timeframeStart.split(':')[0]) * 60 + parseInt(job.timeframeStart.split(':')[1]);
+      const startTimeMinutes = Math.max(arrivalTimeMinutes, windowStartMinutes);
+      const endTimeMinutes = startTimeMinutes + (job.duration * 60);
+
+      recalculatedJobs.push({
+        ...job,
+        arrivalTime: minutesToTime(arrivalTimeMinutes),
+        startTime: minutesToTime(startTimeMinutes),
+        endTime: minutesToTime(endTimeMinutes),
+        driveTime: driveTimeMinutes
+      });
+
+      currentTimeMinutes = endTimeMinutes;
+      previousCoords = jobCoords;
+    }
+
+    return recalculatedJobs;
+  };
+
+  const minutesToTime = (minutes) => {
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
   };
 
   const moveJobInRoute = (techId, jobIndex, direction) => {

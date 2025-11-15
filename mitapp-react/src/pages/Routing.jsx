@@ -716,6 +716,14 @@ const Routing = () => {
       // DT(true) means "Demo Tech" is required (a second person)
       const requiresTwoTechs = (job.route_description || '').includes('DT(true)');
 
+      // Check for tech request in description (Req:/Request:/Requested:)
+      let requestedTech = null;
+      const techRequestPattern = /(?:Req(?:uest(?:ed)?)?)\s*:\s*([^\|]+?)(?:\s+(?:TF|WTC|IS_POT|Morning|EQ|RA|DT|IS_PC|EQP|SB|Cat:|Rooms:|COL:)|$)/i;
+      const techRequestMatch = description.match(techRequestPattern);
+      if (techRequestMatch) {
+        requestedTech = techRequestMatch[1].trim();
+      }
+
       const jobData = {
         id: job.text || `job_${Date.now()}_${i}`,
         customerName: customerName,
@@ -726,6 +734,7 @@ const Routing = () => {
         timeframeEnd: timeframeEnd || '17:00', // Fallback for now
         jobType: jobType,
         requiresTwoTechs: requiresTwoTechs,
+        requestedTech: requestedTech, // Tech name if specified (e.g., "Jonathon")
         description: job.route_description || '',
         phone: cleanPhone,
         status: 'unassigned',
@@ -1729,9 +1738,31 @@ const Routing = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {unassignedJobs.map((job) => (
-                    <tr key={job.id}>
-                      <td><strong>{job.customerName}</strong></td>
+                  {unassignedJobs
+                    .slice()
+                    .sort((a, b) => {
+                      // Sort requested jobs to the top
+                      if (a.requestedTech && !b.requestedTech) return -1;
+                      if (!a.requestedTech && b.requestedTech) return 1;
+                      return 0;
+                    })
+                    .map((job) => (
+                    <tr key={job.id} style={{
+                      backgroundColor: job.requestedTech ? 'var(--warning-bg)' : undefined
+                    }}>
+                      <td>
+                        <strong>{job.customerName}</strong>
+                        {job.requestedTech && (
+                          <div style={{
+                            fontSize: '11px',
+                            color: 'var(--warning-color)',
+                            marginTop: '2px',
+                            fontWeight: 'bold'
+                          }}>
+                            <i className="fas fa-user-tag"></i> Req: {job.requestedTech}
+                          </div>
+                        )}
+                      </td>
                       <td>{job.address}</td>
                       <td>
                         <span className="status-badge status-available">{job.zone}</span>
@@ -1840,28 +1871,72 @@ const Routing = () => {
 
   // View selector component for consistency across all views
   const ViewSelector = () => (
-    <select
-      value={activeView}
-      onChange={(e) => setActiveView(e.target.value)}
-      style={{
-        padding: '4px 24px 4px 8px',
-        fontSize: '12px',
-        fontWeight: '500',
-        border: '1px solid #e5e7eb',
-        borderRadius: '4px',
-        backgroundColor: 'var(--surface-color)',
-        cursor: 'pointer',
-        appearance: 'none',
-        backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'10\' height=\'10\' viewBox=\'0 0 12 12\'%3E%3Cpath fill=\'%23666\' d=\'M6 9L1 4h10z\'/%3E%3C/svg%3E")',
-        backgroundRepeat: 'no-repeat',
-        backgroundPosition: 'right 6px center',
-        color: 'var(--text-secondary)'
-      }}
-    >
-      <option value="routing">Routing</option>
-      <option value="kanban">Kanban Calendar</option>
-      <option value="jobs">Jobs</option>
-    </select>
+    <div style={{
+      display: 'flex',
+      gap: '4px',
+      backgroundColor: 'var(--surface-secondary)',
+      padding: '2px',
+      borderRadius: '6px',
+      border: '1px solid #e5e7eb'
+    }}>
+      <button
+        onClick={() => setActiveView('routing')}
+        title="Routing"
+        style={{
+          padding: '6px 10px',
+          fontSize: '14px',
+          border: 'none',
+          borderRadius: '4px',
+          backgroundColor: activeView === 'routing' ? 'var(--primary-color)' : 'transparent',
+          color: activeView === 'routing' ? 'white' : 'var(--text-secondary)',
+          cursor: 'pointer',
+          transition: 'all 0.2s ease',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }}
+      >
+        <i className="fas fa-map-marked-alt"></i>
+      </button>
+      <button
+        onClick={() => setActiveView('kanban')}
+        title="Kanban Calendar"
+        style={{
+          padding: '6px 10px',
+          fontSize: '14px',
+          border: 'none',
+          borderRadius: '4px',
+          backgroundColor: activeView === 'kanban' ? 'var(--primary-color)' : 'transparent',
+          color: activeView === 'kanban' ? 'white' : 'var(--text-secondary)',
+          cursor: 'pointer',
+          transition: 'all 0.2s ease',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }}
+      >
+        <i className="fas fa-calendar-alt"></i>
+      </button>
+      <button
+        onClick={() => setActiveView('jobs')}
+        title="Jobs"
+        style={{
+          padding: '6px 10px',
+          fontSize: '14px',
+          border: 'none',
+          borderRadius: '4px',
+          backgroundColor: activeView === 'jobs' ? 'var(--primary-color)' : 'transparent',
+          color: activeView === 'jobs' ? 'white' : 'var(--text-secondary)',
+          cursor: 'pointer',
+          transition: 'all 0.2s ease',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }}
+      >
+        <i className="fas fa-list"></i>
+      </button>
+    </div>
   );
 
   const renderRoutingView = () => {
