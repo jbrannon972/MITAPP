@@ -210,6 +210,36 @@ Transform Storm Mode from UI-only to fully functional emergency staff management
   - Secondary marker: "Starter Required" badge
   - After starter assigned: Shows both names
 
+#### Storm Mode Filtering (Manual/Kanban View)
+**Purpose**: Focus on specific job/staff categories during routing
+
+**Filter Options**:
+```
+[All Staff & Jobs ▼]
+  ├─ All (Default) - Show everything
+  ├─ Sub Crews & Demos - Only demos + sub contractors
+  ├─ Check Services - Only check/service jobs + CS staff
+  ├─ Installs - Only install jobs + capable staff
+  ├─ Pulls - Only pull jobs + capable staff
+  └─ Regular Techs Only - Hide all Storm Mode staff
+```
+
+**Filter Behavior**:
+- **Jobs List**: Shows only jobs matching selected type
+- **Staff List**: Shows only staff capable of that job type
+- **Example**: Select "Check Services"
+  - Jobs: Only Check/Service jobs visible
+  - Staff: EHQ CS Staff + any PM/Leader with CS capability + regular techs
+  - Hides: Sub contractors, staff without CS capability, Install/Demo/Pull jobs
+
+**UI Position**: Dropdown in header next to view selector
+
+**Benefits**:
+- Route demos to subs first, then handle other job types
+- Assign check services to CS staff without distraction
+- Focus on one category at a time during high-stress situations
+- Or route everything at once with "All"
+
 ### 3.3 Capability Validation Dialog
 
 **Triggered When**: Assigning job type beyond staff capabilities
@@ -356,12 +386,16 @@ Jobs:
 - [ ] Add job assignment validation
 - [ ] Create capability warning dialog
 - [ ] Store assignments in Firebase
+- [ ] Implement Storm Mode filtering system (All/Sub Crews/Check Services/Installs/Pulls/Regular Only)
+- [ ] Filter jobs list based on selected filter
+- [ ] Filter staff list based on capabilities and filter type
 
 **Files to modify**:
-- `ManualMode.jsx`: Add Storm staff to tech list
-- `KanbanCalendar.jsx`: Add Storm staff columns
-- `Routing.jsx`: Merge Storm staff with regular techs
+- `ManualMode.jsx`: Add Storm staff to tech list + filtering
+- `KanbanCalendar.jsx`: Add Storm staff columns + filtering
+- `Routing.jsx`: Merge Storm staff with regular techs + filter state
 - New file: `CapabilityWarningModal.jsx`
+- New file: `StormModeFilter.jsx` (filter dropdown component)
 
 ### Phase 3: Sub Contractor System (Week 2-3)
 **Goal**: Full sub contractor assignment with starters
