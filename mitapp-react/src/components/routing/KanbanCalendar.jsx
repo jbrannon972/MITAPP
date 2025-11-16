@@ -18,6 +18,7 @@ const KanbanCalendar = ({
   onUpdateRoutes,
   onUpdateJobs,
   selectedDate,
+  onDateChange,
   activeUsers = [],
   scheduleForDay,
   showAlert,
@@ -97,6 +98,27 @@ const KanbanCalendar = ({
     };
 
     return badges[tech.type] || null;
+  };
+
+  // Date navigation handlers
+  const handlePreviousDay = () => {
+    if (!onDateChange) return;
+    const date = new Date(selectedDate);
+    date.setDate(date.getDate() - 1);
+    onDateChange(date.toISOString().split('T')[0]);
+  };
+
+  const handleNextDay = () => {
+    if (!onDateChange) return;
+    const date = new Date(selectedDate);
+    date.setDate(date.getDate() + 1);
+    onDateChange(date.toISOString().split('T')[0]);
+  };
+
+  const handleToday = () => {
+    if (!onDateChange) return;
+    const today = new Date();
+    onDateChange(today.toISOString().split('T')[0]);
   };
 
   // Removed deepEqual - not currently used in the component
@@ -1567,8 +1589,72 @@ const KanbanCalendar = ({
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <h3 style={{ margin: 0, fontSize: '14px', fontWeight: '600' }}>
-            <i className="fas fa-calendar-day"></i> Timeline - {selectedDate}
+            <i className="fas fa-calendar-day"></i> Timeline
           </h3>
+
+          {/* Compact Date Picker */}
+          {onDateChange && (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px'
+            }}>
+              <button
+                onClick={handlePreviousDay}
+                className="btn btn-secondary btn-small"
+                style={{
+                  padding: '2px 6px',
+                  fontSize: '11px',
+                  minWidth: 'unset',
+                  lineHeight: '1'
+                }}
+                title="Previous day"
+              >
+                <i className="fas fa-chevron-left"></i>
+              </button>
+
+              <input
+                type="date"
+                value={selectedDate}
+                onChange={(e) => onDateChange(e.target.value)}
+                className="form-control"
+                style={{
+                  width: '110px',
+                  fontSize: '11px',
+                  padding: '2px 6px',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '4px'
+                }}
+              />
+
+              <button
+                onClick={handleNextDay}
+                className="btn btn-secondary btn-small"
+                style={{
+                  padding: '2px 6px',
+                  fontSize: '11px',
+                  minWidth: 'unset',
+                  lineHeight: '1'
+                }}
+                title="Next day"
+              >
+                <i className="fas fa-chevron-right"></i>
+              </button>
+
+              <button
+                onClick={handleToday}
+                className="btn btn-primary btn-small"
+                style={{
+                  padding: '2px 8px',
+                  fontSize: '11px'
+                }}
+                title="Go to today"
+              >
+                Today
+              </button>
+            </div>
+          )}
+
           <p style={{ margin: 0, fontSize: '11px', color: 'var(--text-secondary)' }}>
             Drop jobs to auto-schedule • Click job to edit • Click tech name for map
           </p>
