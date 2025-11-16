@@ -2296,7 +2296,11 @@ const Routing = () => {
       <StormMode
         techs={allTechs}
         selectedDate={selectedDate}
+        onDateChange={setSelectedDate}
         showAlert={showAlert}
+        activeUsers={activeUsers}
+        actionButtons={<StandardActionButtons />}
+        viewSelector={<ViewSelector />}
       />
     );
   };

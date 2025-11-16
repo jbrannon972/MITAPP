@@ -8,7 +8,11 @@ import firebaseService from '../../services/firebaseService';
 const StormMode = ({
   techs = [],
   selectedDate,
-  showAlert
+  onDateChange,
+  showAlert,
+  activeUsers = [],
+  actionButtons,
+  viewSelector
 }) => {
   const [activeTab, setActiveTab] = useState('technicians');
   const [loading, setLoading] = useState(true);
@@ -67,6 +71,27 @@ const StormMode = ({
     } finally {
       setLoading(false);
     }
+  };
+
+  // Date navigation handlers
+  const handlePreviousDay = () => {
+    if (!onDateChange) return;
+    const date = new Date(selectedDate);
+    date.setDate(date.getDate() - 1);
+    onDateChange(date.toISOString().split('T')[0]);
+  };
+
+  const handleNextDay = () => {
+    if (!onDateChange) return;
+    const date = new Date(selectedDate);
+    date.setDate(date.getDate() + 1);
+    onDateChange(date.toISOString().split('T')[0]);
+  };
+
+  const handleToday = () => {
+    if (!onDateChange) return;
+    const today = new Date();
+    onDateChange(today.toISOString().split('T')[0]);
   };
 
   // Update staff member (PM, EHQ Leader, CS Staff)
@@ -540,24 +565,123 @@ const StormMode = ({
     );
   }
 
+  // Calculate total staff count
+  const totalStaff = projectManagers.length + ehqLeaders.length + ehqCSStaff.length + subContractors.length;
+
   return (
     <div style={{ height: 'calc(100vh - 140px)', display: 'flex', flexDirection: 'column' }}>
-      {/* Header */}
+      {/* Compact Header */}
       <div style={{
-        marginBottom: '16px',
-        padding: '16px',
-        backgroundColor: 'var(--danger-bg)',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: '8px',
+        padding: '8px 12px',
+        backgroundColor: 'var(--surface-secondary)',
         borderRadius: '6px',
-        border: '2px solid var(--danger-color)'
+        border: '1px solid #e5e7eb'
       }}>
+        {/* Left: Title, Date, Staff Counts */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <i className="fas fa-bolt" style={{ fontSize: '32px', color: 'var(--danger-color)' }}></i>
-          <div>
-            <h2 style={{ margin: 0, color: 'var(--danger-color)' }}>Storm Mode - Emergency Staff Management</h2>
-            <p style={{ margin: '4px 0 0 0', fontSize: '14px', color: 'var(--text-secondary)' }}>
-              Manage additional staff for {selectedDate}
-            </p>
+          <h3 style={{ margin: 0, fontSize: '14px', fontWeight: '600' }}>
+            <i className="fas fa-bolt" style={{ color: 'var(--danger-color)', marginRight: '6px' }}></i>
+            Storm Mode
+          </h3>
+
+          {/* Compact Date Picker */}
+          {onDateChange && (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px'
+            }}>
+              <button
+                onClick={handlePreviousDay}
+                className="btn btn-secondary btn-small"
+                style={{
+                  padding: '2px 6px',
+                  fontSize: '11px',
+                  minWidth: 'unset',
+                  lineHeight: '1'
+                }}
+                title="Previous day"
+              >
+                <i className="fas fa-chevron-left"></i>
+              </button>
+
+              <input
+                type="date"
+                value={selectedDate}
+                onChange={(e) => onDateChange(e.target.value)}
+                className="form-control"
+                style={{
+                  width: '110px',
+                  fontSize: '11px',
+                  padding: '2px 6px',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '4px'
+                }}
+              />
+
+              <button
+                onClick={handleNextDay}
+                className="btn btn-secondary btn-small"
+                style={{
+                  padding: '2px 6px',
+                  fontSize: '11px',
+                  minWidth: 'unset',
+                  lineHeight: '1'
+                }}
+                title="Next day"
+              >
+                <i className="fas fa-chevron-right"></i>
+              </button>
+
+              <button
+                onClick={handleToday}
+                className="btn btn-primary btn-small"
+                style={{
+                  padding: '2px 8px',
+                  fontSize: '11px'
+                }}
+                title="Go to today"
+              >
+                Today
+              </button>
+            </div>
+          )}
+
+          {/* Staff Counts */}
+          <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+            <span style={{ fontWeight: '600', color: 'var(--danger-color)' }}>{totalStaff}</span> emergency staff •
+            <span style={{ fontWeight: '600', color: 'var(--text-primary)', marginLeft: '3px' }}>{techs.length}</span> regular techs
           </div>
+
+          {/* Active Users - Presence Indicators */}
+          {activeUsers && activeUsers.length > 0 && (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '3px 8px',
+              backgroundColor: 'var(--info-bg)',
+              borderRadius: '4px',
+              fontSize: '11px',
+              border: '1px solid var(--info-color)',
+              color: 'var(--text-primary)'
+            }}>
+              <i className="fas fa-users" style={{ color: 'var(--info-color)', fontSize: '10px' }}></i>
+              <span style={{ fontWeight: '500' }}>
+                {activeUsers.length} {activeUsers.length === 1 ? 'other user' : 'others'} viewing
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* Right: Action Buttons and View Selector */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {actionButtons}
+          {viewSelector}
         </div>
       </div>
 
