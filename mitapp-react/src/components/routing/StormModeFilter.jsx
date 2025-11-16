@@ -2,6 +2,7 @@ import React from 'react';
 
 /**
  * StormModeFilter - Filter jobs and staff by category during Storm Mode
+ * Updated: 2025-01-16 - Added to Manual and Kanban routing views
  *
  * @param {string} activeFilter - Current active filter
  * @param {Function} onFilterChange - Callback when filter changes
