@@ -178,54 +178,44 @@ class FirebaseService {
     }
   }
 
-  // Schedule management
+  // Schedule management (synced with Tech App/JS/firebase-service.js)
   async getScheduleDataForMonth(year, month) {
+    const schedulesMap = { specific: {} };
+    const firstDayOfMonth = new Date(year, month, 1);
+    const lastDayOfMonth = new Date(year, month + 1, 0, 23, 59, 59, 999);
+
     try {
-      // Fetch all schedule documents for the month
       const schedulesRef = collection(db, 'hou_schedules');
-
-      // Build date range for the month
-      const startDate = new Date(year, month, 1);
-      const endDate = new Date(year, month + 1, 0);
-
       const snapshot = await getDocs(schedulesRef);
 
-      const specificSchedules = {};
-
-      snapshot.docs.forEach(doc => {
+      snapshot.forEach(doc => {
         const data = doc.data();
-        const dateString = doc.id; // Format: YYYY-MM-DD
-
-        // Check if this date is in the current month
-        if (dateString.startsWith(`${year}-${String(month + 1).padStart(2, '0')}`)) {
-          const day = parseInt(dateString.split('-')[2], 10);
-          specificSchedules[day] = {
-            staff: data.staff || [],
-            notes: data.notes || ''
-          };
+        if (data.date) {
+          const dateObj = data.date.toDate();
+          // Only include dates in the requested month range
+          if (dateObj >= firstDayOfMonth && dateObj <= lastDayOfMonth) {
+            schedulesMap.specific[dateObj.getDate()] = data;
+          }
         }
       });
-
-      return {
-        specific: specificSchedules
-      };
     } catch (error) {
-      console.error('Error getting schedule data for month:', error);
-      return { specific: {} };
+      console.error('Error fetching specific schedule data for month:', error);
     }
+    return schedulesMap;
   }
 
   async saveSchedule(scheduleData) {
     try {
       const date = scheduleData.date.toDate ? scheduleData.date.toDate() : new Date(scheduleData.date);
-      const dateString = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 
-      const docRef = doc(db, 'hou_schedules', dateString);
-      await setDoc(docRef, {
+      // Use auto-generated ID or timestamp-based ID to avoid conflicts
+      const docRef = doc(collection(db, 'hou_schedules'));
+
+      await setDoc(docRef, this.removeUndefined({
         date: scheduleData.date,
-        staff: scheduleData.staff,
-        notes: scheduleData.notes
-      });
+        staff: scheduleData.staff || [],
+        notes: scheduleData.notes || ''
+      }));
     } catch (error) {
       console.error('Error saving schedule:', error);
       throw error;

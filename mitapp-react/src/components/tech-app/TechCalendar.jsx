@@ -1,13 +1,24 @@
 import { useState, useEffect } from 'react';
-import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
+import { collection, getDocs, Timestamp } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import { useData } from '../../contexts/DataContext';
 
+/**
+ * TechCalendar Component
+ *
+ * IMPORTANT: This component is synced with Tech App/JS/calendar-manager.js
+ * Any changes here should be reflected in the vanilla JS version and vice versa
+ *
+ * Data Format (matches vanilla JS):
+ * - Status values: 'on', 'off', 'sick', 'vacation', 'no-call-no-show' (lowercase)
+ * - Recurring frequency: 'weekly', 'every-other'
+ * - Schedule structure: { specific: { [dayNumber]: { staff: [], notes: '' } } }
+ */
+
 const TechCalendar = () => {
   const [selectedView, setSelectedView] = useState('my-schedule');
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [scheduleData, setScheduleData] = useState({});
   const [recurringRulesCache, setRecurringRulesCache] = useState([]);
   const [allTechs, setAllTechs] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -23,7 +34,6 @@ const TechCalendar = () => {
     setLoading(true);
     await loadAllTechnicians();
     await loadRecurringRules();
-    await loadScheduleData();
     setLoading(false);
   };
 
@@ -52,10 +62,7 @@ const TechCalendar = () => {
       const snapshot = await getDocs(collection(db, 'hou_recurring_rules'));
       const rules = [];
       snapshot.forEach(doc => {
-        const data = doc.data();
-        if (data.rules && Array.isArray(data.rules)) {
-          rules.push(...data.rules.map(rule => ({ ...rule, technicianId: doc.id })));
-        }
+        rules.push({ id: doc.id, ...doc.data() });
       });
       setRecurringRulesCache(rules);
     } catch (error) {
@@ -64,73 +71,24 @@ const TechCalendar = () => {
     }
   };
 
-  const loadScheduleData = async () => {
-    try {
-      const startDate = getStartOfPeriod(currentDate, selectedView);
-      const endDate = getEndOfPeriod(currentDate, selectedView);
-
-      const scheduleQuery = query(
-        collection(db, 'hou_schedules'),
-        where('date', '>=', formatDateForFirestore(startDate)),
-        where('date', '<=', formatDateForFirestore(endDate))
-      );
-
-      const snapshot = await getDocs(scheduleQuery);
-      const schedules = {};
-      snapshot.forEach(doc => {
-        const data = doc.data();
-        // Use the date field as the key for easy lookup
-        if (data.date) {
-          schedules[data.date] = data;
-        }
-      });
-
-      console.log('Loaded schedule data:', schedules);
-      setScheduleData(schedules);
-    } catch (error) {
-      console.error('Error loading schedule:', error);
-    }
-  };
-
-  const getStartOfPeriod = (date, view) => {
-    const d = new Date(date);
-    if (view === 'week' || view === 'my-schedule') {
-      const day = d.getDay();
-      d.setDate(d.getDate() - day);
-    } else if (view === 'month') {
-      d.setDate(1);
-    }
-    return d;
-  };
-
-  const getEndOfPeriod = (date, view) => {
-    const d = new Date(date);
-    if (view === 'week' || view === 'my-schedule') {
-      const day = d.getDay();
-      d.setDate(d.getDate() + (6 - day));
-    } else if (view === 'month') {
-      d.setMonth(d.getMonth() + 1);
-      d.setDate(0);
-    }
-    return d;
-  };
-
-  const formatDateForFirestore = (date) => {
-    return date.toISOString().split('T')[0];
-  };
-
-  const getWeekNumber = (date) => {
-    const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  /**
+   * Get week number (matches vanilla JS implementation)
+   */
+  const getWeekNumber = (dateObj) => {
+    const d = new Date(Date.UTC(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate()));
     d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
     const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
     return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
   };
 
+  /**
+   * Get default status for a person based on recurring rules (matches vanilla JS)
+   */
   const getDefaultStatusForPerson = (person, dateObject) => {
     const dayKey = dateObject.getDay();
     const isWeekend = dayKey === 0 || dayKey === 6;
     const weekNumber = getWeekNumber(dateObject);
-    let status = isWeekend ? 'Off' : 'Scheduled';
+    let status = isWeekend ? 'off' : 'on'; // LOWERCASE to match vanilla JS
     let hours = '';
 
     const personRules = recurringRulesCache.filter(r => r.technicianId === person.id);
@@ -142,11 +100,11 @@ const TechCalendar = () => {
         if ((!ruleStartDate || dateObject >= ruleStartDate) && (!ruleEndDate || dateObject <= ruleEndDate)) {
           if (rule.days && rule.days.includes(dayKey)) {
             let appliesThisWeek = true;
-            if (rule.frequency === 'every-other-week') {
+            if (rule.frequency === 'every-other') { // Match vanilla JS frequency value
               appliesThisWeek = (weekNumber % 2) === ((rule.weekAnchor || 0) % 2);
             }
             if (appliesThisWeek) {
-              status = rule.status || 'Scheduled';
+              status = rule.status || 'on';
               hours = rule.hours || '';
               break;
             }
@@ -157,12 +115,40 @@ const TechCalendar = () => {
     return { status, hours };
   };
 
-  const getCalculatedScheduleForDay = (dateObject) => {
-    const dateStr = formatDateForFirestore(dateObject);
-    const specificDaySchedule = scheduleData[dateStr];
+  /**
+   * Load schedule data for a month (matches vanilla JS implementation)
+   */
+  const getScheduleDataForMonth = async (year, month) => {
+    const schedulesMap = { specific: {} };
+    const firstDayOfMonth = new Date(year, month, 1);
+    const lastDayOfMonth = new Date(year, month + 1, 0, 23, 59, 59, 999);
+    const startTimestamp = Timestamp.fromDate(firstDayOfMonth);
+    const endTimestamp = Timestamp.fromDate(lastDayOfMonth);
 
-    console.log('Getting schedule for date:', dateStr, 'Found:', specificDaySchedule);
+    try {
+      const snapshot = await getDocs(collection(db, 'hou_schedules'));
 
+      snapshot.forEach(doc => {
+        const data = doc.data();
+        if (data.date) {
+          const dateObj = data.date.toDate();
+          // Only include dates in the requested month range
+          if (dateObj >= firstDayOfMonth && dateObj <= lastDayOfMonth) {
+            schedulesMap.specific[dateObj.getDate()] = data;
+          }
+        }
+      });
+    } catch (error) {
+      console.error('Error fetching schedule data for month:', error);
+    }
+    return schedulesMap;
+  };
+
+  /**
+   * Get calculated schedule for a specific day (matches vanilla JS)
+   */
+  const getCalculatedScheduleForDay = async (dateObject, monthlySchedules) => {
+    const specificDaySchedule = monthlySchedules.specific[dateObject.getDate()];
     const calculatedSchedule = {
       notes: specificDaySchedule?.notes || '',
       staff: []
@@ -173,15 +159,10 @@ const TechCalendar = () => {
       const { status: defaultStatus, hours: defaultHours } = getDefaultStatusForPerson(staffMember, dateObject);
       let personSchedule = { ...staffMember, status: defaultStatus, hours: defaultHours };
 
-      // Check both staffList and staff for compatibility
-      const staffArray = specificDaySchedule?.staffList || specificDaySchedule?.staff || [];
-      const specificEntry = staffArray.find(s =>
-        s.technicianId === staffMember.id || s.id === staffMember.id
-      );
-
+      const specificEntry = specificDaySchedule?.staff?.find(s => s.id === staffMember.id);
       if (specificEntry) {
-        personSchedule.status = specificEntry.status || defaultStatus;
-        personSchedule.hours = specificEntry.hours || defaultHours;
+        personSchedule.status = specificEntry.status;
+        personSchedule.hours = specificEntry.hours || '';
       }
       calculatedSchedule.staff.push(personSchedule);
     }
@@ -190,24 +171,43 @@ const TechCalendar = () => {
     return calculatedSchedule;
   };
 
+  /**
+   * Format name compact (matches vanilla JS)
+   */
   const formatNameCompact = (fullName) => {
     if (!fullName) return '';
     const parts = fullName.split(' ');
     return parts.length > 1 ? `${parts[0]} ${parts[parts.length - 1].charAt(0)}.` : parts[0];
   };
 
+  /**
+   * Format status (matches vanilla JS)
+   */
   const formatStatus = (s) => {
-    let statusText = (s.status || '').replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-    if (s.hours) statusText += ` (${s.hours}h)`;
+    let statusText = s.status.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    if (s.hours) statusText += ` (${s.hours})`;
     return statusText;
+  };
+
+  /**
+   * Get day view lists (matches vanilla JS)
+   */
+  const getDayViewLists = (dateObject, schedule) => {
+    const isWeekend = [0, 6].includes(dateObject.getDay());
+    const offStatuses = ['off', 'sick', 'vacation', 'no-call-no-show'];
+    const primaryHeaderText = isWeekend ? "Working Today" : "Scheduled Off / Custom";
+    const secondaryHeaderText = isWeekend ? "Scheduled Off" : "Working Today";
+    const primaryList = schedule.staff.filter(s => isWeekend ? (s.status === 'on' || s.hours) : (offStatuses.includes(s.status) || s.hours));
+    const secondaryList = schedule.staff.filter(s => isWeekend ? (offStatuses.includes(s.status) && !s.hours) : (s.status === 'on' && !s.hours));
+    return { primaryList, secondaryList, primaryHeaderText, secondaryHeaderText };
   };
 
   const navigatePeriod = (direction) => {
     const newDate = new Date(currentDate);
-    if (selectedView === 'week' || selectedView === 'my-schedule') {
-      newDate.setDate(newDate.getDate() + (direction * 7));
-    } else if (selectedView === 'month') {
+    if (selectedView === 'month') {
       newDate.setMonth(newDate.getMonth() + direction);
+    } else if (selectedView === 'week' || selectedView === 'my-schedule') {
+      newDate.setDate(newDate.getDate() + (direction * 7));
     } else {
       newDate.setDate(newDate.getDate() + direction);
     }
@@ -220,9 +220,11 @@ const TechCalendar = () => {
 
   const getPeriodLabel = () => {
     if (selectedView === 'week' || selectedView === 'my-schedule') {
-      const start = getStartOfPeriod(currentDate, selectedView);
-      const end = getEndOfPeriod(currentDate, selectedView);
-      return `${start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${end.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+      const startOfWeek = new Date(currentDate);
+      startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay());
+      const endOfWeek = new Date(startOfWeek);
+      endOfWeek.setDate(endOfWeek.getDate() + 6);
+      return `${startOfWeek.toLocaleDateString()} - ${endOfWeek.toLocaleDateString()}`;
     } else if (selectedView === 'month') {
       return currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
     } else {
@@ -230,16 +232,43 @@ const TechCalendar = () => {
     }
   };
 
-  const renderMyScheduleView = () => {
-    const startOfWeek = getStartOfPeriod(currentDate, 'my-schedule');
-    const days = [];
+  const getStatusIcon = (status) => {
+    const statusLower = (status || '').toLowerCase();
+    if (statusLower === 'off') return 'fa-moon';
+    if (statusLower === 'vacation') return 'fa-umbrella-beach';
+    if (statusLower === 'sick') return 'fa-heartbeat';
+    if (statusLower === 'on') return 'fa-briefcase';
+    return 'fa-calendar-check';
+  };
 
+  /**
+   * Render My Schedule View (matches vanilla JS)
+   */
+  const renderMyScheduleView = async () => {
+    const startDate = new Date(currentDate);
+    startDate.setDate(startDate.getDate() - startDate.getDay());
+    const endDate = new Date(startDate);
+    endDate.setDate(endDate.getDate() + 6);
+
+    const loggedInUser = currentUser;
+    if (!loggedInUser || !loggedInUser.userId) {
+      return <p>Could not identify user. Please try logging in again.</p>;
+    }
+
+    const techId = loggedInUser.userId;
+    const schedulesForStartMonth = await getScheduleDataForMonth(startDate.getFullYear(), startDate.getMonth());
+    const schedulesForEndMonth = startDate.getMonth() !== endDate.getMonth()
+      ? await getScheduleDataForMonth(endDate.getFullYear(), endDate.getMonth())
+      : schedulesForStartMonth;
+
+    const days = [];
     for (let i = 0; i < 7; i++) {
-      const day = new Date(startOfWeek);
-      day.setDate(startOfWeek.getDate() + i);
-      const schedule = getCalculatedScheduleForDay(day);
-      const mySchedule = schedule.staff.find(s => s.id === currentUser?.userId);
-      const isToday = formatDateForFirestore(day) === formatDateForFirestore(new Date());
+      const day = new Date(startDate);
+      day.setDate(day.getDate() + i);
+      const relevantSchedules = day.getMonth() === startDate.getMonth() ? schedulesForStartMonth : schedulesForEndMonth;
+      const schedule = await getCalculatedScheduleForDay(day, relevantSchedules);
+      const mySchedule = schedule.staff.find(s => s.id === techId);
+      const isToday = day.toDateString() === new Date().toDateString();
 
       days.push(
         <div key={i} className={`tech-schedule-card ${isToday ? 'today' : ''}`}>
@@ -253,7 +282,7 @@ const TechCalendar = () => {
           </div>
           <div className="tech-schedule-card-body">
             {mySchedule ? (
-              <div className={`tech-status-badge large status-${mySchedule.status.toLowerCase().replace(' ', '-')}`}>
+              <div className={`tech-status-badge large status-${mySchedule.status.replace(' ', '-')}`}>
                 <i className={`fas ${getStatusIcon(mySchedule.status)}`}></i>
                 <span>{formatStatus(mySchedule)}</span>
               </div>
@@ -271,31 +300,14 @@ const TechCalendar = () => {
     return <div className="tech-schedule-grid">{days}</div>;
   };
 
-  const getStatusIcon = (status) => {
-    const statusLower = (status || '').toLowerCase();
-    if (statusLower.includes('off')) return 'fa-moon';
-    if (statusLower.includes('vacation')) return 'fa-umbrella-beach';
-    if (statusLower.includes('sick')) return 'fa-heartbeat';
-    if (statusLower.includes('scheduled')) return 'fa-briefcase';
-    return 'fa-calendar-check';
-  };
-
-  const renderDayView = (dateToRender = null) => {
+  /**
+   * Render Day View (matches vanilla JS)
+   */
+  const renderDayView = async (dateToRender = null) => {
     const dateForView = dateToRender || currentDate;
-    const schedule = getCalculatedScheduleForDay(dateForView);
-    const isWeekend = [0, 6].includes(dateForView.getDay());
-    const offStatuses = ['off', 'sick', 'vacation', 'no-call-no-show'];
-
-    const primaryList = isWeekend
-      ? schedule.staff.filter(s => s.status?.toLowerCase() === 'scheduled' || s.hours)
-      : schedule.staff.filter(s => offStatuses.includes(s.status?.toLowerCase()) || s.hours);
-
-    const secondaryList = isWeekend
-      ? schedule.staff.filter(s => offStatuses.includes(s.status?.toLowerCase()) && !s.hours)
-      : schedule.staff.filter(s => s.status?.toLowerCase() === 'scheduled' && !s.hours);
-
-    const primaryHeaderText = isWeekend ? "Working Today" : "Scheduled Off / Custom";
-    const secondaryHeaderText = isWeekend ? "Scheduled Off" : "Working Today";
+    const monthlySchedules = await getScheduleDataForMonth(dateForView.getFullYear(), dateForView.getMonth());
+    const schedule = await getCalculatedScheduleForDay(dateForView, monthlySchedules);
+    const { primaryList, secondaryList, primaryHeaderText, secondaryHeaderText } = getDayViewLists(dateForView, schedule);
 
     return (
       <div className="tech-day-view">
@@ -311,7 +323,7 @@ const TechCalendar = () => {
           <div className="tech-staff-list">
             {primaryList.length > 0 ? (
               primaryList.map((s, idx) => (
-                <div key={idx} className={`tech-staff-item status-${s.status?.toLowerCase().replace(' ', '-')}`}>
+                <div key={idx} className={`tech-staff-item status-${s.status.replace(' ', '-')}`}>
                   <div className="tech-staff-info">
                     <span className="tech-staff-name">{s.name}</span>
                     <span className="tech-staff-zone">{s.zone}</span>
@@ -330,7 +342,7 @@ const TechCalendar = () => {
           <div className="tech-staff-list">
             {secondaryList.length > 0 ? (
               secondaryList.map((s, idx) => (
-                <div key={idx} className={`tech-staff-item status-${s.status?.toLowerCase().replace(' ', '-')}`}>
+                <div key={idx} className={`tech-staff-item status-${s.status.replace(' ', '-')}`}>
                   <div className="tech-staff-info">
                     <span className="tech-staff-name">{s.name}</span>
                     <span className="tech-staff-zone">{s.zone}</span>
@@ -347,21 +359,30 @@ const TechCalendar = () => {
     );
   };
 
-  const renderWeekView = () => {
-    const startOfWeek = getStartOfPeriod(currentDate, 'week');
-    const days = [];
+  /**
+   * Render Week View (matches vanilla JS)
+   */
+  const renderWeekView = async () => {
+    const startOfWeek = new Date(currentDate);
+    startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay());
+    const monthlySchedules = await getScheduleDataForMonth(currentDate.getFullYear(), currentDate.getMonth());
 
+    const days = [];
     for (let i = 0; i < 7; i++) {
       const day = new Date(startOfWeek);
-      day.setDate(startOfWeek.getDate() + i);
-      const schedule = getCalculatedScheduleForDay(day);
-      const isToday = formatDateForFirestore(day) === formatDateForFirestore(new Date());
-      const isWeekend = [0, 6].includes(day.getDay());
-      const offStatuses = ['off', 'sick', 'vacation', 'no-call-no-show'];
+      day.setDate(day.getDate() + i);
+      const schedule = await getCalculatedScheduleForDay(day, monthlySchedules);
+      const { primaryList, primaryHeaderText } = getDayViewLists(day, schedule);
+      const isToday = day.toDateString() === new Date().toDateString();
 
-      const staffToShow = isWeekend
-        ? schedule.staff.filter(s => s.status?.toLowerCase() === 'scheduled' || s.hours)
-        : schedule.staff.filter(s => offStatuses.includes(s.status?.toLowerCase()) || s.hours);
+      const staffListHtml = primaryList.length > 0
+        ? primaryList.map((s, idx) => (
+            <div key={idx} className={`tech-compact-item staff-${s.status.replace(' ', '-')}`}>
+              <span className="tech-compact-name">{formatNameCompact(s.name)}</span>
+              <span className="tech-compact-status">{formatStatus(s)}</span>
+            </div>
+          ))
+        : <p className="tech-no-special">No special schedule</p>;
 
       days.push(
         <div key={i} className={`tech-week-day ${isToday ? 'today' : ''}`}>
@@ -370,19 +391,11 @@ const TechCalendar = () => {
             <div className="tech-week-day-date">{day.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div>
           </div>
           <div className="tech-week-day-body">
-            {staffToShow.length > 0 ? (
-              staffToShow.map((s, idx) => (
-                <div key={idx} className={`tech-compact-item status-${s.status?.toLowerCase().replace(' ', '-')}`}>
-                  <span className="tech-compact-name">{formatNameCompact(s.name)}</span>
-                  <span className="tech-compact-status">{formatStatus(s)}</span>
-                </div>
-              ))
-            ) : (
-              <p className="tech-no-special">No special schedule</p>
-            )}
+            <h4>{primaryHeaderText}</h4>
+            {staffListHtml}
             {schedule.notes && (
               <div className="tech-week-notes">
-                <i className="fas fa-sticky-note"></i> {schedule.notes}
+                <strong>Notes:</strong> {schedule.notes}
               </div>
             )}
           </div>
@@ -393,12 +406,16 @@ const TechCalendar = () => {
     return <div className="tech-week-grid">{days}</div>;
   };
 
-  const renderMonthView = () => {
+  /**
+   * Render Month View (matches vanilla JS)
+   */
+  const renderMonthView = async () => {
+    const monthlySchedules = await getScheduleDataForMonth(currentDate.getFullYear(), currentDate.getMonth());
     const firstDay = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1).getDay();
     const daysInMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate();
     const days = [];
 
-    // Empty cells
+    // Empty cells for days before the 1st
     for (let i = 0; i < firstDay; i++) {
       days.push(<div key={`empty-${i}`} className="tech-month-day empty"></div>);
     }
@@ -406,14 +423,14 @@ const TechCalendar = () => {
     // Days of month
     for (let day = 1; day <= daysInMonth; day++) {
       const date = new Date(currentDate.getFullYear(), currentDate.getMonth(), day);
-      const schedule = getCalculatedScheduleForDay(date);
-      const isToday = formatDateForFirestore(date) === formatDateForFirestore(new Date());
-      const isWeekend = [0, 6].includes(date.getDay());
+      const schedule = await getCalculatedScheduleForDay(date, monthlySchedules);
+      const isToday = date.toDateString() === new Date().toDateString();
       const offStatuses = ['off', 'sick', 'vacation', 'no-call-no-show'];
+      const isWeekend = [0, 6].includes(date.getDay());
 
-      const staffToShow = isWeekend
-        ? schedule.staff.filter(s => s.status?.toLowerCase() === 'scheduled' || s.hours)
-        : schedule.staff.filter(s => offStatuses.includes(s.status?.toLowerCase()) || s.hours);
+      const staffToDisplay = isWeekend
+        ? schedule.staff.filter(s => s.status === 'on' || s.hours)
+        : schedule.staff.filter(s => offStatuses.includes(s.status) || s.hours);
 
       days.push(
         <div
@@ -423,13 +440,18 @@ const TechCalendar = () => {
         >
           <div className="tech-month-day-number">{day}</div>
           <div className="tech-month-day-content">
-            {staffToShow.slice(0, 3).map((s, idx) => (
-              <div key={idx} className={`tech-mini-badge status-${s.status?.toLowerCase().replace(' ', '-')}`}>
+            {staffToDisplay.slice(0, 3).map((s, idx) => (
+              <div key={idx} className={`tech-mini-badge staff-${s.status.replace(' ', '-')}`}>
                 {formatNameCompact(s.name)}
               </div>
             ))}
-            {staffToShow.length > 3 && (
-              <div className="tech-more-indicator">+{staffToShow.length - 3}</div>
+            {staffToDisplay.length > 3 && (
+              <div className="tech-more-indicator">+{staffToDisplay.length - 3} more</div>
+            )}
+            {schedule.notes && (
+              <div className="tech-month-notes" title={schedule.notes}>
+                {schedule.notes}
+              </div>
             )}
           </div>
         </div>
@@ -439,8 +461,8 @@ const TechCalendar = () => {
     return (
       <div className="tech-month-view">
         <div className="tech-month-header">
-          {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-            <div key={day} className="tech-month-header-day">{day}</div>
+          {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(dayName => (
+            <div key={dayName} className="tech-month-header-day">{dayName}</div>
           ))}
         </div>
         <div className="tech-month-grid">{days}</div>
