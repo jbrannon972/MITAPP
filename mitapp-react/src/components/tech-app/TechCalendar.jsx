@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { collection, getDocs, Timestamp } from 'firebase/firestore';
+import { collection, getDocs, doc, updateDoc, Timestamp } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import { useData } from '../../contexts/DataContext';
@@ -23,6 +23,8 @@ const TechCalendar = () => {
   const [allTechs, setAllTechs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [viewModalData, setViewModalData] = useState(null);
+  const [syncModalOpen, setSyncModalOpen] = useState(false);
+  const [syncProgress, setSyncProgress] = useState({ total: 0, current: 0, status: '', migrated: [], errors: [] });
   const { currentUser } = useAuth();
   const { staffingData } = useData();
 
@@ -239,6 +241,103 @@ const TechCalendar = () => {
     if (statusLower === 'sick') return 'fa-heartbeat';
     if (statusLower === 'on') return 'fa-briefcase';
     return 'fa-calendar-check';
+  };
+
+  /**
+   * ONE-TIME SYNC: Migrate React format data to Vanilla JS format
+   */
+  const runDataMigration = async () => {
+    setSyncProgress({ total: 0, current: 0, status: 'Starting migration...', migrated: [], errors: [] });
+    setSyncModalOpen(true);
+
+    try {
+      // Load all schedule documents
+      setSyncProgress(prev => ({ ...prev, status: 'Loading schedule data...' }));
+      const snapshot = await getDocs(collection(db, 'hou_schedules'));
+      const docs = [];
+      snapshot.forEach(doc => docs.push({ id: doc.id, data: doc.data() }));
+
+      setSyncProgress(prev => ({ ...prev, total: docs.length, status: 'Analyzing documents...' }));
+
+      // Analyze and migrate each document
+      const migrated = [];
+      const errors = [];
+      let current = 0;
+
+      for (const { id, data } of docs) {
+        current++;
+        setSyncProgress(prev => ({ ...prev, current, status: `Processing document ${current}/${docs.length}...` }));
+
+        try {
+          let needsMigration = false;
+          const updates = {};
+
+          // Check if date needs conversion
+          if (!data.date || !(data.date instanceof Timestamp)) {
+            if (typeof data.date === 'string') {
+              const [year, month, day] = data.date.split('-').map(Number);
+              updates.date = Timestamp.fromDate(new Date(year, month - 1, day));
+              needsMigration = true;
+            } else if (/^\d{4}-\d{2}-\d{2}$/.test(id)) {
+              // Parse from document ID
+              const [year, month, day] = id.split('-').map(Number);
+              updates.date = Timestamp.fromDate(new Date(year, month - 1, day));
+              needsMigration = true;
+            }
+          }
+
+          // Check if staffList needs to be renamed to staff
+          if (data.staffList && !data.staff) {
+            updates.staff = data.staffList;
+            needsMigration = true;
+          }
+
+          // Check if status values need to be lowercased
+          const staffArray = updates.staff || data.staff || [];
+          if (staffArray.length > 0) {
+            const hasCapitalizedStatus = staffArray.some(s => s.status && /^[A-Z]/.test(s.status));
+            if (hasCapitalizedStatus) {
+              updates.staff = staffArray.map(s => ({
+                ...s,
+                status: s.status ? s.status.toLowerCase() : 'off'
+              }));
+              needsMigration = true;
+            }
+          }
+
+          // Ensure notes field exists
+          if (!data.notes && !updates.notes) {
+            updates.notes = '';
+            needsMigration = true;
+          }
+
+          // Perform migration if needed
+          if (needsMigration) {
+            const docRef = doc(db, 'hou_schedules', id);
+            await updateDoc(docRef, updates);
+            migrated.push({ id, changes: Object.keys(updates) });
+          }
+
+        } catch (error) {
+          errors.push({ id, error: error.message });
+        }
+      }
+
+      setSyncProgress({
+        total: docs.length,
+        current: docs.length,
+        status: 'Migration complete!',
+        migrated,
+        errors
+      });
+
+    } catch (error) {
+      setSyncProgress(prev => ({
+        ...prev,
+        status: `Error: ${error.message}`,
+        errors: [{ id: 'global', error: error.message }]
+      }));
+    }
   };
 
   /**
@@ -518,6 +617,14 @@ const TechCalendar = () => {
           <button className="tech-nav-arrow" onClick={() => navigatePeriod(1)}>
             <i className="fas fa-chevron-right"></i>
           </button>
+          <button
+            className="tech-sync-btn"
+            onClick={runDataMigration}
+            title="One-time sync: Convert React format to Vanilla JS format"
+            style={{ marginLeft: '20px', padding: '8px 16px', backgroundColor: '#4CAF50', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+          >
+            <i className="fas fa-sync"></i> Sync Data
+          </button>
         </div>
 
         <div className="tech-period-label">
@@ -540,6 +647,88 @@ const TechCalendar = () => {
             </button>
             <h3>{viewModalData.date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</h3>
             {renderDayView(viewModalData.date)}
+          </div>
+        </div>
+      )}
+
+      {syncModalOpen && (
+        <div className="tech-modal-overlay" style={{ zIndex: 9999 }}>
+          <div className="tech-modal-content" style={{ maxWidth: '600px', maxHeight: '80vh', overflow: 'auto' }}>
+            <button className="tech-modal-close" onClick={() => setSyncModalOpen(false)}>
+              <i className="fas fa-times"></i>
+            </button>
+            <h2 style={{ marginBottom: '20px' }}>
+              <i className="fas fa-sync"></i> Calendar Data Sync
+            </h2>
+
+            <div style={{ marginBottom: '20px' }}>
+              <h4 style={{ marginBottom: '10px' }}>Status: {syncProgress.status}</h4>
+              {syncProgress.total > 0 && (
+                <div style={{ marginBottom: '10px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
+                    <span>Progress:</span>
+                    <span>{syncProgress.current} / {syncProgress.total}</span>
+                  </div>
+                  <div style={{ width: '100%', backgroundColor: '#e0e0e0', borderRadius: '4px', height: '20px', overflow: 'hidden' }}>
+                    <div
+                      style={{
+                        width: `${(syncProgress.current / syncProgress.total) * 100}%`,
+                        backgroundColor: '#4CAF50',
+                        height: '100%',
+                        transition: 'width 0.3s'
+                      }}
+                    ></div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {syncProgress.migrated.length > 0 && (
+              <div style={{ marginBottom: '20px', padding: '15px', backgroundColor: '#e8f5e9', borderRadius: '4px' }}>
+                <h4 style={{ color: '#2e7d32', marginBottom: '10px' }}>
+                  <i className="fas fa-check-circle"></i> Successfully Migrated: {syncProgress.migrated.length}
+                </h4>
+                <div style={{ maxHeight: '200px', overflow: 'auto', fontSize: '12px' }}>
+                  {syncProgress.migrated.map((item, idx) => (
+                    <div key={idx} style={{ padding: '5px', borderBottom: '1px solid #c8e6c9' }}>
+                      <strong>{item.id}</strong>: {item.changes.join(', ')}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {syncProgress.errors.length > 0 && (
+              <div style={{ marginBottom: '20px', padding: '15px', backgroundColor: '#ffebee', borderRadius: '4px' }}>
+                <h4 style={{ color: '#c62828', marginBottom: '10px' }}>
+                  <i className="fas fa-exclamation-triangle"></i> Errors: {syncProgress.errors.length}
+                </h4>
+                <div style={{ maxHeight: '200px', overflow: 'auto', fontSize: '12px' }}>
+                  {syncProgress.errors.map((item, idx) => (
+                    <div key={idx} style={{ padding: '5px', borderBottom: '1px solid #ffcdd2' }}>
+                      <strong>{item.id}</strong>: {item.error}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {syncProgress.status === 'Migration complete!' && (
+              <div style={{ textAlign: 'center', padding: '20px' }}>
+                <i className="fas fa-check-circle" style={{ fontSize: '48px', color: '#4CAF50', marginBottom: '10px' }}></i>
+                <h3 style={{ color: '#2e7d32' }}>Sync Complete!</h3>
+                <p>Your calendar data has been synchronized with the Vanilla JS format.</p>
+                <button
+                  onClick={() => {
+                    setSyncModalOpen(false);
+                    window.location.reload();
+                  }}
+                  style={{ marginTop: '15px', padding: '10px 20px', backgroundColor: '#4CAF50', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                >
+                  Close & Reload
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
