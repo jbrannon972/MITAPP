@@ -329,8 +329,8 @@ const Calendar = () => {
         weekend.sunday.getMonth()
       );
 
-      const satSchedule = await getCalculatedScheduleForDay(weekend.saturday, satSchedules);
-      const sunSchedule = await getCalculatedScheduleForDay(weekend.sunday, sunSchedules);
+      const satSchedule = getCalculatedScheduleForDay(weekend.saturday, satSchedules, unifiedTechnicianData);
+      const sunSchedule = getCalculatedScheduleForDay(weekend.sunday, sunSchedules, unifiedTechnicianData);
 
       const workingOnSat = satSchedule.staff.filter(s => s.status === 'on' || s.hours);
       const workingOnSun = sunSchedule.staff.filter(s => s.status === 'on' || s.hours);
