@@ -191,7 +191,16 @@ class FirebaseService {
       snapshot.forEach(doc => {
         const data = doc.data();
         if (data.date) {
-          const dateObj = data.date.toDate();
+          // Handle both Timestamp and Date objects
+          let dateObj;
+          if (data.date.toDate) {
+            dateObj = data.date.toDate();
+          } else if (data.date instanceof Date) {
+            dateObj = data.date;
+          } else {
+            dateObj = new Date(data.date);
+          }
+
           // Only include dates in the requested month range
           if (dateObj >= firstDayOfMonth && dateObj <= lastDayOfMonth) {
             schedulesMap.specific[dateObj.getDate()] = data;
@@ -208,14 +217,16 @@ class FirebaseService {
     try {
       const date = scheduleData.date.toDate ? scheduleData.date.toDate() : new Date(scheduleData.date);
 
-      // Use auto-generated ID or timestamp-based ID to avoid conflicts
-      const docRef = doc(collection(db, 'hou_schedules'));
+      // Use date-based document ID (YYYY-MM-DD) to ensure updates work correctly
+      const docId = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+      const docRef = doc(db, 'hou_schedules', docId);
 
+      // Use merge: true to update existing document or create new one
       await setDoc(docRef, this.removeUndefined({
         date: scheduleData.date,
         staff: scheduleData.staff || [],
         notes: scheduleData.notes || ''
-      }));
+      }), { merge: true });
     } catch (error) {
       console.error('Error saving schedule:', error);
       throw error;
