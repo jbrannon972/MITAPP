@@ -26,6 +26,10 @@ const Calendar = () => {
   const [recurringRules, setRecurringRules] = useState([]);
   const [syncModalOpen, setSyncModalOpen] = useState(false);
   const [syncProgress, setSyncProgress] = useState({ total: 0, current: 0, status: '', migrated: [], errors: [] });
+  const [weekendReportModalOpen, setWeekendReportModalOpen] = useState(false);
+  const [weekendReportData, setWeekendReportData] = useState(null);
+  const [ripplingModalOpen, setRipplingModalOpen] = useState(false);
+  const [ripplingStatus, setRipplingStatus] = useState({ loading: false, message: '', log: '' });
 
   const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
@@ -90,12 +94,105 @@ const Calendar = () => {
     alert('Logged out from calendar admin');
   };
 
+  /**
+   * Sync with Rippling - Import vacation/PTO data from Rippling calendar
+   */
   const handleSyncWithRippling = async () => {
     if (!isCalendarAdmin) {
       alert('Admin access required');
       return;
     }
-    alert('Sync with Rippling functionality will sync schedule data from Rippling API. Coming soon!');
+
+    const iCalUrl = 'webcal://app.rippling.com/api/feed/calendar/pto/all-reports/mpddmgvrmobo67mp/fae7526ebae71b747bb3a68129033095c76027f0ba187a62915ca80d3ae8def0/calendar.ics?company=685d9aa96419b55f758d812c';
+    const proxyUrl = 'https://cors-anywhere.herokuapp.com/';
+    const fetchUrl = `${proxyUrl}${iCalUrl.replace("webcal://", "https://")}`;
+
+    setRipplingModalOpen(true);
+    setRipplingStatus({ loading: true, message: 'Fetching time-off data from Rippling...', log: '' });
+
+    try {
+      const allStaff = unifiedTechnicianData;
+      if (!allStaff || allStaff.length === 0) {
+        throw new Error("Could not load staff list to match names.");
+      }
+
+      const response = await fetch(fetchUrl);
+      if (!response.ok) {
+        if (response.status === 403) {
+          throw new Error(`CORS Anywhere proxy requires activation. Please visit ${proxyUrl} in a new tab, request temporary access, then try syncing again.`);
+        }
+        throw new Error(`Failed to fetch calendar data. Status: ${response.status}`);
+      }
+
+      const iCalData = await response.text();
+
+      // Use ICAL library to parse (assuming it's loaded globally)
+      if (typeof window.ICAL === 'undefined') {
+        throw new Error('ICAL library not loaded. Please ensure ical.js is included in your page.');
+      }
+
+      const jcalData = window.ICAL.parse(iCalData);
+      const vcalendar = new window.ICAL.Component(jcalData);
+      const vevents = vcalendar.getAllSubcomponents('vevent');
+
+      let updatesStaged = 0;
+      let logHtml = '<h4>Sync Log:</h4>';
+
+      for (const event of vevents) {
+        const summary = event.getFirstPropertyValue('summary');
+        if (!summary) continue;
+
+        const employeeName = summary.split(' on ')[0].trim();
+
+        let staffMember = allStaff.find(s => s.name && s.name.toLowerCase() === employeeName.toLowerCase());
+
+        if (staffMember) {
+          const startDate = event.getFirstPropertyValue('dtstart').toJSDate();
+          const endDate = event.getFirstPropertyValue('dtend').toJSDate();
+
+          for (let d = new Date(startDate); d < endDate; d.setDate(d.getDate() + 1)) {
+            const dateString = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+            // Check if vacation entry already exists
+            const docRef = doc(db, 'hou_schedules', dateString);
+            const docSnap = await getDocs(collection(db, 'hou_schedules'));
+            const existingDoc = docSnap.docs.find(doc => doc.id === dateString);
+            const existingData = existingDoc ? existingDoc.data() : {};
+            const staffEntry = existingData.staff?.find(s => s.id === staffMember.id && s.status === 'vacation');
+
+            if (!staffEntry) {
+              logHtml += `<p>Staging update for <strong>${staffMember.name}</strong> on ${dateString}.</p>`;
+              updatesStaged++;
+
+              // Update document with vacation status
+              const updatedStaff = existingData.staff || [];
+              updatedStaff.push({ id: staffMember.id, status: 'vacation', hours: '', source: 'Rippling' });
+
+              await updateDoc(docRef, {
+                date: Timestamp.fromDate(new Date(d)),
+                staff: updatedStaff
+              });
+            }
+          }
+        }
+      }
+
+      if (updatesStaged > 0) {
+        logHtml += `<p class="success-text">✅ Successfully committed ${updatesStaged} new schedule updates.</p>`;
+      } else {
+        logHtml += '<p>No new time-off events found to sync.</p>';
+      }
+
+      setRipplingStatus({ loading: false, message: 'Sync Complete!', log: logHtml });
+
+    } catch (error) {
+      console.error("Sync failed:", error);
+      setRipplingStatus({
+        loading: false,
+        message: 'Sync Failed',
+        log: `<p class="error-text">An error occurred during the sync process:</p><p>${error.message}</p>`
+      });
+    }
   };
 
   /**
@@ -292,8 +389,55 @@ const Calendar = () => {
     setRecurringRules([]);
   };
 
-  const handleWeekendReport = () => {
-    alert('Weekend Report: Generate a report of all weekend work assignments. Coming soon!');
+  /**
+   * Generate Weekend Report - Show upcoming 4 weekends with staff schedules
+   */
+  const handleWeekendReport = async () => {
+    const today = new Date();
+    let currentDay = new Date(today);
+    const weekends = [];
+
+    // Find next 4 weekends
+    while (weekends.length < 4) {
+      if (currentDay.getDay() === 6) { // Saturday
+        const saturday = new Date(currentDay);
+        const sunday = new Date(currentDay);
+        sunday.setDate(sunday.getDate() + 1);
+        weekends.push({ saturday, sunday });
+      }
+      currentDay.setDate(currentDay.getDate() + 1);
+    }
+
+    const weekendData = [];
+
+    for (const weekend of weekends) {
+      const satSchedules = await firebaseService.getScheduleDataForMonth(
+        weekend.saturday.getFullYear(),
+        weekend.saturday.getMonth()
+      );
+      const sunSchedules = await firebaseService.getScheduleDataForMonth(
+        weekend.sunday.getFullYear(),
+        weekend.sunday.getMonth()
+      );
+
+      const satSchedule = await getCalculatedScheduleForDay(weekend.saturday, satSchedules);
+      const sunSchedule = await getCalculatedScheduleForDay(weekend.sunday, sunSchedules);
+
+      const workingOnSat = satSchedule.staff.filter(s => s.status === 'on' || s.hours);
+      const workingOnSun = sunSchedule.staff.filter(s => s.status === 'on' || s.hours);
+
+      weekendData.push({
+        saturday: weekend.saturday,
+        sunday: weekend.sunday,
+        workingOnSat,
+        workingOnSun,
+        satNotes: satSchedule.notes,
+        sunNotes: sunSchedule.notes
+      });
+    }
+
+    setWeekendReportData(weekendData);
+    setWeekendReportModalOpen(true);
   };
 
   const handlePrint = () => {
@@ -1137,6 +1281,133 @@ const Calendar = () => {
                   >
                     Cancel
                   </button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Weekend Report Modal */}
+        {weekendReportModalOpen && weekendReportData && (
+          <div className="modal-overlay active" style={{ zIndex: 9999 }}>
+            <div className="modal" style={{ maxWidth: '800px', maxHeight: '80vh', overflow: 'auto' }}>
+              <div className="modal-header">
+                <h3><i className="fas fa-file-alt"></i> Weekend Report</h3>
+                <button className="modal-close" onClick={() => setWeekendReportModalOpen(false)}>
+                  <i className="fas fa-times"></i>
+                </button>
+              </div>
+              <div className="modal-body">
+                <div className="weekend-report-container">
+                  <div className="report-header" style={{ marginBottom: '20px', borderBottom: '2px solid #ddd', paddingBottom: '10px' }}>
+                    <h2 style={{ margin: '0 0 10px 0' }}>Upcoming Weekend Schedule</h2>
+                    <p className="date-range" style={{ color: '#666', margin: 0 }}>
+                      For the period of {weekendReportData[0].saturday.toLocaleDateString()} to {weekendReportData[weekendReportData.length - 1].sunday.toLocaleDateString()}
+                    </p>
+                  </div>
+
+                  {weekendReportData.map((weekend, idx) => (
+                    <div key={idx} className="weekend-group" style={{ marginBottom: '30px', padding: '15px', backgroundColor: '#f9f9f9', borderRadius: '8px' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                        <div className="day-group" style={{ padding: '10px', backgroundColor: 'white', borderRadius: '4px' }}>
+                          <h4 style={{ marginTop: 0, color: '#333', borderBottom: '1px solid #eee', paddingBottom: '8px' }}>
+                            Saturday, {weekend.saturday.toLocaleDateString()}
+                          </h4>
+                          {weekend.workingOnSat.length > 0 ? (
+                            weekend.workingOnSat.map((s, i) => (
+                              <p key={i} style={{ margin: '5px 0', padding: '5px', backgroundColor: '#e3f2fd', borderRadius: '3px' }}>
+                                <strong>{s.name}</strong> {s.hours ? `(${s.hours})` : ''}
+                              </p>
+                            ))
+                          ) : (
+                            <p style={{ color: '#999', fontStyle: 'italic' }}>No one scheduled.</p>
+                          )}
+                          {weekend.satNotes && (
+                            <p className="notes" style={{ marginTop: '10px', padding: '8px', backgroundColor: '#fff9c4', borderRadius: '3px', fontSize: '14px' }}>
+                              <strong>Notes:</strong> {weekend.satNotes}
+                            </p>
+                          )}
+                        </div>
+
+                        <div className="day-group" style={{ padding: '10px', backgroundColor: 'white', borderRadius: '4px' }}>
+                          <h4 style={{ marginTop: 0, color: '#333', borderBottom: '1px solid #eee', paddingBottom: '8px' }}>
+                            Sunday, {weekend.sunday.toLocaleDateString()}
+                          </h4>
+                          {weekend.workingOnSun.length > 0 ? (
+                            weekend.workingOnSun.map((s, i) => (
+                              <p key={i} style={{ margin: '5px 0', padding: '5px', backgroundColor: '#e3f2fd', borderRadius: '3px' }}>
+                                <strong>{s.name}</strong> {s.hours ? `(${s.hours})` : ''}
+                              </p>
+                            ))
+                          ) : (
+                            <p style={{ color: '#999', fontStyle: 'italic' }}>No one scheduled.</p>
+                          )}
+                          {weekend.sunNotes && (
+                            <p className="notes" style={{ marginTop: '10px', padding: '8px', backgroundColor: '#fff9c4', borderRadius: '3px', fontSize: '14px' }}>
+                              <strong>Notes:</strong> {weekend.sunNotes}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button className="btn btn-primary" onClick={() => window.print()}>
+                  <i className="fas fa-print"></i> Print
+                </button>
+                <button className="btn btn-secondary" onClick={() => setWeekendReportModalOpen(false)}>
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Rippling Sync Modal */}
+        {ripplingModalOpen && (
+          <div className="modal-overlay active" style={{ zIndex: 9999 }}>
+            <div className="modal" style={{ maxWidth: '600px', maxHeight: '80vh', overflow: 'auto' }}>
+              <div className="modal-header">
+                <h3><i className="fas fa-sync"></i> {ripplingStatus.message}</h3>
+                <button className="modal-close" onClick={() => setRipplingModalOpen(false)}>
+                  <i className="fas fa-times"></i>
+                </button>
+              </div>
+              <div className="modal-body">
+                {ripplingStatus.loading && (
+                  <div style={{ textAlign: 'center', padding: '20px' }}>
+                    <i className="fas fa-spinner fa-spin" style={{ fontSize: '48px', color: '#2196F3', marginBottom: '10px' }}></i>
+                    <p>{ripplingStatus.message}</p>
+                  </div>
+                )}
+
+                {!ripplingStatus.loading && ripplingStatus.log && (
+                  <div dangerouslySetInnerHTML={{ __html: ripplingStatus.log }} />
+                )}
+              </div>
+              <div className="modal-footer">
+                {!ripplingStatus.loading && (
+                  <>
+                    {ripplingStatus.message === 'Sync Complete!' && (
+                      <button
+                        className="btn btn-primary"
+                        onClick={() => {
+                          setRipplingModalOpen(false);
+                          window.location.reload();
+                        }}
+                      >
+                        <i className="fas fa-check"></i> Close & Reload
+                      </button>
+                    )}
+                    <button
+                      className="btn btn-secondary"
+                      onClick={() => setRipplingModalOpen(false)}
+                    >
+                      Close
+                    </button>
+                  </>
                 )}
               </div>
             </div>
