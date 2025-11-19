@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useData } from '../contexts/DataContext';
 import firebaseService from '../services/firebaseService';
 import { getCalculatedScheduleForDay, getHolidayName, formatNameCompact, getDefaultStatusForPerson } from '../utils/calendarManager';
-import { collection, getDocs, doc, updateDoc, Timestamp } from 'firebase/firestore';
+import { collection, getDocs, doc, getDoc, setDoc, updateDoc, Timestamp } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import '../styles/calendar-styles.css';
 
@@ -24,8 +24,6 @@ const Calendar = () => {
   const [recurringModalView, setRecurringModalView] = useState('list'); // 'list' or 'edit'
   const [selectedTechForRecurring, setSelectedTechForRecurring] = useState(null);
   const [recurringRules, setRecurringRules] = useState([]);
-  const [syncModalOpen, setSyncModalOpen] = useState(false);
-  const [syncProgress, setSyncProgress] = useState({ total: 0, current: 0, status: '', migrated: [], errors: [] });
   const [weekendReportModalOpen, setWeekendReportModalOpen] = useState(false);
   const [weekendReportData, setWeekendReportData] = useState(null);
   const [ripplingModalOpen, setRipplingModalOpen] = useState(false);
@@ -155,9 +153,8 @@ const Calendar = () => {
 
             // Check if vacation entry already exists
             const docRef = doc(db, 'hou_schedules', dateString);
-            const docSnap = await getDocs(collection(db, 'hou_schedules'));
-            const existingDoc = docSnap.docs.find(doc => doc.id === dateString);
-            const existingData = existingDoc ? existingDoc.data() : {};
+            const docSnap = await getDoc(docRef);
+            const existingData = docSnap.exists() ? docSnap.data() : {};
             const staffEntry = existingData.staff?.find(s => s.id === staffMember.id && s.status === 'vacation');
 
             if (!staffEntry) {
@@ -168,10 +165,11 @@ const Calendar = () => {
               const updatedStaff = existingData.staff || [];
               updatedStaff.push({ id: staffMember.id, status: 'vacation', hours: '', source: 'Rippling' });
 
-              await updateDoc(docRef, {
+              await setDoc(docRef, {
                 date: Timestamp.fromDate(new Date(d)),
-                staff: updatedStaff
-              });
+                staff: updatedStaff,
+                notes: existingData.notes || ''
+              }, { merge: true });
             }
           }
         }
@@ -192,103 +190,6 @@ const Calendar = () => {
         message: 'Sync Failed',
         log: `<p class="error-text">An error occurred during the sync process:</p><p>${error.message}</p>`
       });
-    }
-  };
-
-  /**
-   * ONE-TIME SYNC: Migrate React format data to Vanilla JS format
-   */
-  const runDataMigration = async () => {
-    setSyncProgress({ total: 0, current: 0, status: 'Starting migration...', migrated: [], errors: [] });
-    setSyncModalOpen(true);
-
-    try {
-      // Load all schedule documents
-      setSyncProgress(prev => ({ ...prev, status: 'Loading schedule data...' }));
-      const snapshot = await getDocs(collection(db, 'hou_schedules'));
-      const docs = [];
-      snapshot.forEach(doc => docs.push({ id: doc.id, data: doc.data() }));
-
-      setSyncProgress(prev => ({ ...prev, total: docs.length, status: 'Analyzing documents...' }));
-
-      // Analyze and migrate each document
-      const migrated = [];
-      const errors = [];
-      let current = 0;
-
-      for (const { id, data } of docs) {
-        current++;
-        setSyncProgress(prev => ({ ...prev, current, status: `Processing document ${current}/${docs.length}...` }));
-
-        try {
-          let needsMigration = false;
-          const updates = {};
-
-          // Check if date needs conversion
-          if (!data.date || !(data.date instanceof Timestamp)) {
-            if (typeof data.date === 'string') {
-              const [year, month, day] = data.date.split('-').map(Number);
-              updates.date = Timestamp.fromDate(new Date(year, month - 1, day));
-              needsMigration = true;
-            } else if (/^\d{4}-\d{2}-\d{2}$/.test(id)) {
-              // Parse from document ID
-              const [year, month, day] = id.split('-').map(Number);
-              updates.date = Timestamp.fromDate(new Date(year, month - 1, day));
-              needsMigration = true;
-            }
-          }
-
-          // Check if staffList needs to be renamed to staff
-          if (data.staffList && !data.staff) {
-            updates.staff = data.staffList;
-            needsMigration = true;
-          }
-
-          // Check if status values need to be lowercased
-          const staffArray = updates.staff || data.staff || [];
-          if (staffArray.length > 0) {
-            const hasCapitalizedStatus = staffArray.some(s => s.status && /^[A-Z]/.test(s.status));
-            if (hasCapitalizedStatus) {
-              updates.staff = staffArray.map(s => ({
-                ...s,
-                status: s.status ? s.status.toLowerCase() : 'off'
-              }));
-              needsMigration = true;
-            }
-          }
-
-          // Ensure notes field exists
-          if (!data.notes && !updates.notes) {
-            updates.notes = '';
-            needsMigration = true;
-          }
-
-          // Perform migration if needed
-          if (needsMigration) {
-            const docRef = doc(db, 'hou_schedules', id);
-            await updateDoc(docRef, updates);
-            migrated.push({ id, changes: Object.keys(updates) });
-          }
-
-        } catch (error) {
-          errors.push({ id, error: error.message });
-        }
-      }
-
-      setSyncProgress({
-        total: docs.length,
-        current: docs.length,
-        status: 'Migration complete!',
-        migrated,
-        errors
-      });
-
-    } catch (error) {
-      setSyncProgress(prev => ({
-        ...prev,
-        status: `Error: ${error.message}`,
-        errors: [{ id: 'global', error: error.message }]
-      }));
     }
   };
 
@@ -1032,14 +933,6 @@ const Calendar = () => {
                 <i className="fas fa-sync"></i> Sync with Rippling
               </button>
               <button
-                className="btn btn-primary"
-                onClick={runDataMigration}
-                style={{ backgroundColor: '#4CAF50', borderColor: '#4CAF50' }}
-                title="ONE-TIME: Sync React format to Vanilla JS format (migrates all schedule data)"
-              >
-                <i className="fas fa-database"></i> Sync Calendar Data
-              </button>
-              <button
                 className="btn btn-secondary"
                 onClick={handleManageRecurring}
                 disabled={!isCalendarAdmin}
@@ -1179,109 +1072,6 @@ const Calendar = () => {
                 <button className="btn btn-primary" onClick={handleAdminLogin}>
                   <i className="fas fa-sign-in-alt"></i> Login
                 </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Sync Data Modal */}
-        {syncModalOpen && (
-          <div className="modal-overlay active" style={{ zIndex: 9999 }}>
-            <div className="modal" style={{ maxWidth: '600px', maxHeight: '80vh', overflow: 'auto' }}>
-              <div className="modal-header">
-                <h3><i className="fas fa-database"></i> Calendar Data Sync</h3>
-                <button className="modal-close" onClick={() => setSyncModalOpen(false)}>
-                  <i className="fas fa-times"></i>
-                </button>
-              </div>
-              <div className="modal-body">
-                <div style={{ marginBottom: '20px' }}>
-                  <h4 style={{ marginBottom: '10px' }}>Status: {syncProgress.status}</h4>
-                  {syncProgress.total > 0 && (
-                    <div style={{ marginBottom: '10px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
-                        <span>Progress:</span>
-                        <span>{syncProgress.current} / {syncProgress.total}</span>
-                      </div>
-                      <div style={{ width: '100%', backgroundColor: '#e0e0e0', borderRadius: '4px', height: '20px', overflow: 'hidden' }}>
-                        <div
-                          style={{
-                            width: `${(syncProgress.current / syncProgress.total) * 100}%`,
-                            backgroundColor: '#4CAF50',
-                            height: '100%',
-                            transition: 'width 0.3s'
-                          }}
-                        ></div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {syncProgress.migrated.length > 0 && (
-                  <div style={{ marginBottom: '20px', padding: '15px', backgroundColor: '#e8f5e9', borderRadius: '4px', border: '1px solid #4CAF50' }}>
-                    <h4 style={{ color: '#2e7d32', marginBottom: '10px' }}>
-                      <i className="fas fa-check-circle"></i> Successfully Migrated: {syncProgress.migrated.length}
-                    </h4>
-                    <div style={{ maxHeight: '200px', overflow: 'auto', fontSize: '12px' }}>
-                      {syncProgress.migrated.map((item, idx) => (
-                        <div key={idx} style={{ padding: '5px', borderBottom: '1px solid #c8e6c9' }}>
-                          <strong>{item.id}</strong>: {item.changes.join(', ')}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {syncProgress.errors.length > 0 && (
-                  <div style={{ marginBottom: '20px', padding: '15px', backgroundColor: '#ffebee', borderRadius: '4px', border: '1px solid #f44336' }}>
-                    <h4 style={{ color: '#c62828', marginBottom: '10px' }}>
-                      <i className="fas fa-exclamation-triangle"></i> Errors: {syncProgress.errors.length}
-                    </h4>
-                    <div style={{ maxHeight: '200px', overflow: 'auto', fontSize: '12px' }}>
-                      {syncProgress.errors.map((item, idx) => (
-                        <div key={idx} style={{ padding: '5px', borderBottom: '1px solid #ffcdd2' }}>
-                          <strong>{item.id}</strong>: {item.error}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {syncProgress.status === 'Migration complete!' && (
-                  <div style={{ textAlign: 'center', padding: '20px', backgroundColor: '#e8f5e9', borderRadius: '4px', border: '1px solid #4CAF50' }}>
-                    <i className="fas fa-check-circle" style={{ fontSize: '48px', color: '#4CAF50', marginBottom: '10px' }}></i>
-                    <h3 style={{ color: '#2e7d32' }}>Sync Complete!</h3>
-                    <p>Your calendar data has been synchronized with the Vanilla JS format.</p>
-                    <p style={{ marginTop: '10px', fontSize: '14px', color: '#666' }}>
-                      <strong>What was synced:</strong><br />
-                      • Status values converted to lowercase<br />
-                      • Date fields converted to Firebase Timestamps<br />
-                      • Field names standardized<br />
-                      • Missing notes fields added
-                    </p>
-                  </div>
-                )}
-              </div>
-              <div className="modal-footer">
-                {syncProgress.status === 'Migration complete!' ? (
-                  <button
-                    className="btn btn-primary"
-                    onClick={() => {
-                      setSyncModalOpen(false);
-                      window.location.reload();
-                    }}
-                  >
-                    <i className="fas fa-check"></i> Close & Reload
-                  </button>
-                ) : (
-                  <button
-                    className="btn btn-secondary"
-                    onClick={() => setSyncModalOpen(false)}
-                    disabled={syncProgress.status !== 'Migration complete!' && syncProgress.total > 0}
-                  >
-                    Cancel
-                  </button>
-                )}
               </div>
             </div>
           </div>
