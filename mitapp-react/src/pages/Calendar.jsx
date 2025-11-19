@@ -1097,55 +1097,41 @@ const Calendar = () => {
               </div>
               <div className="modal-body">
                 <div className="weekend-report-container">
-                  <div className="report-header" style={{ marginBottom: '20px', borderBottom: '2px solid #ddd', paddingBottom: '10px' }}>
-                    <h2 style={{ margin: '0 0 10px 0' }}>Upcoming Weekend Schedule</h2>
-                    <p className="date-range" style={{ color: '#666', margin: 0 }}>
+                  <div className="report-header">
+                    <h2>Upcoming Weekend Schedule</h2>
+                    <p className="date-range">
                       For the period of {weekendReportData[0].saturday.toLocaleDateString()} to {weekendReportData[weekendReportData.length - 1].sunday.toLocaleDateString()}
                     </p>
                   </div>
 
                   {weekendReportData.map((weekend, idx) => (
-                    <div key={idx} className="weekend-group" style={{ marginBottom: '30px', padding: '15px', backgroundColor: '#f9f9f9', borderRadius: '8px' }}>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-                        <div className="day-group" style={{ padding: '10px', backgroundColor: 'white', borderRadius: '4px' }}>
-                          <h4 style={{ marginTop: 0, color: '#333', borderBottom: '1px solid #eee', paddingBottom: '8px' }}>
-                            Saturday, {weekend.saturday.toLocaleDateString()}
-                          </h4>
-                          {weekend.workingOnSat.length > 0 ? (
-                            weekend.workingOnSat.map((s, i) => (
-                              <p key={i} style={{ margin: '5px 0', padding: '5px', backgroundColor: '#e3f2fd', borderRadius: '3px' }}>
-                                <strong>{s.name}</strong> {s.hours ? `(${s.hours})` : ''}
-                              </p>
-                            ))
-                          ) : (
-                            <p style={{ color: '#999', fontStyle: 'italic' }}>No one scheduled.</p>
-                          )}
-                          {weekend.satNotes && (
-                            <p className="notes" style={{ marginTop: '10px', padding: '8px', backgroundColor: '#fff9c4', borderRadius: '3px', fontSize: '14px' }}>
-                              <strong>Notes:</strong> {weekend.satNotes}
-                            </p>
-                          )}
-                        </div>
+                    <div key={idx} className="weekend-group">
+                      <div className="day-group">
+                        <h4>Saturday, {weekend.saturday.toLocaleDateString()}</h4>
+                        {weekend.workingOnSat.length > 0 ? (
+                          weekend.workingOnSat.map((s, i) => (
+                            <p key={i}>{s.name} {s.hours ? `(${s.hours})` : ''}</p>
+                          ))
+                        ) : (
+                          <p>No one scheduled.</p>
+                        )}
+                        {weekend.satNotes && (
+                          <p className="notes">Notes: {weekend.satNotes}</p>
+                        )}
+                      </div>
 
-                        <div className="day-group" style={{ padding: '10px', backgroundColor: 'white', borderRadius: '4px' }}>
-                          <h4 style={{ marginTop: 0, color: '#333', borderBottom: '1px solid #eee', paddingBottom: '8px' }}>
-                            Sunday, {weekend.sunday.toLocaleDateString()}
-                          </h4>
-                          {weekend.workingOnSun.length > 0 ? (
-                            weekend.workingOnSun.map((s, i) => (
-                              <p key={i} style={{ margin: '5px 0', padding: '5px', backgroundColor: '#e3f2fd', borderRadius: '3px' }}>
-                                <strong>{s.name}</strong> {s.hours ? `(${s.hours})` : ''}
-                              </p>
-                            ))
-                          ) : (
-                            <p style={{ color: '#999', fontStyle: 'italic' }}>No one scheduled.</p>
-                          )}
-                          {weekend.sunNotes && (
-                            <p className="notes" style={{ marginTop: '10px', padding: '8px', backgroundColor: '#fff9c4', borderRadius: '3px', fontSize: '14px' }}>
-                              <strong>Notes:</strong> {weekend.sunNotes}
-                            </p>
-                          )}
-                        </div>
+                      <div className="day-group">
+                        <h4>Sunday, {weekend.sunday.toLocaleDateString()}</h4>
+                        {weekend.workingOnSun.length > 0 ? (
+                          weekend.workingOnSun.map((s, i) => (
+                            <p key={i}>{s.name} {s.hours ? `(${s.hours})` : ''}</p>
+                          ))
+                        ) : (
+                          <p>No one scheduled.</p>
+                        )}
+                        {weekend.sunNotes && (
+                          <p className="notes">Notes: {weekend.sunNotes}</p>
+                        )}
                       </div>
                     </div>
                   ))}
