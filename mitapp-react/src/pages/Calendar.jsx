@@ -136,7 +136,10 @@ const Calendar = () => {
       let updatesStaged = 0;
       let logHtml = '<h4>Sync Log:</h4>';
 
-      for (const event of vevents) {
+      // Convert to array if needed and iterate
+      const eventsArray = Array.isArray(vevents) ? vevents : Array.from(vevents || []);
+
+      for (const event of eventsArray) {
         const summary = event.getFirstPropertyValue('summary');
         if (!summary) continue;
 
@@ -148,8 +151,10 @@ const Calendar = () => {
           const startDate = event.getFirstPropertyValue('dtstart').toJSDate();
           const endDate = event.getFirstPropertyValue('dtend').toJSDate();
 
-          for (let d = new Date(startDate); d < endDate; d.setDate(d.getDate() + 1)) {
-            const dateString = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+          // Create a proper date loop to avoid mutation issues
+          const currentDate = new Date(startDate);
+          while (currentDate < endDate) {
+            const dateString = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')}`;
 
             // Check if vacation entry already exists
             const docRef = doc(db, 'hou_schedules', dateString);
@@ -166,11 +171,14 @@ const Calendar = () => {
               updatedStaff.push({ id: staffMember.id, status: 'vacation', hours: '', source: 'Rippling' });
 
               await setDoc(docRef, {
-                date: Timestamp.fromDate(new Date(d)),
+                date: Timestamp.fromDate(new Date(currentDate)),
                 staff: updatedStaff,
                 notes: existingData.notes || ''
               }, { merge: true });
             }
+
+            // Move to next day
+            currentDate.setDate(currentDate.getDate() + 1);
           }
         }
       }
