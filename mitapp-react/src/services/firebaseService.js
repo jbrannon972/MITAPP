@@ -729,6 +729,7 @@ class FirebaseService {
 
   /**
    * Create user accounts for technicians without auth accounts
+   * Uses HTTP endpoint with CORS support for cross-origin requests
    * @param {Array} techsToCreate - Array of tech objects with name, email, role, zoneName
    * @returns {Promise<Object>} Results with created and errors arrays
    */
