@@ -11,6 +11,14 @@ const Admin = () => {
   const [techsWithoutAccounts, setTechsWithoutAccounts] = useState([]);
   const [creatingAccounts, setCreatingAccounts] = useState(false);
   const [creationResults, setCreationResults] = useState(null);
+  const [showAddUserModal, setShowAddUserModal] = useState(false);
+  const [newUser, setNewUser] = useState({
+    name: '',
+    email: '',
+    password: 'Mitigation1',
+    role: 'Manager',
+    zoneName: ''
+  });
 
   useEffect(() => {
     if (staffingData) {
@@ -76,6 +84,53 @@ const Admin = () => {
     }
   };
 
+  const handleAddUserClick = () => {
+    setNewUser({
+      name: '',
+      email: '',
+      password: 'Mitigation1',
+      role: 'Manager',
+      zoneName: ''
+    });
+    setShowAddUserModal(true);
+  };
+
+  const handleCreateUser = async () => {
+    // Validate inputs
+    if (!newUser.name || !newUser.email || !newUser.password) {
+      alert('Please fill in all required fields (Name, Email, Password)');
+      return;
+    }
+
+    // Validate zone if MIT Tech or Demo Tech
+    if (['MIT Tech', 'Demo Tech'].includes(newUser.role) && !newUser.zoneName) {
+      alert('Please select a zone for this technician');
+      return;
+    }
+
+    try {
+      const userToCreate = {
+        name: newUser.name,
+        email: newUser.email,
+        role: newUser.role,
+        zoneName: newUser.zoneName || (newUser.role === 'Warehouse' ? 'Warehouse' : 'Management')
+      };
+
+      const results = await firebaseService.createTechAccounts([userToCreate]);
+
+      if (results.created.length > 0) {
+        alert(`User created successfully!\n\nEmail: ${newUser.email}\nPassword: ${newUser.password}`);
+        setShowAddUserModal(false);
+        await loadUsers();
+      } else if (results.errors.length > 0) {
+        alert(`Error creating user: ${results.errors[0].error}`);
+      }
+    } catch (error) {
+      console.error('Error creating user:', error);
+      alert(`Error creating user: ${error.message}`);
+    }
+  };
+
   if (dataLoading) {
     return (
       <Layout>
@@ -126,7 +181,7 @@ const Admin = () => {
                   {creatingAccounts ? 'Creating...' : `Create ${techsWithoutAccounts.length} Missing Account${techsWithoutAccounts.length > 1 ? 's' : ''}`}
                 </button>
               )}
-              <button className="btn btn-primary" disabled title="Coming soon">
+              <button className="btn btn-primary" onClick={handleAddUserClick}>
                 <i className="fas fa-plus"></i> Add User
               </button>
             </div>
@@ -242,6 +297,99 @@ const Admin = () => {
             </div>
           </div>
         </div>
+
+        {/* Add User Modal */}
+        {showAddUserModal && (
+          <div className="modal-overlay active" style={{ zIndex: 9999 }}>
+            <div className="modal" style={{ maxWidth: '500px' }}>
+              <div className="modal-header">
+                <h3><i className="fas fa-user-plus"></i> Add New User</h3>
+                <button className="modal-close" onClick={() => setShowAddUserModal(false)}>
+                  <i className="fas fa-times"></i>
+                </button>
+              </div>
+              <div className="modal-body">
+                <div className="form-group">
+                  <label htmlFor="new-name">Full Name *</label>
+                  <input
+                    type="text"
+                    id="new-name"
+                    className="form-input"
+                    placeholder="e.g., John Doe"
+                    value={newUser.name}
+                    onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
+                  />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="new-email">Email *</label>
+                  <input
+                    type="email"
+                    id="new-email"
+                    className="form-input"
+                    placeholder="john.doe@entrusted.com"
+                    value={newUser.email}
+                    onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
+                  />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="new-password">Password *</label>
+                  <input
+                    type="password"
+                    id="new-password"
+                    className="form-input"
+                    value={newUser.password}
+                    onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
+                  />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="new-role">Role *</label>
+                  <select
+                    id="new-role"
+                    className="form-input"
+                    value={newUser.role}
+                    onChange={(e) => setNewUser({ ...newUser, role: e.target.value, zoneName: '' })}
+                  >
+                    <option value="Manager">Manager</option>
+                    <option value="Supervisor">Supervisor</option>
+                    <option value="MIT Lead">MIT Lead</option>
+                    <option value="Fleet">Fleet</option>
+                    <option value="Fleet Safety">Fleet Safety</option>
+                    <option value="Auditor">Auditor</option>
+                    <option value="Warehouse">Warehouse</option>
+                    <option value="MIT Tech">MIT Tech</option>
+                    <option value="Demo Tech">Demo Tech</option>
+                  </select>
+                </div>
+                {['MIT Tech', 'Demo Tech'].includes(newUser.role) && (
+                  <div className="form-group">
+                    <label htmlFor="zone-select">Assign to Zone *</label>
+                    <select
+                      id="zone-select"
+                      className="form-input"
+                      value={newUser.zoneName}
+                      onChange={(e) => setNewUser({ ...newUser, zoneName: e.target.value })}
+                    >
+                      <option value="">-- Select Zone --</option>
+                      {staffingData?.zones?.map((zone) => (
+                        <option key={zone.name} value={zone.name}>
+                          {zone.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+              </div>
+              <div className="modal-footer">
+                <button className="btn btn-secondary" onClick={() => setShowAddUserModal(false)}>
+                  Cancel
+                </button>
+                <button className="btn btn-primary" onClick={handleCreateUser}>
+                  Create User
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </Layout>
   );
