@@ -1,0 +1,14 @@
+{
+  "name": "mitapp-migration-scripts",
+  "version": "1.0.0",
+  "description": "Data migration and maintenance scripts for MITAPP",
+  "scripts": {
+    "migrate:dry-run": "node migrate-calendar-data.js --dry-run",
+    "migrate:live": "node migrate-calendar-data.js",
+    "rollback": "node migrate-calendar-data.js --rollback"
+  },
+  "dependencies": {
+    "firebase-admin": "^11.11.0"
+  },
+  "devDependencies": {}
+}
