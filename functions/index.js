@@ -686,6 +686,7 @@ exports.createTechAccountsHttp = functions.https.onRequest((req, res) => {
       // Verify the token
       const decodedToken = await admin.auth().verifyIdToken(idToken);
       const email = decodedToken.email;
+      const uid = decodedToken.uid;
 
       // Verify admin/manager role from hou_settings/staffing_data
       const staffingDoc = await admin.firestore()
