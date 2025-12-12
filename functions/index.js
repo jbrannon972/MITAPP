@@ -1,6 +1,7 @@
 const functions = require('firebase-functions');
 const admin = require('firebase-admin');
 const nodemailer = require('nodemailer');
+const cors = require('cors')({ origin: true });
 
 admin.initializeApp();
 
@@ -644,4 +645,108 @@ exports.createTechAccounts = functions.https.onCall(async (data, context) => {
   }
 
   return results;
+});
+
+/**
+ * HTTP endpoint version with explicit CORS for createTechAccounts
+ * Use this if the callable function has CORS issues
+ */
+exports.createTechAccountsHttp = functions.https.onRequest((req, res) => {
+  return cors(req, res, async () => {
+    try {
+      // Only allow POST requests
+      if (req.method !== 'POST') {
+        res.status(405).send('Method Not Allowed');
+        return;
+      }
+
+      // Get auth token from headers
+      const authHeader = req.headers.authorization;
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        res.status(401).json({ error: 'Unauthorized - No token provided' });
+        return;
+      }
+
+      const idToken = authHeader.split('Bearer ')[1];
+
+      // Verify the token
+      const decodedToken = await admin.auth().verifyIdToken(idToken);
+      const uid = decodedToken.uid;
+
+      // Verify admin/manager role
+      const callerDoc = await admin.firestore()
+        .collection('users')
+        .doc(uid)
+        .get();
+
+      const callerRole = callerDoc.data()?.role;
+      if (callerRole !== 'Manager' && callerRole !== 'Admin') {
+        res.status(403).json({ error: 'Permission denied - Only managers can create user accounts' });
+        return;
+      }
+
+      const { techsToCreate } = req.body;
+
+      if (!Array.isArray(techsToCreate) || techsToCreate.length === 0) {
+        res.status(400).json({ error: 'techsToCreate must be a non-empty array' });
+        return;
+      }
+
+      const results = {
+        created: [],
+        errors: []
+      };
+
+      // Create accounts for each tech
+      for (const tech of techsToCreate) {
+        try {
+          if (!tech.email) {
+            results.errors.push({
+              tech: tech.name,
+              error: 'No email provided'
+            });
+            continue;
+          }
+
+          // Create Firebase Auth user
+          const userRecord = await admin.auth().createUser({
+            email: tech.email,
+            password: 'Mitigation1',
+            displayName: tech.name,
+            emailVerified: false
+          });
+
+          // Create Firestore user document
+          await admin.firestore().collection('users').doc(userRecord.uid).set({
+            email: tech.email,
+            username: tech.name,
+            name: tech.name,
+            role: tech.role || 'Technician',
+            zoneName: tech.zoneName || 'Unknown',
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            createdBy: uid
+          });
+
+          results.created.push({
+            name: tech.name,
+            email: tech.email,
+            uid: userRecord.uid
+          });
+
+          console.log(`Created account for ${tech.name} (${tech.email})`);
+        } catch (error) {
+          console.error(`Error creating account for ${tech.name}:`, error);
+          results.errors.push({
+            tech: tech.name,
+            error: error.message
+          });
+        }
+      }
+
+      res.status(200).json(results);
+    } catch (error) {
+      console.error('Error in createTechAccountsHttp:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
 });

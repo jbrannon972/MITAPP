@@ -1,4 +1,4 @@
-import { db, functions } from '../config/firebase';
+import { db, functions, auth } from '../config/firebase';
 import {
   collection,
   doc,
@@ -734,9 +734,34 @@ class FirebaseService {
    */
   async createTechAccounts(techsToCreate) {
     try {
-      const createAccountsFunction = httpsCallable(functions, 'createTechAccounts');
-      const result = await createAccountsFunction({ techsToCreate });
-      return result.data;
+      // Get current user's ID token for authentication
+      const currentUser = auth.currentUser;
+      if (!currentUser) {
+        throw new Error('User must be logged in to create accounts');
+      }
+
+      const idToken = await currentUser.getIdToken();
+
+      // Use HTTP endpoint with CORS support instead of callable function
+      const response = await fetch(
+        'https://us-central1-mit-foreasting.cloudfunctions.net/createTechAccountsHttp',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${idToken}`
+          },
+          body: JSON.stringify({ techsToCreate })
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      return result;
     } catch (error) {
       console.error('Error calling createTechAccounts function:', error);
       throw error;
