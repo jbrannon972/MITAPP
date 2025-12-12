@@ -628,7 +628,7 @@ exports.createTechAccounts = functions.https.onCall(async (data, context) => {
         email: tech.email,
         password: 'Mitigation1',
         displayName: tech.name,
-        emailVerified: false
+        emailVerified: true  // Set to true so users can login immediately
       });
 
       // Create Firestore user document
@@ -780,7 +780,7 @@ exports.createTechAccountsHttp = functions.https.onRequest((req, res) => {
             email: tech.email,
             password: 'Mitigation1',
             displayName: tech.name,
-            emailVerified: false
+            emailVerified: true  // Set to true so users can login immediately
           });
 
           // Create Firestore user document
