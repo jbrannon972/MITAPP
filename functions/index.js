@@ -570,14 +570,28 @@ exports.createTechAccounts = functions.https.onCall(async (data, context) => {
     );
   }
 
-  // Verify admin/manager role
-  const callerDoc = await admin.firestore()
-    .collection('users')
-    .doc(context.auth.uid)
+  // Verify admin/manager role from hou_settings/staffing_data
+  const staffingDoc = await admin.firestore()
+    .collection('hou_settings')
+    .doc('staffing_data')
     .get();
 
-  const callerRole = callerDoc.data()?.role;
-  if (callerRole !== 'Manager' && callerRole !== 'Admin') {
+  if (!staffingDoc.exists) {
+    throw new functions.https.HttpsError(
+      'permission-denied',
+      'Staffing data not found'
+    );
+  }
+
+  const staffingData = staffingDoc.data();
+  const userEmail = context.auth.token.email;
+
+  // Check if user is in management array
+  const isManager = staffingData.management?.some(m =>
+    m.email === userEmail && (m.role === 'Manager' || m.role === 'Admin')
+  );
+
+  if (!isManager) {
     throw new functions.https.HttpsError(
       'permission-denied',
       'Only managers can create user accounts'
@@ -671,16 +685,27 @@ exports.createTechAccountsHttp = functions.https.onRequest((req, res) => {
 
       // Verify the token
       const decodedToken = await admin.auth().verifyIdToken(idToken);
-      const uid = decodedToken.uid;
+      const email = decodedToken.email;
 
-      // Verify admin/manager role
-      const callerDoc = await admin.firestore()
-        .collection('users')
-        .doc(uid)
+      // Verify admin/manager role from hou_settings/staffing_data
+      const staffingDoc = await admin.firestore()
+        .collection('hou_settings')
+        .doc('staffing_data')
         .get();
 
-      const callerRole = callerDoc.data()?.role;
-      if (callerRole !== 'Manager' && callerRole !== 'Admin') {
+      if (!staffingDoc.exists) {
+        res.status(403).json({ error: 'Permission denied - Staffing data not found' });
+        return;
+      }
+
+      const staffingData = staffingDoc.data();
+
+      // Check if user is in management array
+      const isManager = staffingData.management?.some(m =>
+        m.email === email && (m.role === 'Manager' || m.role === 'Admin')
+      );
+
+      if (!isManager) {
         res.status(403).json({ error: 'Permission denied - Only managers can create user accounts' });
         return;
       }
