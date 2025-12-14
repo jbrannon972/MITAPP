@@ -420,11 +420,20 @@ const Calendar = () => {
 
       console.log('💾 Total staff to save:', staffData.length, staffData);
 
+      // Build schedule data object
       const scheduleData = {
         date: editingDate,
-        staff: staffData,
-        notes: notes
+        notes: notes  // Always save notes
       };
+
+      // CRITICAL: Only include staff if there are actual overrides to save
+      // If staffData is empty and we include it, it will erase existing staff overrides
+      // By not including the staff field at all, we preserve existing overrides when only updating notes
+      if (staffData.length > 0) {
+        scheduleData.staff = staffData;
+      }
+
+      console.log('📤 Final schedule data to save:', scheduleData);
 
       await firebaseService.saveSchedule(scheduleData);
       alert('Schedule saved successfully!');

@@ -221,12 +221,29 @@ class FirebaseService {
       const docId = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
       const docRef = doc(db, 'hou_schedules', docId);
 
+      // Build the update object - only include fields that should actually be updated
+      const updateData = {
+        date: scheduleData.date
+      };
+
+      // CRITICAL: Only update staff if it has actual data
+      // An empty array would erase existing overrides, so we skip it
+      // This ensures we preserve existing staff overrides when only updating notes
+      if (scheduleData.staff !== undefined && scheduleData.staff !== null) {
+        // Always include staff field if it has data, even if empty array
+        // (empty array means explicitly clearing all overrides)
+        updateData.staff = scheduleData.staff;
+      }
+
+      // Always update notes field (can be empty string)
+      if (scheduleData.notes !== undefined && scheduleData.notes !== null) {
+        updateData.notes = scheduleData.notes;
+      }
+
+      console.log('💾 Saving schedule:', { docId, updateData });
+
       // Use merge: true to update existing document or create new one
-      await setDoc(docRef, this.removeUndefined({
-        date: scheduleData.date,
-        staff: scheduleData.staff || [],
-        notes: scheduleData.notes || ''
-      }), { merge: true });
+      await setDoc(docRef, this.removeUndefined(updateData), { merge: true });
     } catch (error) {
       console.error('Error saving schedule:', error);
       throw error;
