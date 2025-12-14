@@ -254,12 +254,23 @@ class FirebaseService {
         updateData.notes = scheduleData.notes;
       }
 
-      console.log('💾 Saving schedule:', { docId, updateData });
+      console.log('💾 Saving schedule to Firestore:');
+      console.log(`  📅 Document ID: ${docId}`);
+      console.log(`  📆 Date: ${date.toDateString()}`);
+      console.log(`  👥 Staff overrides: ${updateData.staff ? updateData.staff.length : 'none (preserving existing)'}`);
+      if (updateData.staff && updateData.staff.length > 0) {
+        updateData.staff.forEach(s => {
+          console.log(`    - ${s.id}: status=${s.status}, hours=${s.hours || 'none'}`);
+        });
+      }
+      console.log(`  📝 Notes: ${updateData.notes !== undefined ? `"${updateData.notes}"` : 'none (preserving existing)'}`);
 
       // Use merge: true to update existing document or create new one
-      await setDoc(docRef, this.removeUndefined(updateData), { merge: true });
+      const dataToSave = this.removeUndefined(updateData);
+      console.log('  📦 Final data to save:', JSON.stringify(dataToSave, null, 2));
+      await setDoc(docRef, dataToSave, { merge: true });
 
-      console.log('✅ Schedule saved successfully to Firestore');
+      console.log(`✅ Schedule saved successfully to Firestore at hou_schedules/${docId}`);
     } catch (error) {
       console.error('❌ Error saving schedule:', error);
       throw error;

@@ -355,7 +355,29 @@ const Calendar = () => {
   };
 
   const handleDayClick = (dateObject) => {
+    console.log(`🖱️ Opening day: ${dateObject.toDateString()} (Day ${dateObject.getDate()})`);
+
+    const specificDayData = monthlySchedules.specific[dateObject.getDate()];
+    console.log(`  📂 Raw data from Firestore for day ${dateObject.getDate()}:`, specificDayData);
+    if (specificDayData) {
+      console.log(`    - Staff overrides in DB: ${specificDayData.staff?.length || 0}`);
+      if (specificDayData.staff && specificDayData.staff.length > 0) {
+        specificDayData.staff.forEach(s => {
+          console.log(`      - ${s.id}: status=${s.status}, hours=${s.hours || 'none'}`);
+        });
+      }
+      console.log(`    - Notes in DB: ${specificDayData.notes ? `"${specificDayData.notes}"` : 'none'}`);
+    } else {
+      console.log(`    - No specific data in DB for this day`);
+    }
+
     const schedule = getCalculatedScheduleForDay(dateObject, monthlySchedules, unifiedTechnicianData);
+    console.log(`  📊 Calculated schedule has ${schedule.staff.length} total staff members`);
+    const overriddenStaff = schedule.staff.filter(s => s.source === 'Specific Override');
+    console.log(`  ✏️ Of those, ${overriddenStaff.length} have specific overrides:`);
+    overriddenStaff.forEach(s => {
+      console.log(`      - ${s.name}: status=${s.status}, hours=${s.hours || 'none'}`);
+    });
 
     if (isCalendarAdmin) {
       setEditingDate(dateObject);
