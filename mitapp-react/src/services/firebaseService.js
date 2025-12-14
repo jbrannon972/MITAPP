@@ -11,7 +11,8 @@ import {
   where,
   orderBy,
   onSnapshot,
-  serverTimestamp
+  serverTimestamp,
+  Timestamp
 } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 
@@ -215,15 +216,20 @@ class FirebaseService {
 
   async saveSchedule(scheduleData) {
     try {
+      // Convert to JS Date if it's a Timestamp, otherwise use as-is
       const date = scheduleData.date.toDate ? scheduleData.date.toDate() : new Date(scheduleData.date);
 
       // Use date-based document ID (YYYY-MM-DD) to ensure updates work correctly
       const docId = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
       const docRef = doc(db, 'hou_schedules', docId);
 
+      // Convert JavaScript Date to Firestore Timestamp
+      // Firestore cannot save raw Date objects, they must be Timestamps
+      const firestoreTimestamp = Timestamp.fromDate(date);
+
       // Build the update object - only include fields that should actually be updated
       const updateData = {
-        date: scheduleData.date
+        date: firestoreTimestamp  // CRITICAL: Must be Firestore Timestamp, not JS Date
       };
 
       // CRITICAL: Only update staff if it has actual data
@@ -244,8 +250,10 @@ class FirebaseService {
 
       // Use merge: true to update existing document or create new one
       await setDoc(docRef, this.removeUndefined(updateData), { merge: true });
+
+      console.log('✅ Schedule saved successfully to Firestore');
     } catch (error) {
-      console.error('Error saving schedule:', error);
+      console.error('❌ Error saving schedule:', error);
       throw error;
     }
   }
