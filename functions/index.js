@@ -626,7 +626,7 @@ exports.createTechAccounts = functions.https.onCall(async (data, context) => {
       // Create Firebase Auth user
       const userRecord = await admin.auth().createUser({
         email: tech.email,
-        password: 'Mitigation1',
+        password: tech.password || 'Mitigation1',  // Use provided password or default to Mitigation1
         displayName: tech.name,
         emailVerified: true  // Set to true so users can login immediately
       });
@@ -778,7 +778,7 @@ exports.createTechAccountsHttp = functions.https.onRequest((req, res) => {
           // Create Firebase Auth user
           const userRecord = await admin.auth().createUser({
             email: tech.email,
-            password: 'Mitigation1',
+            password: tech.password || 'Mitigation1',  // Use provided password or default to Mitigation1
             displayName: tech.name,
             emailVerified: true  // Set to true so users can login immediately
           });
