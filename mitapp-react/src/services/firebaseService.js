@@ -185,9 +185,13 @@ class FirebaseService {
     const firstDayOfMonth = new Date(year, month, 1);
     const lastDayOfMonth = new Date(year, month + 1, 0, 23, 59, 59, 999);
 
+    console.log(`📅 Loading schedules for ${year}-${month + 1} (${firstDayOfMonth.toDateString()} to ${lastDayOfMonth.toDateString()})`);
+
     try {
       const schedulesRef = collection(db, 'hou_schedules');
       const snapshot = await getDocs(schedulesRef);
+
+      console.log(`📄 Found ${snapshot.size} total schedule documents`);
 
       snapshot.forEach(doc => {
         const data = doc.data();
@@ -204,10 +208,14 @@ class FirebaseService {
 
           // Only include dates in the requested month range
           if (dateObj >= firstDayOfMonth && dateObj <= lastDayOfMonth) {
-            schedulesMap.specific[dateObj.getDate()] = data;
+            const dayOfMonth = dateObj.getDate();
+            schedulesMap.specific[dayOfMonth] = data;
+            console.log(`  ✅ Day ${dayOfMonth}: ${data.staff?.length || 0} staff overrides, notes: ${data.notes ? 'Yes' : 'No'}`);
           }
         }
       });
+
+      console.log(`📦 Total days with schedules in this month: ${Object.keys(schedulesMap.specific).length}`);
     } catch (error) {
       console.error('Error fetching specific schedule data for month:', error);
     }

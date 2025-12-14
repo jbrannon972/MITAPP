@@ -50,6 +50,7 @@ const Calendar = () => {
         currentDate.getFullYear(),
         currentDate.getMonth()
       );
+      console.log('📥 Loaded schedules for month:', schedules);
       setMonthlySchedules(schedules);
     } catch (error) {
       console.error('Error loading schedules:', error);
@@ -436,8 +437,10 @@ const Calendar = () => {
       console.log('📤 Final schedule data to save:', scheduleData);
 
       await firebaseService.saveSchedule(scheduleData);
+      console.log('🔄 Reloading month schedules...');
+      await loadMonthSchedules();  // CRITICAL: Must await reload before closing modal
+      console.log('✅ Month schedules reloaded');
       alert('Schedule saved successfully!');
-      loadMonthSchedules();
       closeModal();
     } catch (error) {
       console.error('Error saving schedule:', error);
