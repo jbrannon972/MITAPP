@@ -188,57 +188,21 @@ const Admin = () => {
           <h2>User Management</h2>
         </div>
 
-        {/* Bulk Account Creation Section */}
-        {techsWithoutAccounts.length > 0 && (
-          <div className="card" style={{ marginBottom: '24px', border: '2px solid var(--primary-color)' }}>
-            <div className="card-header" style={{ background: 'var(--primary-color)', color: 'white' }}>
-              <h3><i className="fas fa-user-plus"></i> Bulk Account Creation ({techsWithoutAccounts.length} team members)</h3>
-              <div className="tab-controls">
+        <div className="card">
+          <div className="card-header">
+            <h3><i className="fas fa-users-cog"></i> All Team Members ({allUsers.length})</h3>
+            <div className="tab-controls">
+              {techsWithoutAccounts.length > 0 && (
                 <button
                   className="btn btn-success"
                   onClick={createMissingAccounts}
                   disabled={creatingAccounts}
-                  title="Create accounts with password: Mitigation1"
+                  title="Create accounts for all team members with emails (password: Mitigation1)"
                 >
                   <i className="fas fa-user-plus"></i>{' '}
                   {creatingAccounts ? 'Creating...' : 'Create Accounts'}
                 </button>
-              </div>
-            </div>
-            <div className="table-container">
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>Name</th>
-                    <th>Email</th>
-                    <th>Role</th>
-                    <th>Zone</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {techsWithoutAccounts.map((user, index) => (
-                    <tr key={user.id || index}>
-                      <td><strong>{user.name || 'N/A'}</strong></td>
-                      <td>{user.email || 'N/A'}</td>
-                      <td>{user.role || 'N/A'}</td>
-                      <td>{user.zoneName || 'N/A'}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <div style={{ padding: '12px 20px', background: 'var(--bg-secondary)', fontSize: '14px', color: 'var(--text-secondary)' }}>
-              <i className="fas fa-info-circle"></i> New accounts will be created with password: <strong>Mitigation1</strong>
-              <br/>
-              <i className="fas fa-check-circle" style={{ color: 'var(--success-color)' }}></i> If an account already exists, it will be skipped automatically.
-            </div>
-          </div>
-        )}
-
-        <div className="card">
-          <div className="card-header">
-            <h3><i className="fas fa-users-cog"></i> All Team Members</h3>
-            <div className="tab-controls">
+              )}
               <button
                 className="btn btn-secondary"
                 onClick={loadUsers}
@@ -283,6 +247,11 @@ const Admin = () => {
               <p style={{ padding: '20px', textAlign: 'center' }}>No users found.</p>
             )}
           </div>
+          {techsWithoutAccounts.length > 0 && (
+            <div style={{ padding: '12px 20px', background: 'var(--bg-secondary)', fontSize: '14px', color: 'var(--text-secondary)', borderTop: '1px solid var(--border-color)' }}>
+              <i className="fas fa-info-circle"></i> "Create Accounts" will create accounts for {techsWithoutAccounts.length} team members with emails. Password: <strong>Mitigation1</strong>. Existing accounts will be skipped.
+            </div>
+          )}
         </div>
 
         {/* Creation Results */}
