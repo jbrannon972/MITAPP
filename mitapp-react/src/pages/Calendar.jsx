@@ -5,7 +5,7 @@ import { useData } from '../contexts/DataContext';
 import firebaseService from '../services/firebaseService';
 import { getCalculatedScheduleForDay, getHolidayName, formatNameCompact, getDefaultStatusForPerson } from '../utils/calendarManager';
 import { collection, getDocs, doc, getDoc, setDoc, updateDoc, Timestamp } from 'firebase/firestore';
-import { db } from '../config/firebase';
+import { db, auth } from '../config/firebase';
 import '../styles/calendar-styles.css';
 
 const Calendar = () => {
@@ -28,6 +28,10 @@ const Calendar = () => {
   const [weekendReportData, setWeekendReportData] = useState(null);
   const [ripplingModalOpen, setRipplingModalOpen] = useState(false);
   const [ripplingStatus, setRipplingStatus] = useState({ loading: false, message: '', log: '' });
+  const [sendReportModalOpen, setSendReportModalOpen] = useState(false);
+  const [sendReportRecipients, setSendReportRecipients] = useState([]);
+  const [sendReportStatus, setSendReportStatus] = useState({ loading: false, message: '', error: '' });
+  const [availableRecipients, setAvailableRecipients] = useState([]);
 
   const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
@@ -354,6 +358,107 @@ const Calendar = () => {
   const closeWeekendReport = () => {
     setWeekendReportModalOpen(false);
     document.body.classList.remove('report-printing');
+  };
+
+  /**
+   * Open Send Weekend Report Modal - allows selecting recipients
+   */
+  const handleOpenSendReportModal = () => {
+    // Build list of available recipients from staffing data
+    const recipients = [];
+
+    // Add management
+    unifiedTechnicianData.forEach(tech => {
+      if (tech.email) {
+        recipients.push({
+          id: tech.id,
+          name: tech.name,
+          email: tech.email,
+          selected: false
+        });
+      }
+    });
+
+    // Remove duplicates by email
+    const uniqueRecipients = recipients.filter((r, index, self) =>
+      index === self.findIndex(t => t.email.toLowerCase() === r.email.toLowerCase())
+    );
+
+    setAvailableRecipients(uniqueRecipients);
+    setSendReportRecipients([]);
+    setSendReportStatus({ loading: false, message: '', error: '' });
+    setSendReportModalOpen(true);
+  };
+
+  const toggleRecipient = (email) => {
+    setSendReportRecipients(prev => {
+      if (prev.includes(email)) {
+        return prev.filter(e => e !== email);
+      } else {
+        return [...prev, email];
+      }
+    });
+  };
+
+  const selectAllRecipients = () => {
+    setSendReportRecipients(availableRecipients.map(r => r.email));
+  };
+
+  const deselectAllRecipients = () => {
+    setSendReportRecipients([]);
+  };
+
+  const handleSendWeekendReport = async () => {
+    if (sendReportRecipients.length === 0) {
+      alert('Please select at least one recipient');
+      return;
+    }
+
+    setSendReportStatus({ loading: true, message: 'Sending weekend report...', error: '' });
+
+    try {
+      const user = auth.currentUser;
+      if (!user) {
+        throw new Error('You must be logged in to send reports');
+      }
+
+      const token = await user.getIdToken();
+
+      const response = await fetch('https://us-central1-mit-foreasting.cloudfunctions.net/sendWeekendReportManual', {
+        method: 'POST',
+        headers: {
+          'Authorization': 'Bearer ' + token,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          recipients: sendReportRecipients
+        })
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to send report');
+      }
+
+      setSendReportStatus({
+        loading: false,
+        message: `Weekend report sent successfully to ${result.recipientCount} recipient(s)!`,
+        error: ''
+      });
+    } catch (error) {
+      console.error('Error sending weekend report:', error);
+      setSendReportStatus({
+        loading: false,
+        message: '',
+        error: error.message
+      });
+    }
+  };
+
+  const closeSendReportModal = () => {
+    setSendReportModalOpen(false);
+    setSendReportStatus({ loading: false, message: '', error: '' });
   };
 
   const handlePrint = () => {
@@ -1004,6 +1109,14 @@ const Calendar = () => {
                 <i className="fas fa-file-alt"></i> Weekend Report
               </button>
               <button
+                className="btn btn-info"
+                onClick={handleOpenSendReportModal}
+                disabled={!isCalendarAdmin}
+                title={!isCalendarAdmin ? 'Admin access required' : 'Email weekend report to selected users'}
+              >
+                <i className="fas fa-envelope"></i> Send Report
+              </button>
+              <button
                 className="btn btn-primary"
                 onClick={handlePrint}
               >
@@ -1242,6 +1355,134 @@ const Calendar = () => {
                     </button>
                   </>
                 )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Send Weekend Report Modal */}
+        {sendReportModalOpen && (
+          <div className="modal-overlay active" style={{ zIndex: 9999 }}>
+            <div className="modal" style={{ maxWidth: '600px', maxHeight: '80vh', overflow: 'auto' }}>
+              <div className="modal-header">
+                <h3><i className="fas fa-envelope"></i> Send Weekend Report</h3>
+                <button className="modal-close" onClick={closeSendReportModal}>
+                  <i className="fas fa-times"></i>
+                </button>
+              </div>
+              <div className="modal-body">
+                {sendReportStatus.loading ? (
+                  <div style={{ textAlign: 'center', padding: '20px' }}>
+                    <i className="fas fa-spinner fa-spin" style={{ fontSize: '48px', color: '#2196F3', marginBottom: '10px' }}></i>
+                    <p>{sendReportStatus.message}</p>
+                  </div>
+                ) : sendReportStatus.message ? (
+                  <div style={{ textAlign: 'center', padding: '20px' }}>
+                    <i className="fas fa-check-circle" style={{ fontSize: '48px', color: '#4CAF50', marginBottom: '10px' }}></i>
+                    <p style={{ color: '#4CAF50', fontWeight: '600' }}>{sendReportStatus.message}</p>
+                  </div>
+                ) : sendReportStatus.error ? (
+                  <div style={{ textAlign: 'center', padding: '20px' }}>
+                    <i className="fas fa-exclamation-circle" style={{ fontSize: '48px', color: '#f44336', marginBottom: '10px' }}></i>
+                    <p style={{ color: '#f44336', fontWeight: '600' }}>{sendReportStatus.error}</p>
+                  </div>
+                ) : (
+                  <>
+                    <p style={{ marginBottom: '16px', color: 'var(--text-muted)' }}>
+                      Select the recipients who will receive the weekend schedule report via email.
+                    </p>
+
+                    <div style={{ marginBottom: '16px', display: 'flex', gap: '8px' }}>
+                      <button className="btn btn-small btn-secondary" onClick={selectAllRecipients}>
+                        Select All
+                      </button>
+                      <button className="btn btn-small btn-secondary" onClick={deselectAllRecipients}>
+                        Deselect All
+                      </button>
+                      <span style={{ marginLeft: 'auto', color: 'var(--text-muted)' }}>
+                        {sendReportRecipients.length} selected
+                      </span>
+                    </div>
+
+                    <div style={{ maxHeight: '300px', overflowY: 'auto', border: '1px solid var(--border-color)', borderRadius: '8px' }}>
+                      {availableRecipients.length > 0 ? (
+                        availableRecipients.map((recipient) => (
+                          <label
+                            key={recipient.email}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              padding: '12px 16px',
+                              borderBottom: '1px solid var(--border-color)',
+                              cursor: 'pointer',
+                              backgroundColor: sendReportRecipients.includes(recipient.email) ? 'var(--status-resolved-bg)' : 'transparent'
+                            }}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={sendReportRecipients.includes(recipient.email)}
+                              onChange={() => toggleRecipient(recipient.email)}
+                              style={{ marginRight: '12px' }}
+                            />
+                            <div>
+                              <div style={{ fontWeight: '600' }}>{recipient.name}</div>
+                              <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{recipient.email}</div>
+                            </div>
+                          </label>
+                        ))
+                      ) : (
+                        <p style={{ padding: '16px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                          No recipients with email addresses found.
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Custom email input */}
+                    <div style={{ marginTop: '16px' }}>
+                      <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600' }}>
+                        Or enter custom email:
+                      </label>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <input
+                          type="email"
+                          id="customEmailInput"
+                          className="form-control"
+                          placeholder="email@example.com"
+                          style={{ flex: 1 }}
+                        />
+                        <button
+                          className="btn btn-secondary"
+                          onClick={() => {
+                            const input = document.getElementById('customEmailInput');
+                            const email = input.value.trim();
+                            if (email && email.includes('@')) {
+                              if (!sendReportRecipients.includes(email)) {
+                                setSendReportRecipients(prev => [...prev, email]);
+                              }
+                              input.value = '';
+                            }
+                          }}
+                        >
+                          Add
+                        </button>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+              <div className="modal-footer">
+                {!sendReportStatus.loading && !sendReportStatus.message && !sendReportStatus.error && (
+                  <button
+                    className="btn btn-primary"
+                    onClick={handleSendWeekendReport}
+                    disabled={sendReportRecipients.length === 0}
+                  >
+                    <i className="fas fa-paper-plane"></i> Send Report ({sendReportRecipients.length})
+                  </button>
+                )}
+                <button className="btn btn-secondary" onClick={closeSendReportModal}>
+                  {sendReportStatus.message ? 'Done' : 'Cancel'}
+                </button>
               </div>
             </div>
           </div>
