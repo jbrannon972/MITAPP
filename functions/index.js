@@ -1492,6 +1492,12 @@ exports.sendWeekendReport = functions.pubsub
 exports.sendWeekendReportManual = functions.https.onRequest((req, res) => {
   return cors(req, res, async () => {
     try {
+      // Handle preflight OPTIONS request
+      if (req.method === 'OPTIONS') {
+        res.status(204).send('');
+        return;
+      }
+
       // Only allow POST requests
       if (req.method !== 'POST') {
         res.status(405).send('Method Not Allowed');
