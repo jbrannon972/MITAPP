@@ -235,34 +235,73 @@ class FirebaseService {
       // Firestore cannot save raw Date objects, they must be Timestamps
       const firestoreTimestamp = Timestamp.fromDate(date);
 
-      // Build the update object - only include fields that should actually be updated
+      console.log('💾 Saving schedule to Firestore:');
+      console.log(`  📅 Document ID: ${docId}`);
+      console.log(`  📆 Date: ${date.toDateString()}`);
+
+      // CRITICAL FIX: Firestore's merge:true replaces entire arrays, not individual elements
+      // We need to manually merge staff arrays to prevent erasing existing overrides
+
+      // First, fetch existing data for this day
+      const existingDoc = await getDoc(docRef);
+      const existingData = existingDoc.exists() ? existingDoc.data() : {};
+      const existingStaff = existingData.staff || [];
+
+      console.log(`  📂 Existing staff overrides in DB: ${existingStaff.length}`);
+      existingStaff.forEach(s => {
+        console.log(`    - ${s.id}: status=${s.status}, hours=${s.hours || 'none'}`);
+      });
+
+      // Build the update object
       const updateData = {
         date: firestoreTimestamp  // CRITICAL: Must be Firestore Timestamp, not JS Date
       };
 
-      // CRITICAL: Only update staff if it has actual data
-      // An empty array would erase existing overrides, so we skip it
-      // This ensures we preserve existing staff overrides when only updating notes
-      if (scheduleData.staff !== undefined && scheduleData.staff !== null) {
-        // Always include staff field if it has data, even if empty array
-        // (empty array means explicitly clearing all overrides)
-        updateData.staff = scheduleData.staff;
-      }
+      // Handle staff array merging with support for both old format (staff) and new format (staffToSave/staffToRemove)
+      const staffToSave = scheduleData.staffToSave || scheduleData.staff || [];
+      const staffToRemove = scheduleData.staffToRemove || [];
+
+      console.log(`  📥 Staff entries to save/update: ${staffToSave.length}`);
+      staffToSave.forEach(s => {
+        console.log(`    - ${s.id}: status=${s.status}, hours=${s.hours || 'none'}`);
+      });
+
+      console.log(`  🗑️ Staff entries to remove: ${staffToRemove.length}`);
+      staffToRemove.forEach(id => {
+        console.log(`    - ${id}`);
+      });
+
+      // Create a map of existing staff by ID for easy lookup
+      const staffMap = new Map();
+
+      // Add all existing staff to the map
+      existingStaff.forEach(s => {
+        staffMap.set(s.id, s);
+      });
+
+      // Remove staff that should no longer have overrides
+      staffToRemove.forEach(id => {
+        staffMap.delete(id);
+      });
+
+      // Merge/update with new staff entries
+      staffToSave.forEach(s => {
+        staffMap.set(s.id, { id: s.id, status: s.status, hours: s.hours || '' });
+      });
+
+      // Convert map back to array
+      updateData.staff = Array.from(staffMap.values());
+
+      console.log(`  ✅ Final merged staff array: ${updateData.staff.length} total entries`);
+      updateData.staff.forEach(s => {
+        console.log(`    - ${s.id}: status=${s.status}, hours=${s.hours || 'none'}`);
+      });
 
       // Always update notes field (can be empty string)
       if (scheduleData.notes !== undefined && scheduleData.notes !== null) {
         updateData.notes = scheduleData.notes;
       }
 
-      console.log('💾 Saving schedule to Firestore:');
-      console.log(`  📅 Document ID: ${docId}`);
-      console.log(`  📆 Date: ${date.toDateString()}`);
-      console.log(`  👥 Staff overrides: ${updateData.staff ? updateData.staff.length : 'none (preserving existing)'}`);
-      if (updateData.staff && updateData.staff.length > 0) {
-        updateData.staff.forEach(s => {
-          console.log(`    - ${s.id}: status=${s.status}, hours=${s.hours || 'none'}`);
-        });
-      }
       console.log(`  📝 Notes: ${updateData.notes !== undefined ? `"${updateData.notes}"` : 'none (preserving existing)'}`);
 
       // Use merge: true to update existing document or create new one

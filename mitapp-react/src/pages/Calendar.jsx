@@ -394,8 +394,12 @@ const Calendar = () => {
       // Get notes from textarea
       const notes = document.getElementById('calNotes')?.value?.trim() || '';
 
-      // Get staff data from the form - ONLY save actual overrides
-      const staffData = [];
+      // Get staff data from the form
+      // We need to track:
+      // 1. Staff that need overrides (differ from base status)
+      // 2. Staff that should have overrides REMOVED (previously had override, now match base)
+      const staffToSave = [];      // Staff with overrides to save
+      const staffToRemove = [];    // Staff IDs to remove from overrides
 
       console.log('🔍 SAVE DEBUG: Starting to process staff items');
 
@@ -420,41 +424,42 @@ const Calendar = () => {
             baseHours,
             baseSource,
             currentStatus: originalStaff.status,
-            currentSource: originalStaff.source
+            currentSource: originalStaff.source,
+            hadOverride: originalStaff.source === 'Specific Override'
           });
 
-          // Only save if the form values differ from the base (non-override) values
-          // This allows overriding recurring rules while not saving unnecessary data
+          // Check if the form values differ from the base (non-override) values
           const statusDiffersFromBase = status !== baseStatus;
           const hoursDiffersFromBase = hours !== (baseHours || '');
 
           if (statusDiffersFromBase || hoursDiffersFromBase) {
+            // This person needs an override
             console.log(`✅ SAVING override for ${originalStaff.name}`);
-            staffData.push({
+            staffToSave.push({
               id: staffId,
               status: status,
               hours: hours
             });
+          } else if (originalStaff.source === 'Specific Override') {
+            // This person HAD an override but now matches base - REMOVE the override
+            console.log(`🗑️ REMOVING override for ${originalStaff.name} (now matches base)`);
+            staffToRemove.push(staffId);
           } else {
-            console.log(`⏭️  SKIPPING ${originalStaff.name} (matches base)`);
+            console.log(`⏭️  SKIPPING ${originalStaff.name} (matches base, no override to remove)`);
           }
         }
       });
 
-      console.log('💾 Total staff to save:', staffData.length, staffData);
+      console.log('💾 Staff to save:', staffToSave.length, staffToSave);
+      console.log('🗑️ Staff to remove:', staffToRemove.length, staffToRemove);
 
       // Build schedule data object
       const scheduleData = {
         date: editingDate,
-        notes: notes  // Always save notes
+        notes: notes,  // Always save notes
+        staffToSave: staffToSave,        // Overrides to add/update
+        staffToRemove: staffToRemove     // Override IDs to remove
       };
-
-      // CRITICAL: Only include staff if there are actual overrides to save
-      // If staffData is empty and we include it, it will erase existing staff overrides
-      // By not including the staff field at all, we preserve existing overrides when only updating notes
-      if (staffData.length > 0) {
-        scheduleData.staff = staffData;
-      }
 
       console.log('📤 Final schedule data to save:', scheduleData);
 
