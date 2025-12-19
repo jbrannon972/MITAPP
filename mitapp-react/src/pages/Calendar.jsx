@@ -5,8 +5,7 @@ import { useData } from '../contexts/DataContext';
 import firebaseService from '../services/firebaseService';
 import { getCalculatedScheduleForDay, getHolidayName, formatNameCompact, getDefaultStatusForPerson } from '../utils/calendarManager';
 import { collection, getDocs, doc, getDoc, setDoc, updateDoc, Timestamp } from 'firebase/firestore';
-import { httpsCallable } from 'firebase/functions';
-import { db, auth, functions } from '../config/firebase';
+import { db, auth } from '../config/firebase';
 import '../styles/calendar-styles.css';
 
 const Calendar = () => {
@@ -423,28 +422,37 @@ const Calendar = () => {
         throw new Error('You must be logged in to send reports');
       }
 
-      // Use Firebase Callable Function - handles CORS automatically
-      const sendWeekendReportManual = httpsCallable(functions, 'sendWeekendReportManual');
-      const result = await sendWeekendReportManual({ recipients: sendReportRecipients });
+      const token = await user.getIdToken();
+
+      // Use 2nd gen Cloud Function with built-in CORS support
+      const response = await fetch('https://us-central1-mit-foreasting.cloudfunctions.net/sendWeekendReportManual', {
+        method: 'POST',
+        headers: {
+          'Authorization': 'Bearer ' + token,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          recipients: sendReportRecipients
+        })
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to send report');
+      }
 
       setSendReportStatus({
         loading: false,
-        message: `Weekend report sent successfully to ${result.data.recipientCount} recipient(s)!`,
+        message: `Weekend report sent successfully to ${result.recipientCount} recipient(s)!`,
         error: ''
       });
     } catch (error) {
       console.error('Error sending weekend report:', error);
-      // Handle Firebase callable function errors
-      const errorMessage = error.code === 'functions/unauthenticated'
-        ? 'You must be logged in to send reports'
-        : error.code === 'functions/permission-denied'
-        ? 'Only managers can send reports'
-        : error.message || 'Failed to send report';
-
       setSendReportStatus({
         loading: false,
         message: '',
-        error: errorMessage
+        error: error.message
       });
     }
   };
