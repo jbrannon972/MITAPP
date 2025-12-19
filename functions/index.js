@@ -1487,147 +1487,141 @@ exports.sendWeekendReport = functions.pubsub
   });
 
 /**
- * HTTP endpoint to manually trigger weekend report (for testing)
+ * Callable function to manually trigger weekend report
+ * Uses onCall which handles CORS automatically - no preflight issues
  */
-exports.sendWeekendReportManual = functions.https.onRequest((req, res) => {
-  // Set CORS headers for all requests
-  res.set('Access-Control-Allow-Origin', '*');
-  res.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-
-  // Handle preflight OPTIONS request
-  if (req.method === 'OPTIONS') {
-    res.status(204).send('');
-    return;
+exports.sendWeekendReportManual = functions.https.onCall(async (data, context) => {
+  // Verify authentication - onCall automatically provides context.auth
+  if (!context.auth) {
+    throw new functions.https.HttpsError(
+      'unauthenticated',
+      'User must be authenticated to send reports'
+    );
   }
 
-  return cors(req, res, async () => {
-    try {
-      // Only allow POST requests
-      if (req.method !== 'POST') {
-        res.status(405).send('Method Not Allowed');
-        return;
+  const email = context.auth.token.email;
+
+  try {
+    // Verify admin/manager role
+    const db = admin.firestore();
+    const staffingDoc = await db.collection('hou_settings').doc('staffing_data').get();
+
+    if (!staffingDoc.exists) {
+      throw new functions.https.HttpsError(
+        'not-found',
+        'Staffing data not found'
+      );
+    }
+
+    const staffingData = staffingDoc.data();
+    const isManager = staffingData.management?.some(m =>
+      m.email && m.email.toLowerCase() === email.toLowerCase() &&
+      (m.role === 'Manager' || m.role === 'Admin' || m.role === 'Supervisor')
+    );
+
+    if (!isManager) {
+      throw new functions.https.HttpsError(
+        'permission-denied',
+        'Only managers can trigger this report'
+      );
+    }
+
+    // Generate and send report
+    const allTechnicians = getAllTechnicians(staffingData);
+    const recipientEmails = getAllUserEmails(staffingData);
+
+    // Optional: Allow custom recipient list from request data
+    const customRecipients = data.recipients;
+    const finalRecipients = customRecipients && Array.isArray(customRecipients) && customRecipients.length > 0
+      ? customRecipients
+      : recipientEmails;
+
+    console.log(`Found ${allTechnicians.length} technicians and sending to ${finalRecipients.length} recipients`);
+
+    // Find next 4 weekends
+    const today = new Date();
+    let currentDay = new Date(today);
+    const weekends = [];
+
+    while (weekends.length < 4) {
+      if (currentDay.getDay() === 6) {
+        const saturday = new Date(currentDay);
+        const sunday = new Date(currentDay);
+        sunday.setDate(sunday.getDate() + 1);
+        weekends.push({ saturday, sunday });
       }
+      currentDay.setDate(currentDay.getDate() + 1);
+    }
 
-      // Get auth token from headers
-      const authHeader = req.headers.authorization;
-      if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        res.status(401).json({ error: 'Unauthorized - No token provided' });
-        return;
-      }
+    // Build weekend data
+    const weekendData = [];
 
-      const idToken = authHeader.split('Bearer ')[1];
-
-      // Verify the token
-      const decodedToken = await admin.auth().verifyIdToken(idToken);
-      const email = decodedToken.email;
-
-      // Verify admin/manager role
-      const db = admin.firestore();
-      const staffingDoc = await db.collection('hou_settings').doc('staffing_data').get();
-
-      if (!staffingDoc.exists) {
-        res.status(403).json({ error: 'Staffing data not found' });
-        return;
-      }
-
-      const staffingData = staffingDoc.data();
-      const isManager = staffingData.management?.some(m =>
-        m.email && m.email.toLowerCase() === email.toLowerCase() &&
-        (m.role === 'Manager' || m.role === 'Admin' || m.role === 'Supervisor')
+    for (const weekend of weekends) {
+      const satSchedules = await getScheduleDataForMonth(
+        weekend.saturday.getFullYear(),
+        weekend.saturday.getMonth()
+      );
+      const sunSchedules = await getScheduleDataForMonth(
+        weekend.sunday.getFullYear(),
+        weekend.sunday.getMonth()
       );
 
-      if (!isManager) {
-        res.status(403).json({ error: 'Permission denied - Only managers can trigger this report' });
-        return;
-      }
+      const satSchedule = getCalculatedScheduleForDay(weekend.saturday, satSchedules, allTechnicians);
+      const sunSchedule = getCalculatedScheduleForDay(weekend.sunday, sunSchedules, allTechnicians);
 
-      // Generate and send report
-      const allTechnicians = getAllTechnicians(staffingData);
-      const recipientEmails = getAllUserEmails(staffingData);
+      const workingOnSat = satSchedule.staff.filter(s => s.status === 'on' || (s.hours && s.hours.trim() !== ''));
+      const workingOnSun = sunSchedule.staff.filter(s => s.status === 'on' || (s.hours && s.hours.trim() !== ''));
 
-      // Optional: Allow custom recipient list from request body
-      const customRecipients = req.body.recipients;
-      const finalRecipients = customRecipients && Array.isArray(customRecipients) && customRecipients.length > 0
-        ? customRecipients
-        : recipientEmails;
-
-      console.log(`Found ${allTechnicians.length} technicians and sending to ${finalRecipients.length} recipients`);
-
-      // Find next 4 weekends
-      const today = new Date();
-      let currentDay = new Date(today);
-      const weekends = [];
-
-      while (weekends.length < 4) {
-        if (currentDay.getDay() === 6) {
-          const saturday = new Date(currentDay);
-          const sunday = new Date(currentDay);
-          sunday.setDate(sunday.getDate() + 1);
-          weekends.push({ saturday, sunday });
-        }
-        currentDay.setDate(currentDay.getDate() + 1);
-      }
-
-      // Build weekend data
-      const weekendData = [];
-
-      for (const weekend of weekends) {
-        const satSchedules = await getScheduleDataForMonth(
-          weekend.saturday.getFullYear(),
-          weekend.saturday.getMonth()
-        );
-        const sunSchedules = await getScheduleDataForMonth(
-          weekend.sunday.getFullYear(),
-          weekend.sunday.getMonth()
-        );
-
-        const satSchedule = getCalculatedScheduleForDay(weekend.saturday, satSchedules, allTechnicians);
-        const sunSchedule = getCalculatedScheduleForDay(weekend.sunday, sunSchedules, allTechnicians);
-
-        const workingOnSat = satSchedule.staff.filter(s => s.status === 'on' || (s.hours && s.hours.trim() !== ''));
-        const workingOnSun = sunSchedule.staff.filter(s => s.status === 'on' || (s.hours && s.hours.trim() !== ''));
-
-        weekendData.push({
-          saturday: weekend.saturday,
-          sunday: weekend.sunday,
-          workingOnSat: workingOnSat.map(s => ({ name: s.name, hours: s.hours })),
-          workingOnSun: workingOnSun.map(s => ({ name: s.name, hours: s.hours })),
-          satNotes: satSchedule.notes,
-          sunNotes: sunSchedule.notes
-        });
-      }
-
-      // Generate email
-      const dateRange = `${weekendData[0].saturday.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${weekendData[weekendData.length - 1].sunday.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
-      const emailHtml = generateWeekendReportHTML(weekendData, dateRange);
-
-      // Send email
-      const mailOptions = {
-        from: `"${EMAIL_CONFIG.from.name}" <${EMAIL_CONFIG.from.email}>`,
-        to: finalRecipients.join(', '),
-        subject: `📅 Weekend Schedule Report - ${dateRange}`,
-        html: emailHtml
-      };
-
-      const info = await transporter.sendMail(mailOptions);
-
-      res.status(200).json({
-        success: true,
-        message: `Weekend report sent successfully`,
-        recipients: finalRecipients,
-        recipientCount: finalRecipients.length,
-        messageId: info.messageId,
-        weekends: weekendData.map(w => ({
-          saturday: w.saturday.toDateString(),
-          sunday: w.sunday.toDateString(),
-          workingOnSat: w.workingOnSat.length,
-          workingOnSun: w.workingOnSun.length
-        }))
+      weekendData.push({
+        saturday: weekend.saturday,
+        sunday: weekend.sunday,
+        workingOnSat: workingOnSat.map(s => ({ name: s.name, hours: s.hours })),
+        workingOnSun: workingOnSun.map(s => ({ name: s.name, hours: s.hours })),
+        satNotes: satSchedule.notes,
+        sunNotes: sunSchedule.notes
       });
-    } catch (error) {
-      console.error('Error in sendWeekendReportManual:', error);
-      res.status(500).json({ error: error.message });
     }
-  });
+
+    // Generate email
+    const dateRange = `${weekendData[0].saturday.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${weekendData[weekendData.length - 1].sunday.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+    const emailHtml = generateWeekendReportHTML(weekendData, dateRange);
+
+    // Send email
+    const mailOptions = {
+      from: `"${EMAIL_CONFIG.from.name}" <${EMAIL_CONFIG.from.email}>`,
+      to: finalRecipients.join(', '),
+      subject: `📅 Weekend Schedule Report - ${dateRange}`,
+      html: emailHtml
+    };
+
+    const info = await transporter.sendMail(mailOptions);
+
+    // Return success response (onCall returns data directly, not via res.json)
+    return {
+      success: true,
+      message: `Weekend report sent successfully`,
+      recipients: finalRecipients,
+      recipientCount: finalRecipients.length,
+      messageId: info.messageId,
+      weekends: weekendData.map(w => ({
+        saturday: w.saturday.toDateString(),
+        sunday: w.sunday.toDateString(),
+        workingOnSat: w.workingOnSat.length,
+        workingOnSun: w.workingOnSun.length
+      }))
+    };
+  } catch (error) {
+    console.error('Error in sendWeekendReportManual:', error);
+
+    // If it's already an HttpsError, rethrow it
+    if (error instanceof functions.https.HttpsError) {
+      throw error;
+    }
+
+    // Otherwise wrap it
+    throw new functions.https.HttpsError(
+      'internal',
+      error.message || 'An error occurred sending the report'
+    );
+  }
 });
