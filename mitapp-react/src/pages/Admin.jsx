@@ -45,26 +45,15 @@ const Admin = () => {
 
       setAllUsers(users);
 
-      // Get all existing accounts from Firebase Auth via Cloud Function
-      // This is the proper way to check - directly against Firebase Auth, not a Firestore collection
-      const existingEmails = await firebaseService.listAuthUserEmails();
+      // Find all techs with emails - we'll try to create accounts for them
+      // If they already have an account, Firebase will tell us "email already in use"
+      // This is simpler than trying to detect existing accounts
+      const techsWithEmails = users.filter(user => user.email);
 
-      console.log(`Found ${existingEmails.size} existing Firebase Auth accounts`);
-
-      // Find techs with emails that DON'T have a Firebase Auth account
-      const techsWithoutAuth = users.filter(user => {
-        if (!user.email) return false;
-        return !existingEmails.has(user.email.toLowerCase());
-      });
-
-      console.log(`Found ${techsWithoutAuth.length} techs without accounts:`, techsWithoutAuth.map(t => t.name));
-      setTechsWithoutAccounts(techsWithoutAuth);
+      console.log(`Found ${techsWithEmails.length} techs with emails`);
+      setTechsWithoutAccounts(techsWithEmails);
     } catch (error) {
       console.error('Error loading users:', error);
-      // If the Cloud Function isn't deployed yet, show a message
-      if (error.message.includes('404') || error.message.includes('not found')) {
-        alert('The account checking function needs to be deployed. Please deploy the Cloud Functions first.');
-      }
     } finally {
       setLoadingAccounts(false);
     }
@@ -72,11 +61,11 @@ const Admin = () => {
 
   const createMissingAccounts = async () => {
     if (techsWithoutAccounts.length === 0) {
-      alert('No techs without accounts found.');
+      alert('No team members with emails found.');
       return;
     }
 
-    const confirmMessage = `This will create ${techsWithoutAccounts.length} user account(s) with the password "Mitigation1".\n\nTechs:\n${techsWithoutAccounts.map(t => `- ${t.name} (${t.email})`).join('\n')}\n\nContinue?`;
+    const confirmMessage = `This will attempt to create accounts for ${techsWithoutAccounts.length} team member(s).\n\nPassword: "Mitigation1"\n\nNote: If an account already exists for an email, it will be skipped.\n\nContinue?`;
 
     if (!confirm(confirmMessage)) {
       return;
@@ -93,8 +82,21 @@ const Admin = () => {
       await loadUsers();
 
       // Show success message
-      if (results.created.length > 0) {
-        alert(`Successfully created ${results.created.length} account(s)!\n\nPassword for all accounts: Mitigation1\n\n${results.errors.length > 0 ? `Errors: ${results.errors.length}` : ''}`);
+      const skipped = results.errors.filter(e => e.error.includes('already in use') || e.error.includes('already exists')).length;
+      const actualErrors = results.errors.length - skipped;
+
+      if (results.created.length > 0 || skipped > 0) {
+        let message = '';
+        if (results.created.length > 0) {
+          message += `Successfully created ${results.created.length} new account(s)!\nPassword: Mitigation1\n`;
+        }
+        if (skipped > 0) {
+          message += `\nSkipped ${skipped} account(s) (already exist)`;
+        }
+        if (actualErrors > 0) {
+          message += `\n\n${actualErrors} error(s) occurred - see details below`;
+        }
+        alert(message || 'No new accounts were created.');
       }
     } catch (error) {
       console.error('Error creating accounts:', error);
@@ -186,11 +188,11 @@ const Admin = () => {
           <h2>User Management</h2>
         </div>
 
-        {/* Techs Without Accounts Section */}
+        {/* Bulk Account Creation Section */}
         {techsWithoutAccounts.length > 0 && (
-          <div className="card" style={{ marginBottom: '24px', border: '2px solid var(--warning-color)' }}>
-            <div className="card-header" style={{ background: 'var(--warning-color)', color: 'white' }}>
-              <h3><i className="fas fa-exclamation-triangle"></i> Techs Without Accounts ({techsWithoutAccounts.length})</h3>
+          <div className="card" style={{ marginBottom: '24px', border: '2px solid var(--primary-color)' }}>
+            <div className="card-header" style={{ background: 'var(--primary-color)', color: 'white' }}>
+              <h3><i className="fas fa-user-plus"></i> Bulk Account Creation ({techsWithoutAccounts.length} team members)</h3>
               <div className="tab-controls">
                 <button
                   className="btn btn-success"
@@ -199,7 +201,7 @@ const Admin = () => {
                   title="Create accounts with password: Mitigation1"
                 >
                   <i className="fas fa-user-plus"></i>{' '}
-                  {creatingAccounts ? 'Creating...' : 'Create All Accounts'}
+                  {creatingAccounts ? 'Creating...' : 'Create Accounts'}
                 </button>
               </div>
             </div>
@@ -215,7 +217,7 @@ const Admin = () => {
                 </thead>
                 <tbody>
                   {techsWithoutAccounts.map((user, index) => (
-                    <tr key={user.id || index} style={{ background: 'var(--warning-bg)' }}>
+                    <tr key={user.id || index}>
                       <td><strong>{user.name || 'N/A'}</strong></td>
                       <td>{user.email || 'N/A'}</td>
                       <td>{user.role || 'N/A'}</td>
@@ -226,7 +228,9 @@ const Admin = () => {
               </table>
             </div>
             <div style={{ padding: '12px 20px', background: 'var(--bg-secondary)', fontSize: '14px', color: 'var(--text-secondary)' }}>
-              <i className="fas fa-info-circle"></i> All accounts will be created with password: <strong>Mitigation1</strong>
+              <i className="fas fa-info-circle"></i> New accounts will be created with password: <strong>Mitigation1</strong>
+              <br/>
+              <i className="fas fa-check-circle" style={{ color: 'var(--success-color)' }}></i> If an account already exists, it will be skipped automatically.
             </div>
           </div>
         )}
@@ -239,10 +243,10 @@ const Admin = () => {
                 className="btn btn-secondary"
                 onClick={loadUsers}
                 disabled={loadingAccounts}
-                title="Refresh and check for missing accounts"
+                title="Refresh team members list"
               >
                 <i className={`fas fa-sync-alt ${loadingAccounts ? 'fa-spin' : ''}`}></i>{' '}
-                {loadingAccounts ? 'Checking...' : 'Check Accounts'}
+                {loadingAccounts ? 'Loading...' : 'Refresh'}
               </button>
               <button className="btn btn-primary" onClick={handleAddUserClick}>
                 <i className="fas fa-plus"></i> Add User
@@ -252,7 +256,7 @@ const Admin = () => {
           <div className="table-container">
             {loadingAccounts ? (
               <p style={{ padding: '20px', textAlign: 'center' }}>
-                <i className="fas fa-spinner fa-spin"></i> Checking accounts...
+                <i className="fas fa-spinner fa-spin"></i> Loading team members...
               </p>
             ) : allUsers.length > 0 ? (
               <table className="data-table">
@@ -262,34 +266,17 @@ const Admin = () => {
                     <th>Email</th>
                     <th>Role</th>
                     <th>Zone</th>
-                    <th>Account Status</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {allUsers.map((user, index) => {
-                    const hasAccount = user.email && !techsWithoutAccounts.some(t => t.email?.toLowerCase() === user.email?.toLowerCase());
-                    return (
-                      <tr key={user.id || index}>
-                        <td>{user.name || 'N/A'}</td>
-                        <td>{user.email || <span style={{ color: 'var(--text-secondary)' }}>No email</span>}</td>
-                        <td>{user.role || 'N/A'}</td>
-                        <td>{user.zoneName || 'N/A'}</td>
-                        <td>
-                          {!user.email ? (
-                            <span style={{ color: 'var(--text-secondary)' }}>—</span>
-                          ) : hasAccount ? (
-                            <span style={{ color: 'var(--success-color)' }}>
-                              <i className="fas fa-check-circle"></i> Has Account
-                            </span>
-                          ) : (
-                            <span style={{ color: 'var(--warning-color)' }}>
-                              <i className="fas fa-exclamation-circle"></i> No Account
-                            </span>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
+                  {allUsers.map((user, index) => (
+                    <tr key={user.id || index}>
+                      <td>{user.name || 'N/A'}</td>
+                      <td>{user.email || <span style={{ color: 'var(--text-secondary)' }}>No email</span>}</td>
+                      <td>{user.role || 'N/A'}</td>
+                      <td>{user.zoneName || 'N/A'}</td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             ) : (
@@ -332,20 +319,43 @@ const Admin = () => {
                   </ul>
                 </div>
               )}
-              {creationResults.errors.length > 0 && (
-                <div>
-                  <h4 style={{ color: 'var(--error-color)', marginBottom: '10px' }}>
-                    <i className="fas fa-exclamation-triangle"></i> Errors ({creationResults.errors.length})
-                  </h4>
-                  <ul style={{ listStyle: 'none', padding: 0 }}>
-                    {creationResults.errors.map((error, idx) => (
-                      <li key={idx} style={{ padding: '8px', background: 'var(--status-error-bg)', borderRadius: '4px', marginBottom: '4px' }}>
-                        <strong>{error.tech}</strong>: {error.error}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
+              {creationResults.errors.length > 0 && (() => {
+                const skipped = creationResults.errors.filter(e => e.error.includes('already in use') || e.error.includes('already exists'));
+                const actualErrors = creationResults.errors.filter(e => !e.error.includes('already in use') && !e.error.includes('already exists'));
+
+                return (
+                  <>
+                    {skipped.length > 0 && (
+                      <div style={{ marginBottom: '20px' }}>
+                        <h4 style={{ color: 'var(--text-secondary)', marginBottom: '10px' }}>
+                          <i className="fas fa-check-circle"></i> Already Have Accounts ({skipped.length})
+                        </h4>
+                        <ul style={{ listStyle: 'none', padding: 0 }}>
+                          {skipped.map((error, idx) => (
+                            <li key={idx} style={{ padding: '8px', background: 'var(--bg-secondary)', borderRadius: '4px', marginBottom: '4px' }}>
+                              <strong>{error.tech}</strong> - Account already exists
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {actualErrors.length > 0 && (
+                      <div>
+                        <h4 style={{ color: 'var(--error-color)', marginBottom: '10px' }}>
+                          <i className="fas fa-exclamation-triangle"></i> Errors ({actualErrors.length})
+                        </h4>
+                        <ul style={{ listStyle: 'none', padding: 0 }}>
+                          {actualErrors.map((error, idx) => (
+                            <li key={idx} style={{ padding: '8px', background: 'var(--status-error-bg)', borderRadius: '4px', marginBottom: '4px' }}>
+                              <strong>{error.tech}</strong>: {error.error}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
             </div>
           </div>
         )}
