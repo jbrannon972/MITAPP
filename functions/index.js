@@ -858,3 +858,80 @@ exports.createTechAccountsHttp = functions.https.onRequest((req, res) => {
     }
   });
 });
+
+/**
+ * HTTP endpoint to list all Firebase Auth user emails
+ * Used by Admin panel to check which techs already have accounts
+ */
+exports.listAuthUsersHttp = functions.https.onRequest((req, res) => {
+  return cors(req, res, async () => {
+    try {
+      // Only allow GET requests
+      if (req.method !== 'GET') {
+        res.status(405).send('Method Not Allowed');
+        return;
+      }
+
+      // Get auth token from headers
+      const authHeader = req.headers.authorization;
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        res.status(401).json({ error: 'Unauthorized - No token provided' });
+        return;
+      }
+
+      const idToken = authHeader.split('Bearer ')[1];
+
+      // Verify the ID token
+      let decodedToken;
+      try {
+        decodedToken = await admin.auth().verifyIdToken(idToken);
+      } catch (error) {
+        res.status(401).json({ error: 'Unauthorized - Invalid token' });
+        return;
+      }
+
+      // Get the caller's role from staffing data to verify they're a manager/admin
+      const staffingDoc = await admin.firestore().collection('hou_settings').doc('staffing_data').get();
+      const staffingData = staffingDoc.data();
+
+      const allStaff = [
+        ...(staffingData.management || []),
+        ...((staffingData.zones || []).flatMap(z => [z.lead, ...(z.members || [])])),
+        ...(staffingData.warehouseStaff || [])
+      ].filter(Boolean);
+
+      const caller = allStaff.find(s => s.email && s.email.toLowerCase() === decodedToken.email.toLowerCase());
+
+      if (!caller || !['Manager', 'Admin', 'Supervisor'].includes(caller.role)) {
+        res.status(403).json({ error: 'Forbidden - Admin access required' });
+        return;
+      }
+
+      // List all Firebase Auth users
+      const emails = new Set();
+      let nextPageToken;
+
+      do {
+        const listUsersResult = await admin.auth().listUsers(1000, nextPageToken);
+
+        listUsersResult.users.forEach((userRecord) => {
+          if (userRecord.email) {
+            emails.add(userRecord.email.toLowerCase());
+          }
+        });
+
+        nextPageToken = listUsersResult.pageToken;
+      } while (nextPageToken);
+
+      console.log(`Listed ${emails.size} Firebase Auth users`);
+
+      res.status(200).json({
+        emails: Array.from(emails),
+        count: emails.size
+      });
+    } catch (error) {
+      console.error('Error in listAuthUsersHttp:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+});

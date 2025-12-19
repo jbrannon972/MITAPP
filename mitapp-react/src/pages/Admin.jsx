@@ -3,8 +3,6 @@ import Layout from '../components/common/Layout';
 import { useData } from '../contexts/DataContext';
 import { useAuth } from '../contexts/AuthContext';
 import firebaseService from '../services/firebaseService';
-import { collection, getDocs } from 'firebase/firestore';
-import { db } from '../config/firebase';
 
 const Admin = () => {
   const { currentUser } = useAuth();
@@ -47,21 +45,13 @@ const Admin = () => {
 
       setAllUsers(users);
 
-      // Get all existing accounts from the 'users' collection
-      const usersCollection = collection(db, 'users');
-      const usersSnapshot = await getDocs(usersCollection);
-      const existingEmails = new Set();
+      // Get all existing accounts from Firebase Auth via Cloud Function
+      // This is the proper way to check - directly against Firebase Auth, not a Firestore collection
+      const existingEmails = await firebaseService.listAuthUserEmails();
 
-      usersSnapshot.forEach(doc => {
-        const userData = doc.data();
-        if (userData.email) {
-          existingEmails.add(userData.email.toLowerCase());
-        }
-      });
+      console.log(`Found ${existingEmails.size} existing Firebase Auth accounts`);
 
-      console.log(`Found ${existingEmails.size} existing user accounts in Firestore`);
-
-      // Find techs with emails that DON'T have an account in the users collection
+      // Find techs with emails that DON'T have a Firebase Auth account
       const techsWithoutAuth = users.filter(user => {
         if (!user.email) return false;
         return !existingEmails.has(user.email.toLowerCase());
@@ -71,6 +61,10 @@ const Admin = () => {
       setTechsWithoutAccounts(techsWithoutAuth);
     } catch (error) {
       console.error('Error loading users:', error);
+      // If the Cloud Function isn't deployed yet, show a message
+      if (error.message.includes('404') || error.message.includes('not found')) {
+        alert('The account checking function needs to be deployed. Please deploy the Cloud Functions first.');
+      }
     } finally {
       setLoadingAccounts(false);
     }

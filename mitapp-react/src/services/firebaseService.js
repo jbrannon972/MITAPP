@@ -804,6 +804,46 @@ class FirebaseService {
     }
   }
 
+  /**
+   * List all Firebase Auth user emails
+   * Used to check which techs already have accounts
+   * @returns {Promise<Set>} Set of email addresses (lowercase) that have accounts
+   */
+  async listAuthUserEmails() {
+    try {
+      const currentUser = auth.currentUser;
+      if (!currentUser) {
+        throw new Error('User must be logged in');
+      }
+
+      const idToken = await currentUser.getIdToken();
+
+      const response = await fetch(
+        'https://us-central1-mit-foreasting.cloudfunctions.net/listAuthUsersHttp',
+        {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${idToken}`
+          }
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      console.log(`Retrieved ${result.count} existing auth user emails`);
+
+      // Return as a Set for easy lookup
+      return new Set(result.emails);
+    } catch (error) {
+      console.error('Error listing auth users:', error);
+      throw error;
+    }
+  }
+
   // ==================== STORM MODE FUNCTIONS ====================
 
   /**
