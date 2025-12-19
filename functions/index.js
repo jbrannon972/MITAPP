@@ -1490,14 +1490,19 @@ exports.sendWeekendReport = functions.pubsub
  * HTTP endpoint to manually trigger weekend report (for testing)
  */
 exports.sendWeekendReportManual = functions.https.onRequest((req, res) => {
+  // Set CORS headers for all requests
+  res.set('Access-Control-Allow-Origin', '*');
+  res.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+  // Handle preflight OPTIONS request
+  if (req.method === 'OPTIONS') {
+    res.status(204).send('');
+    return;
+  }
+
   return cors(req, res, async () => {
     try {
-      // Handle preflight OPTIONS request
-      if (req.method === 'OPTIONS') {
-        res.status(204).send('');
-        return;
-      }
-
       // Only allow POST requests
       if (req.method !== 'POST') {
         res.status(405).send('Method Not Allowed');
