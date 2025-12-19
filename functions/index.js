@@ -935,3 +935,688 @@ exports.listAuthUsersHttp = functions.https.onRequest((req, res) => {
     }
   });
 });
+
+/**
+ * ==========================================
+ * WEEKEND REPORT EMAIL FUNCTION
+ * ==========================================
+ * Sends weekly email with upcoming 4 weekends schedule
+ * Runs every Thursday at 10:00 AM CST (4:00 PM UTC)
+ */
+
+/**
+ * Get week number of the year for a given date
+ */
+function getWeekNumber(date) {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  const weekNo = Math.ceil(((d - yearStart) / 86400000 + 1) / 7);
+  return weekNo;
+}
+
+/**
+ * Get default status for a person on a given date based on recurring rules
+ */
+function getDefaultStatusForPerson(person, dateObject) {
+  const dayKey = dateObject.getDay();
+  const isWeekend = dayKey === 0 || dayKey === 6;
+  const weekNumber = getWeekNumber(dateObject);
+
+  let status = isWeekend ? 'off' : 'on';
+  let hours = '';
+  let source = isWeekend ? 'Weekend Default' : 'Weekday Default';
+
+  const personRules = person.recurringRules || [];
+
+  if (personRules.length > 0) {
+    for (const rule of personRules) {
+      const ruleStartDate = rule.startDate ? new Date(rule.startDate) : null;
+      const ruleEndDate = rule.endDate ? new Date(rule.endDate) : null;
+
+      if ((!ruleStartDate || dateObject >= ruleStartDate) && (!ruleEndDate || dateObject <= ruleEndDate)) {
+        const ruleDays = Array.isArray(rule.days) ? rule.days : [rule.days];
+
+        if (ruleDays.includes(dayKey)) {
+          let appliesThisWeek = true;
+
+          if (rule.frequency === 'every-other') {
+            const weekAnchorParity = parseInt(rule.weekAnchor, 10) % 2;
+            const weekNumberParity = weekNumber % 2;
+            appliesThisWeek = weekNumberParity === weekAnchorParity;
+          }
+
+          if (appliesThisWeek) {
+            status = rule.status;
+            hours = rule.hours || '';
+            source = 'Recurring Rule';
+            break;
+          }
+        }
+      }
+    }
+  }
+
+  return { status, hours, source };
+}
+
+/**
+ * Fetch schedule data for a specific month from Firestore
+ */
+async function getScheduleDataForMonth(year, month) {
+  const db = admin.firestore();
+  const schedulesMap = { specific: {} };
+  const firstDayOfMonth = new Date(year, month, 1);
+  const lastDayOfMonth = new Date(year, month + 1, 0, 23, 59, 59, 999);
+
+  try {
+    const schedulesRef = db.collection('hou_schedules');
+    const snapshot = await schedulesRef.get();
+
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      if (data.date) {
+        let dateObj;
+        if (data.date.toDate) {
+          dateObj = data.date.toDate();
+        } else if (data.date instanceof Date) {
+          dateObj = data.date;
+        } else {
+          dateObj = new Date(data.date);
+        }
+
+        if (dateObj >= firstDayOfMonth && dateObj <= lastDayOfMonth) {
+          const dayOfMonth = dateObj.getDate();
+          schedulesMap.specific[dayOfMonth] = data;
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching schedule data:', error);
+  }
+  return schedulesMap;
+}
+
+/**
+ * Get calculated schedule for a specific day
+ */
+function getCalculatedScheduleForDay(dateObject, monthlySchedules, allTechnicians) {
+  const specificDaySchedule = monthlySchedules.specific[dateObject.getDate()];
+
+  const calculatedSchedule = {
+    notes: specificDaySchedule?.notes || '',
+    staff: []
+  };
+
+  for (const staffMember of allTechnicians) {
+    if (!staffMember) continue;
+
+    const { status: defaultStatus, hours: defaultHours, source: defaultSource } = getDefaultStatusForPerson(staffMember, dateObject);
+
+    let personSchedule = {
+      ...staffMember,
+      status: defaultStatus,
+      hours: defaultHours,
+      source: defaultSource
+    };
+
+    const specificEntry = specificDaySchedule?.staff?.find(s => s.id === staffMember.id);
+    if (specificEntry) {
+      personSchedule.status = specificEntry.status;
+      personSchedule.hours = specificEntry.hours || '';
+      personSchedule.source = 'Specific Override';
+    }
+
+    calculatedSchedule.staff.push(personSchedule);
+  }
+
+  calculatedSchedule.staff.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+  return calculatedSchedule;
+}
+
+/**
+ * Get all technicians from staffing data
+ */
+function getAllTechnicians(staffingData) {
+  const technicians = [];
+
+  // Add management staff
+  if (staffingData.management) {
+    staffingData.management.forEach(m => {
+      if (m && m.id) technicians.push(m);
+    });
+  }
+
+  // Add zone leads and members
+  if (staffingData.zones) {
+    staffingData.zones.forEach(zone => {
+      if (zone.lead && zone.lead.id) technicians.push(zone.lead);
+      if (zone.members) {
+        zone.members.forEach(m => {
+          if (m && m.id) technicians.push(m);
+        });
+      }
+    });
+  }
+
+  // Add warehouse staff
+  if (staffingData.warehouseStaff) {
+    staffingData.warehouseStaff.forEach(w => {
+      if (w && w.id) technicians.push(w);
+    });
+  }
+
+  return technicians;
+}
+
+/**
+ * Get all user emails from staffing data (for sending report)
+ */
+function getAllUserEmails(staffingData) {
+  const emails = new Set();
+
+  // Add management emails
+  if (staffingData.management) {
+    staffingData.management.forEach(m => {
+      if (m && m.email) emails.add(m.email.toLowerCase());
+    });
+  }
+
+  // Add zone lead emails
+  if (staffingData.zones) {
+    staffingData.zones.forEach(zone => {
+      if (zone.lead && zone.lead.email) emails.add(zone.lead.email.toLowerCase());
+    });
+  }
+
+  return Array.from(emails);
+}
+
+/**
+ * Generate Weekend Report HTML Email
+ */
+function generateWeekendReportHTML(weekendData, dateRange) {
+  const formatDate = (date) => {
+    return date.toLocaleDateString('en-US', {
+      weekday: 'long',
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric'
+    });
+  };
+
+  const formatShortDate = (date) => {
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric'
+    });
+  };
+
+  let emailHTML = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      background-color: #f5f5f5;
+    }
+    .container {
+      background-color: white;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      overflow: hidden;
+    }
+    .header {
+      background: linear-gradient(135deg, #f87b4d 0%, #e06a3c 100%);
+      color: white;
+      padding: 30px;
+      text-align: center;
+    }
+    .header h1 {
+      margin: 0;
+      font-size: 28px;
+      font-weight: 600;
+    }
+    .header p {
+      margin: 10px 0 0 0;
+      font-size: 16px;
+      opacity: 0.95;
+    }
+    .summary-bar {
+      background-color: #fff7ed;
+      border-left: 4px solid #f87b4d;
+      padding: 15px 20px;
+      margin: 20px;
+      border-radius: 0 8px 8px 0;
+    }
+    .summary-bar p {
+      margin: 0;
+      color: #92400e;
+      font-weight: 500;
+    }
+    .weekend-section {
+      padding: 0 20px 20px 20px;
+    }
+    .weekend-card {
+      background-color: #fafbfc;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      margin-bottom: 20px;
+      overflow: hidden;
+    }
+    .weekend-header {
+      background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+      padding: 15px 20px;
+      border-bottom: 2px solid #f87b4d;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .weekend-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: #1f2937;
+    }
+    .weekend-dates {
+      font-size: 13px;
+      color: #6b7280;
+      background-color: white;
+      padding: 5px 12px;
+      border-radius: 20px;
+    }
+    .days-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0;
+    }
+    .day-column {
+      padding: 20px;
+      border-right: 1px solid #e5e7eb;
+    }
+    .day-column:last-child {
+      border-right: none;
+    }
+    .day-header {
+      font-size: 16px;
+      font-weight: 600;
+      color: #f87b4d;
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #e5e7eb;
+    }
+    .staff-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    .staff-item {
+      padding: 8px 12px;
+      margin-bottom: 6px;
+      background-color: #e0f2f1;
+      border-left: 3px solid #4db6ac;
+      border-radius: 0 6px 6px 0;
+      font-size: 14px;
+      color: #004d40;
+    }
+    .staff-item .hours {
+      color: #6b7280;
+      font-style: italic;
+      font-size: 12px;
+    }
+    .no-staff {
+      color: #9ca3af;
+      font-style: italic;
+      padding: 8px 0;
+    }
+    .notes-box {
+      margin-top: 12px;
+      padding: 10px 12px;
+      background-color: #fffbeb;
+      border-left: 3px solid #f59e0b;
+      border-radius: 0 6px 6px 0;
+      font-size: 13px;
+      color: #92400e;
+    }
+    .notes-box strong {
+      display: block;
+      margin-bottom: 4px;
+    }
+    .footer {
+      background-color: #f9fafb;
+      padding: 20px;
+      text-align: center;
+      font-size: 13px;
+      color: #6b7280;
+      border-top: 1px solid #e5e7eb;
+    }
+    .footer a {
+      color: #f87b4d;
+      text-decoration: none;
+    }
+    @media only screen and (max-width: 600px) {
+      .days-grid {
+        grid-template-columns: 1fr;
+      }
+      .day-column {
+        border-right: none;
+        border-bottom: 1px solid #e5e7eb;
+      }
+      .day-column:last-child {
+        border-bottom: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>📅 Upcoming Weekend Schedule</h1>
+      <p>${dateRange}</p>
+    </div>
+
+    <div class="summary-bar">
+      <p>Here's who's working the next 4 weekends. Please review and update your availability in the MIT App if needed.</p>
+    </div>
+
+    <div class="weekend-section">
+`;
+
+  weekendData.forEach((weekend, idx) => {
+    emailHTML += `
+      <div class="weekend-card">
+        <div class="weekend-header">
+          <div class="weekend-title">Weekend ${idx + 1}</div>
+          <div class="weekend-dates">${formatShortDate(weekend.saturday)} - ${formatShortDate(weekend.sunday)}</div>
+        </div>
+        <div class="days-grid">
+          <div class="day-column">
+            <div class="day-header">📆 Saturday, ${formatShortDate(weekend.saturday)}</div>
+            ${weekend.workingOnSat.length > 0 ? `
+              <ul class="staff-list">
+                ${weekend.workingOnSat.map(s => `
+                  <li class="staff-item">
+                    ${s.name}${s.hours ? ` <span class="hours">(${s.hours})</span>` : ''}
+                  </li>
+                `).join('')}
+              </ul>
+            ` : '<p class="no-staff">No one scheduled</p>'}
+            ${weekend.satNotes ? `
+              <div class="notes-box">
+                <strong>📝 Notes:</strong>
+                ${weekend.satNotes}
+              </div>
+            ` : ''}
+          </div>
+          <div class="day-column">
+            <div class="day-header">📆 Sunday, ${formatShortDate(weekend.sunday)}</div>
+            ${weekend.workingOnSun.length > 0 ? `
+              <ul class="staff-list">
+                ${weekend.workingOnSun.map(s => `
+                  <li class="staff-item">
+                    ${s.name}${s.hours ? ` <span class="hours">(${s.hours})</span>` : ''}
+                  </li>
+                `).join('')}
+              </ul>
+            ` : '<p class="no-staff">No one scheduled</p>'}
+            ${weekend.sunNotes ? `
+              <div class="notes-box">
+                <strong>📝 Notes:</strong>
+                ${weekend.sunNotes}
+              </div>
+            ` : ''}
+          </div>
+        </div>
+      </div>
+    `;
+  });
+
+  emailHTML += `
+    </div>
+
+    <div class="footer">
+      <p>This is an automated weekly report from MIT App</p>
+      <p>Generated on ${new Date().toLocaleString('en-US', { timeZone: 'America/Chicago' })} CST</p>
+      <p><a href="https://mit-foreasting.web.app">Open MIT App</a></p>
+    </div>
+  </div>
+</body>
+</html>
+  `;
+
+  return emailHTML;
+}
+
+/**
+ * Scheduled function to send weekend report
+ * Runs every Thursday at 10:00 AM CST (4:00 PM UTC)
+ */
+exports.sendWeekendReport = functions.pubsub
+  .schedule('0 16 * * 4') // 4 PM UTC = 10 AM CST on Thursdays
+  .timeZone('America/Chicago')
+  .onRun(async (context) => {
+    try {
+      console.log('Starting weekly weekend report email generation...');
+
+      const db = admin.firestore();
+
+      // Fetch staffing data
+      const staffingDoc = await db.collection('hou_settings').doc('staffing_data').get();
+      if (!staffingDoc.exists) {
+        console.error('Staffing data not found');
+        return null;
+      }
+
+      const staffingData = staffingDoc.data();
+      const allTechnicians = getAllTechnicians(staffingData);
+      const recipientEmails = getAllUserEmails(staffingData);
+
+      console.log(`Found ${allTechnicians.length} technicians and ${recipientEmails.length} recipient emails`);
+
+      // Find next 4 weekends
+      const today = new Date();
+      let currentDay = new Date(today);
+      const weekends = [];
+
+      while (weekends.length < 4) {
+        if (currentDay.getDay() === 6) { // Saturday
+          const saturday = new Date(currentDay);
+          const sunday = new Date(currentDay);
+          sunday.setDate(sunday.getDate() + 1);
+          weekends.push({ saturday, sunday });
+        }
+        currentDay.setDate(currentDay.getDate() + 1);
+      }
+
+      // Build weekend data
+      const weekendData = [];
+
+      for (const weekend of weekends) {
+        const satSchedules = await getScheduleDataForMonth(
+          weekend.saturday.getFullYear(),
+          weekend.saturday.getMonth()
+        );
+        const sunSchedules = await getScheduleDataForMonth(
+          weekend.sunday.getFullYear(),
+          weekend.sunday.getMonth()
+        );
+
+        const satSchedule = getCalculatedScheduleForDay(weekend.saturday, satSchedules, allTechnicians);
+        const sunSchedule = getCalculatedScheduleForDay(weekend.sunday, sunSchedules, allTechnicians);
+
+        const workingOnSat = satSchedule.staff.filter(s => s.status === 'on' || (s.hours && s.hours.trim() !== ''));
+        const workingOnSun = sunSchedule.staff.filter(s => s.status === 'on' || (s.hours && s.hours.trim() !== ''));
+
+        weekendData.push({
+          saturday: weekend.saturday,
+          sunday: weekend.sunday,
+          workingOnSat: workingOnSat.map(s => ({ name: s.name, hours: s.hours })),
+          workingOnSun: workingOnSun.map(s => ({ name: s.name, hours: s.hours })),
+          satNotes: satSchedule.notes,
+          sunNotes: sunSchedule.notes
+        });
+      }
+
+      // Generate email
+      const dateRange = `${weekendData[0].saturday.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${weekendData[weekendData.length - 1].sunday.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+      const emailHtml = generateWeekendReportHTML(weekendData, dateRange);
+
+      // Send email to all recipients
+      const mailOptions = {
+        from: `"${EMAIL_CONFIG.from.name}" <${EMAIL_CONFIG.from.email}>`,
+        to: recipientEmails.join(', '),
+        subject: `📅 Weekend Schedule Report - ${dateRange}`,
+        html: emailHtml
+      };
+
+      const info = await transporter.sendMail(mailOptions);
+      console.log(`Successfully sent weekend report to ${recipientEmails.length} recipients:`, info.messageId);
+
+      return null;
+    } catch (error) {
+      console.error('Error sending weekend report:', error);
+      throw error;
+    }
+  });
+
+/**
+ * HTTP endpoint to manually trigger weekend report (for testing)
+ */
+exports.sendWeekendReportManual = functions.https.onRequest((req, res) => {
+  return cors(req, res, async () => {
+    try {
+      // Only allow POST requests
+      if (req.method !== 'POST') {
+        res.status(405).send('Method Not Allowed');
+        return;
+      }
+
+      // Get auth token from headers
+      const authHeader = req.headers.authorization;
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        res.status(401).json({ error: 'Unauthorized - No token provided' });
+        return;
+      }
+
+      const idToken = authHeader.split('Bearer ')[1];
+
+      // Verify the token
+      const decodedToken = await admin.auth().verifyIdToken(idToken);
+      const email = decodedToken.email;
+
+      // Verify admin/manager role
+      const db = admin.firestore();
+      const staffingDoc = await db.collection('hou_settings').doc('staffing_data').get();
+
+      if (!staffingDoc.exists) {
+        res.status(403).json({ error: 'Staffing data not found' });
+        return;
+      }
+
+      const staffingData = staffingDoc.data();
+      const isManager = staffingData.management?.some(m =>
+        m.email && m.email.toLowerCase() === email.toLowerCase() &&
+        (m.role === 'Manager' || m.role === 'Admin' || m.role === 'Supervisor')
+      );
+
+      if (!isManager) {
+        res.status(403).json({ error: 'Permission denied - Only managers can trigger this report' });
+        return;
+      }
+
+      // Generate and send report
+      const allTechnicians = getAllTechnicians(staffingData);
+      const recipientEmails = getAllUserEmails(staffingData);
+
+      // Optional: Allow custom recipient list from request body
+      const customRecipients = req.body.recipients;
+      const finalRecipients = customRecipients && Array.isArray(customRecipients) && customRecipients.length > 0
+        ? customRecipients
+        : recipientEmails;
+
+      console.log(`Found ${allTechnicians.length} technicians and sending to ${finalRecipients.length} recipients`);
+
+      // Find next 4 weekends
+      const today = new Date();
+      let currentDay = new Date(today);
+      const weekends = [];
+
+      while (weekends.length < 4) {
+        if (currentDay.getDay() === 6) {
+          const saturday = new Date(currentDay);
+          const sunday = new Date(currentDay);
+          sunday.setDate(sunday.getDate() + 1);
+          weekends.push({ saturday, sunday });
+        }
+        currentDay.setDate(currentDay.getDate() + 1);
+      }
+
+      // Build weekend data
+      const weekendData = [];
+
+      for (const weekend of weekends) {
+        const satSchedules = await getScheduleDataForMonth(
+          weekend.saturday.getFullYear(),
+          weekend.saturday.getMonth()
+        );
+        const sunSchedules = await getScheduleDataForMonth(
+          weekend.sunday.getFullYear(),
+          weekend.sunday.getMonth()
+        );
+
+        const satSchedule = getCalculatedScheduleForDay(weekend.saturday, satSchedules, allTechnicians);
+        const sunSchedule = getCalculatedScheduleForDay(weekend.sunday, sunSchedules, allTechnicians);
+
+        const workingOnSat = satSchedule.staff.filter(s => s.status === 'on' || (s.hours && s.hours.trim() !== ''));
+        const workingOnSun = sunSchedule.staff.filter(s => s.status === 'on' || (s.hours && s.hours.trim() !== ''));
+
+        weekendData.push({
+          saturday: weekend.saturday,
+          sunday: weekend.sunday,
+          workingOnSat: workingOnSat.map(s => ({ name: s.name, hours: s.hours })),
+          workingOnSun: workingOnSun.map(s => ({ name: s.name, hours: s.hours })),
+          satNotes: satSchedule.notes,
+          sunNotes: sunSchedule.notes
+        });
+      }
+
+      // Generate email
+      const dateRange = `${weekendData[0].saturday.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${weekendData[weekendData.length - 1].sunday.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+      const emailHtml = generateWeekendReportHTML(weekendData, dateRange);
+
+      // Send email
+      const mailOptions = {
+        from: `"${EMAIL_CONFIG.from.name}" <${EMAIL_CONFIG.from.email}>`,
+        to: finalRecipients.join(', '),
+        subject: `📅 Weekend Schedule Report - ${dateRange}`,
+        html: emailHtml
+      };
+
+      const info = await transporter.sendMail(mailOptions);
+
+      res.status(200).json({
+        success: true,
+        message: `Weekend report sent successfully`,
+        recipients: finalRecipients,
+        recipientCount: finalRecipients.length,
+        messageId: info.messageId,
+        weekends: weekendData.map(w => ({
+          saturday: w.saturday.toDateString(),
+          sunday: w.sunday.toDateString(),
+          workingOnSat: w.workingOnSat.length,
+          workingOnSun: w.workingOnSun.length
+        }))
+      });
+    } catch (error) {
+      console.error('Error in sendWeekendReportManual:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+});

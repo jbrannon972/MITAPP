@@ -348,6 +348,12 @@ const Calendar = () => {
 
     setWeekendReportData(weekendData);
     setWeekendReportModalOpen(true);
+    document.body.classList.add('report-printing');
+  };
+
+  const closeWeekendReport = () => {
+    setWeekendReportModalOpen(false);
+    document.body.classList.remove('report-printing');
   };
 
   const handlePrint = () => {
@@ -1134,7 +1140,7 @@ const Calendar = () => {
             <div className="modal" style={{ maxWidth: '800px', maxHeight: '80vh', overflow: 'auto' }}>
               <div className="modal-header">
                 <h3><i className="fas fa-file-alt"></i> Weekend Report</h3>
-                <button className="modal-close" onClick={() => setWeekendReportModalOpen(false)}>
+                <button className="modal-close" onClick={closeWeekendReport}>
                   <i className="fas fa-times"></i>
                 </button>
               </div>
@@ -1184,7 +1190,7 @@ const Calendar = () => {
                 <button className="btn btn-primary" onClick={() => window.print()}>
                   <i className="fas fa-print"></i> Print
                 </button>
-                <button className="btn btn-secondary" onClick={() => setWeekendReportModalOpen(false)}>
+                <button className="btn btn-secondary" onClick={closeWeekendReport}>
                   Close
                 </button>
               </div>

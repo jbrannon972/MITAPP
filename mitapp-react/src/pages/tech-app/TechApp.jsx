@@ -1,17 +1,15 @@
 import { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import TechRoute from '../../components/tech-app/TechRoute';
 import TechCalendar from '../../components/tech-app/TechCalendar';
 import TechTeam from '../../components/tech-app/TechTeam';
 import TechReport from '../../components/tech-app/TechReport';
 import '../../styles/tech-app.css';
-import '../../styles/tech-route.css';
 import '../../styles/tech-calendar.css';
 import '../../styles/tech-report.css';
 import '../../styles/tech-team.css';
 
 const TechApp = () => {
-  const [activeTab, setActiveTab] = useState('route');
+  const [activeTab, setActiveTab] = useState('calendar');
   const [showSettings, setShowSettings] = useState(false);
   const { currentUser, logout } = useAuth();
 
@@ -25,7 +23,6 @@ const TechApp = () => {
   };
 
   const tabs = [
-    { id: 'route', label: 'My Route', icon: 'fa-route' },
     { id: 'calendar', label: 'Calendar', icon: 'fa-calendar-alt' },
     { id: 'report', label: 'Report', icon: 'fa-clipboard-check' },
     { id: 'profile', label: 'Profile', icon: 'fa-user-circle' }
@@ -33,8 +30,6 @@ const TechApp = () => {
 
   const renderContent = () => {
     switch (activeTab) {
-      case 'route':
-        return <TechRoute />;
       case 'calendar':
         return <TechCalendar />;
       case 'team':
