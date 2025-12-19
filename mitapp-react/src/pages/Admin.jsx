@@ -3,6 +3,8 @@ import Layout from '../components/common/Layout';
 import { useData } from '../contexts/DataContext';
 import { useAuth } from '../contexts/AuthContext';
 import firebaseService from '../services/firebaseService';
+import { collection, getDocs } from 'firebase/firestore';
+import { db } from '../config/firebase';
 
 const Admin = () => {
   const { currentUser } = useAuth();
@@ -12,6 +14,7 @@ const Admin = () => {
   const [creatingAccounts, setCreatingAccounts] = useState(false);
   const [creationResults, setCreationResults] = useState(null);
   const [showAddUserModal, setShowAddUserModal] = useState(false);
+  const [loadingAccounts, setLoadingAccounts] = useState(false);
   const [newUser, setNewUser] = useState({
     name: '',
     email: '',
@@ -27,27 +30,50 @@ const Admin = () => {
   }, [staffingData]);
 
   const loadUsers = async () => {
-    // Combine all staff from different sources
-    const users = [
-      ...(staffingData.management || []).map(user => ({ ...user, zoneName: 'Management' })),
-      ...(staffingData.warehouseStaff || []).map(user => ({ ...user, zoneName: 'Warehouse' })),
-      ...(staffingData.zones || []).flatMap(zone =>
-        [
-          zone.lead ? { ...zone.lead, zoneName: zone.name } : null,
-          ...(zone.members || []).map(member => ({ ...member, zoneName: zone.name }))
-        ].filter(Boolean)
-      )
-    ].filter(Boolean);
+    setLoadingAccounts(true);
 
-    setAllUsers(users);
+    try {
+      // Combine all staff from different sources
+      const users = [
+        ...(staffingData.management || []).map(user => ({ ...user, zoneName: 'Management' })),
+        ...(staffingData.warehouseStaff || []).map(user => ({ ...user, zoneName: 'Warehouse' })),
+        ...(staffingData.zones || []).flatMap(zone =>
+          [
+            zone.lead ? { ...zone.lead, zoneName: zone.name } : null,
+            ...(zone.members || []).map(member => ({ ...member, zoneName: zone.name }))
+          ].filter(Boolean)
+        )
+      ].filter(Boolean);
 
-    // Find techs without auth accounts (those without a userId/id field or with email but no account)
-    const techsWithoutAuth = users.filter(user => {
-      // If user has no id/userId AND has an email, they likely don't have an auth account
-      return user.email && !user.id && !user.userId;
-    });
+      setAllUsers(users);
 
-    setTechsWithoutAccounts(techsWithoutAuth);
+      // Get all existing accounts from the 'users' collection
+      const usersCollection = collection(db, 'users');
+      const usersSnapshot = await getDocs(usersCollection);
+      const existingEmails = new Set();
+
+      usersSnapshot.forEach(doc => {
+        const userData = doc.data();
+        if (userData.email) {
+          existingEmails.add(userData.email.toLowerCase());
+        }
+      });
+
+      console.log(`Found ${existingEmails.size} existing user accounts in Firestore`);
+
+      // Find techs with emails that DON'T have an account in the users collection
+      const techsWithoutAuth = users.filter(user => {
+        if (!user.email) return false;
+        return !existingEmails.has(user.email.toLowerCase());
+      });
+
+      console.log(`Found ${techsWithoutAuth.length} techs without accounts:`, techsWithoutAuth.map(t => t.name));
+      setTechsWithoutAccounts(techsWithoutAuth);
+    } catch (error) {
+      console.error('Error loading users:', error);
+    } finally {
+      setLoadingAccounts(false);
+    }
   };
 
   const createMissingAccounts = async () => {
@@ -166,28 +192,24 @@ const Admin = () => {
           <h2>User Management</h2>
         </div>
 
-        <div className="card">
-          <div className="card-header">
-            <h3><i className="fas fa-users-cog"></i> All Users</h3>
-            <div className="tab-controls">
-              {techsWithoutAccounts.length > 0 && (
+        {/* Techs Without Accounts Section */}
+        {techsWithoutAccounts.length > 0 && (
+          <div className="card" style={{ marginBottom: '24px', border: '2px solid var(--warning-color)' }}>
+            <div className="card-header" style={{ background: 'var(--warning-color)', color: 'white' }}>
+              <h3><i className="fas fa-exclamation-triangle"></i> Techs Without Accounts ({techsWithoutAccounts.length})</h3>
+              <div className="tab-controls">
                 <button
                   className="btn btn-success"
                   onClick={createMissingAccounts}
                   disabled={creatingAccounts}
-                  title="Create accounts for techs without auth"
+                  title="Create accounts with password: Mitigation1"
                 >
                   <i className="fas fa-user-plus"></i>{' '}
-                  {creatingAccounts ? 'Creating...' : `Create ${techsWithoutAccounts.length} Missing Account${techsWithoutAccounts.length > 1 ? 's' : ''}`}
+                  {creatingAccounts ? 'Creating...' : 'Create All Accounts'}
                 </button>
-              )}
-              <button className="btn btn-primary" onClick={handleAddUserClick}>
-                <i className="fas fa-plus"></i> Add User
-              </button>
+              </div>
             </div>
-          </div>
-          <div className="table-container">
-            {allUsers.length > 0 ? (
+            <div className="table-container">
               <table className="data-table">
                 <thead>
                   <tr>
@@ -195,27 +217,85 @@ const Admin = () => {
                     <th>Email</th>
                     <th>Role</th>
                     <th>Zone</th>
-                    <th style={{ textAlign: 'right' }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {allUsers.map((user, index) => (
-                    <tr key={user.id || index}>
-                      <td>{user.name || 'N/A'}</td>
+                  {techsWithoutAccounts.map((user, index) => (
+                    <tr key={user.id || index} style={{ background: 'var(--warning-bg)' }}>
+                      <td><strong>{user.name || 'N/A'}</strong></td>
                       <td>{user.email || 'N/A'}</td>
                       <td>{user.role || 'N/A'}</td>
                       <td>{user.zoneName || 'N/A'}</td>
-                      <td style={{ textAlign: 'right' }}>
-                        <button
-                          className="btn btn-danger btn-small"
-                          disabled
-                          title="Coming soon"
-                        >
-                          Delete
-                        </button>
-                      </td>
                     </tr>
                   ))}
+                </tbody>
+              </table>
+            </div>
+            <div style={{ padding: '12px 20px', background: 'var(--bg-secondary)', fontSize: '14px', color: 'var(--text-secondary)' }}>
+              <i className="fas fa-info-circle"></i> All accounts will be created with password: <strong>Mitigation1</strong>
+            </div>
+          </div>
+        )}
+
+        <div className="card">
+          <div className="card-header">
+            <h3><i className="fas fa-users-cog"></i> All Team Members</h3>
+            <div className="tab-controls">
+              <button
+                className="btn btn-secondary"
+                onClick={loadUsers}
+                disabled={loadingAccounts}
+                title="Refresh and check for missing accounts"
+              >
+                <i className={`fas fa-sync-alt ${loadingAccounts ? 'fa-spin' : ''}`}></i>{' '}
+                {loadingAccounts ? 'Checking...' : 'Check Accounts'}
+              </button>
+              <button className="btn btn-primary" onClick={handleAddUserClick}>
+                <i className="fas fa-plus"></i> Add User
+              </button>
+            </div>
+          </div>
+          <div className="table-container">
+            {loadingAccounts ? (
+              <p style={{ padding: '20px', textAlign: 'center' }}>
+                <i className="fas fa-spinner fa-spin"></i> Checking accounts...
+              </p>
+            ) : allUsers.length > 0 ? (
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Role</th>
+                    <th>Zone</th>
+                    <th>Account Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {allUsers.map((user, index) => {
+                    const hasAccount = user.email && !techsWithoutAccounts.some(t => t.email?.toLowerCase() === user.email?.toLowerCase());
+                    return (
+                      <tr key={user.id || index}>
+                        <td>{user.name || 'N/A'}</td>
+                        <td>{user.email || <span style={{ color: 'var(--text-secondary)' }}>No email</span>}</td>
+                        <td>{user.role || 'N/A'}</td>
+                        <td>{user.zoneName || 'N/A'}</td>
+                        <td>
+                          {!user.email ? (
+                            <span style={{ color: 'var(--text-secondary)' }}>—</span>
+                          ) : hasAccount ? (
+                            <span style={{ color: 'var(--success-color)' }}>
+                              <i className="fas fa-check-circle"></i> Has Account
+                            </span>
+                          ) : (
+                            <span style={{ color: 'var(--warning-color)' }}>
+                              <i className="fas fa-exclamation-circle"></i> No Account
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             ) : (
