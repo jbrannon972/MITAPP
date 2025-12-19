@@ -227,89 +227,41 @@ class FirebaseService {
       // Convert to JS Date if it's a Timestamp, otherwise use as-is
       const date = scheduleData.date.toDate ? scheduleData.date.toDate() : new Date(scheduleData.date);
 
-      // Use date-based document ID (YYYY-MM-DD) to ensure updates work correctly
+      // Use date-based document ID (YYYY-MM-DD) - EXACTLY like vanilla JS
       const docId = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
       const docRef = doc(db, 'hou_schedules', docId);
 
-      // Convert JavaScript Date to Firestore Timestamp
-      // Firestore cannot save raw Date objects, they must be Timestamps
-      const firestoreTimestamp = Timestamp.fromDate(date);
-
-      console.log('💾 Saving schedule to Firestore:');
+      console.log('💾 SAVE SCHEDULE - Matching vanilla JS behavior exactly');
       console.log(`  📅 Document ID: ${docId}`);
       console.log(`  📆 Date: ${date.toDateString()}`);
+      console.log(`  👥 Staff array length: ${scheduleData.staff?.length || 0}`);
+      if (scheduleData.staff && scheduleData.staff.length > 0) {
+        scheduleData.staff.forEach(s => {
+          console.log(`    - ${s.id}: status=${s.status}, hours=${s.hours || 'none'}`);
+        });
+      }
+      console.log(`  📝 Notes: "${scheduleData.notes || ''}"`);
 
-      // CRITICAL FIX: Firestore's merge:true replaces entire arrays, not individual elements
-      // We need to manually merge staff arrays to prevent erasing existing overrides
-
-      // First, fetch existing data for this day
-      const existingDoc = await getDoc(docRef);
-      const existingData = existingDoc.exists() ? existingDoc.data() : {};
-      const existingStaff = existingData.staff || [];
-
-      console.log(`  📂 Existing staff overrides in DB: ${existingStaff.length}`);
-      existingStaff.forEach(s => {
-        console.log(`    - ${s.id}: status=${s.status}, hours=${s.hours || 'none'}`);
-      });
-
-      // Build the update object
-      const updateData = {
-        date: firestoreTimestamp  // CRITICAL: Must be Firestore Timestamp, not JS Date
+      // Build the payload EXACTLY like vanilla JS does
+      // Vanilla JS saves: { date: Timestamp, staff: [...], notes: "..." }
+      const payload = {
+        date: Timestamp.fromDate(date),  // Convert JS Date to Firestore Timestamp
+        staff: scheduleData.staff || [],  // Always include staff array
+        notes: scheduleData.notes || ''   // Always include notes
       };
 
-      // Handle staff array merging with support for both old format (staff) and new format (staffToSave/staffToRemove)
-      const staffToSave = scheduleData.staffToSave || scheduleData.staff || [];
-      const staffToRemove = scheduleData.staffToRemove || [];
+      console.log('  📦 Payload to save:', JSON.stringify(payload, (key, value) => {
+        // Custom replacer to handle Timestamp objects for logging
+        if (value && typeof value === 'object' && value.seconds !== undefined) {
+          return `Timestamp(${new Date(value.seconds * 1000).toISOString()})`;
+        }
+        return value;
+      }, 2));
 
-      console.log(`  📥 Staff entries to save/update: ${staffToSave.length}`);
-      staffToSave.forEach(s => {
-        console.log(`    - ${s.id}: status=${s.status}, hours=${s.hours || 'none'}`);
-      });
+      // Save with merge: true - EXACTLY like vanilla JS
+      await setDoc(docRef, payload, { merge: true });
 
-      console.log(`  🗑️ Staff entries to remove: ${staffToRemove.length}`);
-      staffToRemove.forEach(id => {
-        console.log(`    - ${id}`);
-      });
-
-      // Create a map of existing staff by ID for easy lookup
-      const staffMap = new Map();
-
-      // Add all existing staff to the map
-      existingStaff.forEach(s => {
-        staffMap.set(s.id, s);
-      });
-
-      // Remove staff that should no longer have overrides
-      staffToRemove.forEach(id => {
-        staffMap.delete(id);
-      });
-
-      // Merge/update with new staff entries
-      staffToSave.forEach(s => {
-        staffMap.set(s.id, { id: s.id, status: s.status, hours: s.hours || '' });
-      });
-
-      // Convert map back to array
-      updateData.staff = Array.from(staffMap.values());
-
-      console.log(`  ✅ Final merged staff array: ${updateData.staff.length} total entries`);
-      updateData.staff.forEach(s => {
-        console.log(`    - ${s.id}: status=${s.status}, hours=${s.hours || 'none'}`);
-      });
-
-      // Always update notes field (can be empty string)
-      if (scheduleData.notes !== undefined && scheduleData.notes !== null) {
-        updateData.notes = scheduleData.notes;
-      }
-
-      console.log(`  📝 Notes: ${updateData.notes !== undefined ? `"${updateData.notes}"` : 'none (preserving existing)'}`);
-
-      // Use merge: true to update existing document or create new one
-      const dataToSave = this.removeUndefined(updateData);
-      console.log('  📦 Final data to save:', JSON.stringify(dataToSave, null, 2));
-      await setDoc(docRef, dataToSave, { merge: true });
-
-      console.log(`✅ Schedule saved successfully to Firestore at hou_schedules/${docId}`);
+      console.log(`✅ Schedule saved successfully to hou_schedules/${docId}`);
     } catch (error) {
       console.error('❌ Error saving schedule:', error);
       throw error;

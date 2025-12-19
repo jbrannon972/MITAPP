@@ -394,84 +394,88 @@ const Calendar = () => {
       // Get notes from textarea
       const notes = document.getElementById('calNotes')?.value?.trim() || '';
 
-      // Get staff data from the form
-      // We need to track:
-      // 1. Staff that need overrides (differ from base status)
-      // 2. Staff that should have overrides REMOVED (previously had override, now match base)
-      const staffToSave = [];      // Staff with overrides to save
-      const staffToRemove = [];    // Staff IDs to remove from overrides
+      // Collect ALL staff from the form whose status differs from their BASE status
+      // This matches the vanilla JS behavior exactly:
+      // - We iterate through all staff visible in the form
+      // - For each, we compare the CURRENT dropdown value to the BASE (default) status
+      // - If different, we include them in the save
+      // - This correctly preserves existing overrides because:
+      //   - The modal shows current status (including existing overrides)
+      //   - So existing overrides will still differ from base and get re-saved
+      const staffData = [];
 
-      console.log('🔍 SAVE DEBUG: Starting to process staff items');
+      console.log('🔍 SAVE DEBUG: Processing all staff items from form');
+      console.log('  editingDate:', editingDate.toDateString());
 
-      document.querySelectorAll('.staff-item-edit').forEach(item => {
+      const staffItems = document.querySelectorAll('.staff-item-edit');
+      console.log(`  Found ${staffItems.length} staff items in DOM`);
+
+      staffItems.forEach((item, index) => {
         const staffId = item.dataset.staffId;
-        const status = item.querySelector('.status-select')?.value;
-        const hours = item.querySelector('.hours-input')?.value?.trim() || '';
+        const statusSelect = item.querySelector('.status-select');
+        const hoursInput = item.querySelector('.hours-input');
 
-        // Find the original staff member from when we opened the modal
-        const originalStaff = selectedDaySchedule.schedule.staff.find(s => s.id === staffId);
+        if (!statusSelect) {
+          console.log(`  ⚠️ Staff item ${index}: No status-select found!`);
+          return;
+        }
 
-        if (originalStaff) {
-          // Get what the status would be WITHOUT any specific override for this day
-          // We need to recalculate from scratch, ignoring the specific override
-          const { status: baseStatus, hours: baseHours, source: baseSource } =
-            getDefaultStatusForPerson(originalStaff, editingDate);
+        const status = statusSelect.value;
+        const hours = hoursInput?.value?.trim() || '';
 
-          console.log(`👤 ${originalStaff.name}:`, {
-            formStatus: status,
-            formHours: hours,
-            baseStatus,
-            baseHours,
-            baseSource,
-            currentStatus: originalStaff.status,
-            currentSource: originalStaff.source,
-            hadOverride: originalStaff.source === 'Specific Override'
+        // Find the staff member from unifiedTechnicianData to get their recurring rules
+        const technicianData = unifiedTechnicianData.find(t => t.id === staffId);
+
+        if (!technicianData) {
+          console.log(`  ⚠️ Staff ${staffId}: Not found in unifiedTechnicianData`);
+          return;
+        }
+
+        // Get the BASE status (what this person would be WITHOUT any specific override)
+        const { status: baseStatus, hours: baseHours } = getDefaultStatusForPerson(technicianData, editingDate);
+
+        console.log(`  👤 ${technicianData.name}:`, {
+          formStatus: status,
+          formHours: hours,
+          baseStatus,
+          baseHours: baseHours || '(empty)'
+        });
+
+        // Only include if the form values differ from base
+        // This is EXACTLY how vanilla JS does it
+        if (status !== baseStatus || hours !== (baseHours || '')) {
+          console.log(`    ✅ SAVING (differs from base)`);
+          staffData.push({
+            id: staffId,
+            status: status,
+            hours: hours
           });
-
-          // Check if the form values differ from the base (non-override) values
-          const statusDiffersFromBase = status !== baseStatus;
-          const hoursDiffersFromBase = hours !== (baseHours || '');
-
-          if (statusDiffersFromBase || hoursDiffersFromBase) {
-            // This person needs an override
-            console.log(`✅ SAVING override for ${originalStaff.name}`);
-            staffToSave.push({
-              id: staffId,
-              status: status,
-              hours: hours
-            });
-          } else if (originalStaff.source === 'Specific Override') {
-            // This person HAD an override but now matches base - REMOVE the override
-            console.log(`🗑️ REMOVING override for ${originalStaff.name} (now matches base)`);
-            staffToRemove.push(staffId);
-          } else {
-            console.log(`⏭️  SKIPPING ${originalStaff.name} (matches base, no override to remove)`);
-          }
+        } else {
+          console.log(`    ⏭️ SKIPPING (matches base)`);
         }
       });
 
-      console.log('💾 Staff to save:', staffToSave.length, staffToSave);
-      console.log('🗑️ Staff to remove:', staffToRemove.length, staffToRemove);
+      console.log(`💾 Total staff to save: ${staffData.length}`);
+      staffData.forEach(s => console.log(`  - ${s.id}: ${s.status} ${s.hours ? `(${s.hours})` : ''}`));
 
-      // Build schedule data object
-      const scheduleData = {
+      // Build the schedule payload - EXACTLY like vanilla JS does
+      const schedulePayload = {
         date: editingDate,
-        notes: notes,  // Always save notes
-        staffToSave: staffToSave,        // Overrides to add/update
-        staffToRemove: staffToRemove     // Override IDs to remove
+        staff: staffData,  // Always include staff array, even if empty
+        notes: notes
       };
 
-      console.log('📤 Final schedule data to save:', scheduleData);
+      console.log('📤 Sending to firebaseService.saveSchedule:', schedulePayload);
 
-      await firebaseService.saveSchedule(scheduleData);
+      await firebaseService.saveSchedule(schedulePayload);
       console.log('🔄 Reloading month schedules...');
-      await loadMonthSchedules();  // CRITICAL: Must await reload before closing modal
+      await loadMonthSchedules();
       console.log('✅ Month schedules reloaded');
       alert('Schedule saved successfully!');
       closeModal();
     } catch (error) {
       console.error('Error saving schedule:', error);
-      alert('Error saving schedule. Please try again.');
+      alert('Error saving schedule: ' + error.message);
     }
   };
 
