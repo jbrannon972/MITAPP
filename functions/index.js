@@ -631,57 +631,8 @@ exports.createTechAccounts = functions.https.onCall(async (data, context) => {
         emailVerified: true  // Set to true so users can login immediately
       });
 
-      // Create Firestore user document
-      await admin.firestore().collection('users').doc(userRecord.uid).set({
-        email: tech.email,
-        username: tech.name,
-        name: tech.name,
-        role: tech.role || 'Technician',
-        zoneName: tech.zoneName || 'Unknown',
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        createdBy: context.auth.uid
-      });
-
-      // Add user to hou_settings/staffing_data
-      const newUserData = {
-        id: userRecord.uid,
-        name: tech.name,
-        email: tech.email,
-        role: tech.role,
-        inTraining: false,
-        hireDate: new Date().toISOString().split('T')[0]
-      };
-
-      // Determine which array to add the user to based on role
-      if (['Manager', 'Admin', 'Supervisor', 'MIT Lead', 'Fleet', 'Fleet Safety', 'Auditor'].includes(tech.role)) {
-        // Add to management array
-        await admin.firestore().collection('hou_settings').doc('staffing_data').update({
-          management: admin.firestore.FieldValue.arrayUnion(newUserData)
-        });
-      } else if (tech.role === 'Warehouse') {
-        // Add to warehouseStaff array
-        await admin.firestore().collection('hou_settings').doc('staffing_data').update({
-          warehouseStaff: admin.firestore.FieldValue.arrayUnion(newUserData)
-        });
-      } else if (['MIT Tech', 'Demo Tech'].includes(tech.role) && tech.zoneName) {
-        // Add to specific zone in zones array
-        const staffingDocRef = admin.firestore().collection('hou_settings').doc('staffing_data');
-        const staffingSnapshot = await staffingDocRef.get();
-        const currentData = staffingSnapshot.data();
-
-        // Find the zone and add member
-        const zones = currentData.zones || [];
-        const zoneIndex = zones.findIndex(z => z.name === tech.zoneName);
-
-        if (zoneIndex !== -1) {
-          if (!zones[zoneIndex].members) {
-            zones[zoneIndex].members = [];
-          }
-          zones[zoneIndex].members.push(newUserData);
-
-          await staffingDocRef.update({ zones });
-        }
-      }
+      // Note: We don't add to staffing_data here because users are already there
+      // (that's where we got their info from). We only create the Firebase Auth account.
 
       results.created.push({
         name: tech.name,
@@ -707,6 +658,16 @@ exports.createTechAccounts = functions.https.onCall(async (data, context) => {
  * Use this if the callable function has CORS issues
  */
 exports.createTechAccountsHttp = functions.https.onRequest((req, res) => {
+  // Handle CORS preflight
+  res.set('Access-Control-Allow-Origin', '*');
+  res.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+  if (req.method === 'OPTIONS') {
+    res.status(204).send('');
+    return;
+  }
+
   return cors(req, res, async () => {
     try {
       // Only allow POST requests
@@ -783,57 +744,8 @@ exports.createTechAccountsHttp = functions.https.onRequest((req, res) => {
             emailVerified: true  // Set to true so users can login immediately
           });
 
-          // Create Firestore user document
-          await admin.firestore().collection('users').doc(userRecord.uid).set({
-            email: tech.email,
-            username: tech.name,
-            name: tech.name,
-            role: tech.role || 'Technician',
-            zoneName: tech.zoneName || 'Unknown',
-            createdAt: admin.firestore.FieldValue.serverTimestamp(),
-            createdBy: uid
-          });
-
-          // Add user to hou_settings/staffing_data
-          const newUserData = {
-            id: userRecord.uid,
-            name: tech.name,
-            email: tech.email,
-            role: tech.role,
-            inTraining: false,
-            hireDate: new Date().toISOString().split('T')[0]
-          };
-
-          // Determine which array to add the user to based on role
-          if (['Manager', 'Admin', 'Supervisor', 'MIT Lead', 'Fleet', 'Fleet Safety', 'Auditor'].includes(tech.role)) {
-            // Add to management array
-            await admin.firestore().collection('hou_settings').doc('staffing_data').update({
-              management: admin.firestore.FieldValue.arrayUnion(newUserData)
-            });
-          } else if (tech.role === 'Warehouse') {
-            // Add to warehouseStaff array
-            await admin.firestore().collection('hou_settings').doc('staffing_data').update({
-              warehouseStaff: admin.firestore.FieldValue.arrayUnion(newUserData)
-            });
-          } else if (['MIT Tech', 'Demo Tech'].includes(tech.role) && tech.zoneName) {
-            // Add to specific zone in zones array
-            const staffingDocRef = admin.firestore().collection('hou_settings').doc('staffing_data');
-            const staffingSnapshot = await staffingDocRef.get();
-            const currentData = staffingSnapshot.data();
-
-            // Find the zone and add member
-            const zones = currentData.zones || [];
-            const zoneIndex = zones.findIndex(z => z.name === tech.zoneName);
-
-            if (zoneIndex !== -1) {
-              if (!zones[zoneIndex].members) {
-                zones[zoneIndex].members = [];
-              }
-              zones[zoneIndex].members.push(newUserData);
-
-              await staffingDocRef.update({ zones });
-            }
-          }
+          // Note: We don't add to staffing_data here because users are already there
+          // (that's where we got their info from). We only create the Firebase Auth account.
 
           results.created.push({
             name: tech.name,
@@ -864,6 +776,16 @@ exports.createTechAccountsHttp = functions.https.onRequest((req, res) => {
  * Used by Admin panel to check which techs already have accounts
  */
 exports.listAuthUsersHttp = functions.https.onRequest((req, res) => {
+  // Handle CORS preflight
+  res.set('Access-Control-Allow-Origin', '*');
+  res.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+  if (req.method === 'OPTIONS') {
+    res.status(204).send('');
+    return;
+  }
+
   return cors(req, res, async () => {
     try {
       // Only allow GET requests
