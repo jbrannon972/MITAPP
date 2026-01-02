@@ -658,10 +658,11 @@ exports.createTechAccounts = functions.https.onCall(async (data, context) => {
  * Use this if the callable function has CORS issues
  */
 exports.createTechAccountsHttp = functions.https.onRequest((req, res) => {
-  // Handle CORS preflight
+  // Handle CORS preflight - Updated Jan 2026
   res.set('Access-Control-Allow-Origin', '*');
   res.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.set('Access-Control-Max-Age', '3600');
 
   if (req.method === 'OPTIONS') {
     res.status(204).send('');
@@ -776,10 +777,11 @@ exports.createTechAccountsHttp = functions.https.onRequest((req, res) => {
  * Used by Admin panel to check which techs already have accounts
  */
 exports.listAuthUsersHttp = functions.https.onRequest((req, res) => {
-  // Handle CORS preflight
+  // Handle CORS preflight - Updated Jan 2026
   res.set('Access-Control-Allow-Origin', '*');
   res.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.set('Access-Control-Max-Age', '3600');
 
   if (req.method === 'OPTIONS') {
     res.status(204).send('');
